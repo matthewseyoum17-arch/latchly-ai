@@ -451,7 +451,7 @@ export default function SitePulseLanding() {
       </section>
 
       {/* FEATURES */}
-      <section id="features" style={{ padding:"48px 24px" }}>
+      <section id="features" style={{ padding:"24px 24px" }}>
         <div style={{ maxWidth:1200,margin:"0 auto" }}>
           <div style={{ textAlign:"center",marginBottom:44 }}>
             <div style={{ fontSize:12,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>Features</div>
@@ -469,7 +469,7 @@ export default function SitePulseLanding() {
       </section>
 
       {/* DEMO */}
-      <section id="demo" style={{ padding:"48px 24px",background:"#f1f5f9" }}>
+      <section id="demo" style={{ padding:"24px 24px",background:"#f1f5f9" }}>
         <div style={{ maxWidth:1200,margin:"0 auto" }}>
           <div style={{ textAlign:"center",marginBottom:44 }}>
             <div style={{ fontSize:12,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>Live Demo</div>
@@ -516,7 +516,7 @@ export default function SitePulseLanding() {
       </section>
 
       {/* ABOUT */}
-      <section id="about" style={{ padding:"48px 24px",background:"#f8fafc" }}>
+      <section id="about" style={{ padding:"24px 24px",background:"#f8fafc" }}>
         <div style={{ maxWidth:1000,margin:"0 auto" }}>
           <div style={{ textAlign:"center",marginBottom:44 }}>
             <div style={{ fontSize:12,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>About Us</div>
@@ -536,7 +536,7 @@ export default function SitePulseLanding() {
       </section>
 
       {/* ROI SECTION */}
-      <section style={{ padding:"48px 24px",background:"#f8fafc" }}>
+      <section style={{ padding:"24px 24px",background:"#f8fafc" }}>
         <div style={{ maxWidth:1200,margin:"0 auto" }}>
           <div style={{ textAlign:"center",marginBottom:44 }}>
             <div style={{ fontSize:12,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>ROI Comparison</div>
@@ -573,7 +573,7 @@ export default function SitePulseLanding() {
       </section>
 
       {/* PRICING */}
-      <section id="pricing" style={{ padding:"48px 24px" }}>
+      <section id="pricing" style={{ padding:"24px 24px" }}>
         <div style={{ maxWidth:900,margin:"0 auto" }}>
           <div style={{ textAlign:"center",marginBottom:44 }}>
             <div style={{ fontSize:12,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>Pricing</div>
@@ -598,7 +598,7 @@ export default function SitePulseLanding() {
       </section>
 
       {/* FAQ */}
-      <section id="faq" style={{ padding:"48px 24px",background:"#f8fafc" }}>
+      <section id="faq" style={{ padding:"24px 24px",background:"#f8fafc" }}>
         <div style={{ maxWidth:780,margin:"0 auto" }}>
           <div style={{ textAlign:"center",marginBottom:44 }}>
             <div style={{ fontSize:12,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>FAQ</div>
@@ -621,7 +621,7 @@ export default function SitePulseLanding() {
       </section>
 
       {/* CONTACT */}
-      <section id="contact" style={{ padding:"48px 24px" }}>
+      <section id="contact" style={{ padding:"24px 24px" }}>
         <div style={{ maxWidth:1000,margin:"0 auto" }}>
           <div style={{ textAlign:"center",marginBottom:44 }}>
             <div style={{ fontSize:12,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>Contact</div>
@@ -670,7 +670,7 @@ export default function SitePulseLanding() {
       </section>
 
       {/* FOOTER */}
-      <footer style={{ background:"#0f172a",padding:"48px 24px 0",color:"#cbd5e1" }}>
+      <footer style={{ background:"#0f172a",padding:"24px 24px 0",color:"#cbd5e1" }}>
         <div style={{ maxWidth:1200,margin:"0 auto" }}>
           <div className="footer-grid" style={{ display:"grid",gridTemplateColumns:"1.5fr 1fr 1fr 1.2fr",gap:48,marginBottom:48 }}>
             <div>
