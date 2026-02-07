@@ -395,36 +395,38 @@ export default function SitePulseLanding() {
       </nav>
 
       {/* HERO */}
-      <section style={{ minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:"80px 24px 60px",position:"relative",overflow:"hidden" }}>
+      <section style={{ minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:"80px 24px 40px",position:"relative",overflow:"hidden" }}>
         <div style={{ position:"absolute",top:-200,right:-200,width:600,height:600,borderRadius:"50%",background:"radial-gradient(circle,#0e7c6b08 0%,transparent 70%)",pointerEvents:"none" }} />
         <div className="hero-grid" style={{ maxWidth:1200,margin:"0 auto",display:"grid",gridTemplateColumns:"1fr 1fr",gap:56,alignItems:"center" }}>
           <div>
-            <div style={{ display:"inline-flex",alignItems:"center",gap:6,padding:"6px 14px",borderRadius:50,background:"#0e7c6b10",border:"1px solid #0e7c6b20",fontSize:12.5,fontWeight:700,color:"#0e7c6b",marginBottom:24 }}>
-              <span style={{ width:6,height:6,borderRadius:"50%",background:"#4ade80",animation:"pulse 2s infinite" }}></span>Your site never sleeps.
+            <div style={{ display:"inline-flex",alignItems:"center",gap:6,padding:"6px 14px",borderRadius:50,background:"#0e7c6b10",border:"1px solid #0e7c6b20",fontSize:12.5,fontWeight:700,color:"#0e7c6b",marginBottom:12 }}>
+              <span style={{ width:6,height:6,borderRadius:"50%",background:"#4ade80",animation:"pulse 2s infinite" }}></span>Your website never sleeps.
             </div>
-            <h1 style={{ fontFamily:"'Playfair Display',serif",fontSize:56,fontWeight:900,lineHeight:1.08,letterSpacing:-2,marginBottom:20,color:"#0f172a" }}>
-              Your company's<br/><span style={{ background:"linear-gradient(135deg,#0e7c6b,#0ea5e9)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent" }}>best employee</span><br/>never sleeps.
+            <h1 style={{ fontFamily:"'Playfair Display',serif",fontSize:56,fontWeight:900,lineHeight:1.08,letterSpacing:-2,marginBottom:14,color:"#0f172a" }}>
+              Your website's<br/><span style={{ background:"linear-gradient(135deg,#0e7c6b,#0ea5e9)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent" }}>best employee</span><br/>never sleeps.
             </h1>
-            <p style={{ fontSize:18,lineHeight:1.65,color:"#64748b",marginBottom:36,maxWidth:480 }}>A 24/7 AI assistant that answers questions, captures leads, and sends real customers to your phone — even when you're closed.</p>
-            <div style={{ display:"flex",gap:14,alignItems:"center",marginBottom:32 }}>
+            <p style={{ fontSize:18,lineHeight:1.65,color:"#64748b",marginBottom:24,maxWidth:480 }}>A 24/7 AI assistant that answers questions, captures leads, and sends real customers to your phone — even when you're closed.</p>
+            <div style={{ display:"flex",gap:14,alignItems:"center",marginBottom:20 }}>
               <button onClick={()=>setChatOpen(true)} style={{ padding:"16px 32px",borderRadius:14,background:"linear-gradient(135deg,#0e7c6b,#0a6b5c)",color:"#fff",border:"none",fontWeight:800,fontSize:15,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:8,boxShadow:"0 8px 30px #0e7c6b40" }}>See it in action <Icons.ArrowRight /></button>
               <a href="#pricing" onClick={e=>{e.preventDefault();document.getElementById("pricing")?.scrollIntoView({behavior:"smooth",block:"start"});}} style={{ padding:"16px 32px",borderRadius:14,border:"2px solid #e2e8f0",color:"#475569",textDecoration:"none",fontWeight:700,fontSize:15,fontFamily:"'DM Sans',sans-serif" }}>View Pricing</a>
             </div>
             <div style={{ display:"flex",gap:24,fontSize:13,color:"#94a3b8" }}>{["No credit card required","2-min setup","Cancel anytime"].map(t=><span key={t} style={{ display:"flex",alignItems:"center",gap:5 }}><span style={{ color:"#0e7c6b" }}><Icons.Check /></span> {t}</span>)}</div>
           </div>
           <div style={{ position:"relative" }}>
-            <div onClick={()=>setChatOpen(true)} style={{ cursor:"pointer",background:"#fff",borderRadius:24,overflow:"hidden",boxShadow:"0 40px 80px rgba(0,0,0,0.08)",border:"1px solid rgba(0,0,0,0.06)",animation:"float 6s ease-in-out infinite" }}>
+            <div onClick={()=>setChatOpen(true)} style={{ cursor:"pointer",background:"#fff",borderRadius:24,overflow:"hidden",boxShadow:"0 40px 80px rgba(0,0,0,0.08)",border:"1px solid rgba(0,0,0,0.06)",animation:"float 6s ease-in-out infinite",minHeight:380 }}>
               <div style={{ background:"linear-gradient(135deg,#0e7c6b,#0e7c6bdd)",padding:"14px 20px",display:"flex",alignItems:"center",gap:10,color:"#fff" }}>
                 <div style={{ width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18 }}>{ind.emoji}</div>
                 <div><div style={{ fontWeight:700,fontSize:14 }}>{ind.name}</div><div style={{ fontSize:11,opacity:0.8 }}>● Online now</div></div>
               </div>
-              <div style={{ padding:20 }}>
+              <div style={{ padding:"16px 20px",minHeight:280,overflow:"hidden" }}>
                 {[{role:"bot",text:"Hi there! 👋 How can I help you today?"},{role:"user",text:ind.heroQ},{role:"bot",text:ind.heroA}].map((m,i)=>(
                   <div key={i} style={{ display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start",marginBottom:10 }}>
-                    <div style={{ padding:"9px 14px",borderRadius:14,maxWidth:"80%",fontSize:13,lineHeight:1.5,background:m.role==="user"?"#0e7c6b":"#f1f5f9",color:m.role==="user"?"#fff":"#1e293b",borderBottomRightRadius:m.role==="user"?4:14,borderBottomLeftRadius:m.role==="bot"?4:14 }}>{m.text}</div>
+                    <div style={{ padding:"16px 20px",borderRadius:14,maxWidth:"80%",fontSize:13,lineHeight:1.5,background:m.role==="user"?"#0e7c6b":"#f1f5f9",color:m.role==="user"?"#fff":"#1e293b",borderBottomRightRadius:m.role==="user"?4:14,borderBottomLeftRadius:m.role==="bot"?4:14 }}>{m.text}</div>
                   </div>
                 ))}
-                <div style={{ display:"flex",gap:6,marginTop:6 }}>{ind.quickReplies.slice(0,3).map(b=><span key={b} style={{ padding:"5px 12px",borderRadius:20,fontSize:11,fontWeight:600,border:"1px solid #0e7c6b30",color:"#0e7c6b",background:"#0e7c6b08" }}>{b}</span>)}</div>
+              </div>
+              <div style={{ padding:"0 20px 16px" }}>
+                <div style={{ display:"flex",gap:6 }}>{ind.quickReplies.slice(0,3).map(b=><span key={b} style={{ padding:"5px 12px",borderRadius:20,fontSize:11,fontWeight:600,border:"1px solid #0e7c6b30",color:"#0e7c6b",background:"#0e7c6b08" }}>{b}</span>)}</div>
               </div>
             </div>
             <div style={{ position:"absolute",top:-16,right:-16,background:"#fff",borderRadius:14,padding:"10px 16px",boxShadow:"0 8px 30px rgba(0,0,0,0.1)",display:"flex",alignItems:"center",gap:8,animation:"float 5s ease-in-out 1s infinite" }}>
@@ -439,7 +441,7 @@ export default function SitePulseLanding() {
       </section>
 
       {/* INDUSTRY SELECTOR */}
-      <section style={{ padding:"40px 0" }}>
+      <section style={{ padding:"24px 0" }}>
         <div style={{ maxWidth:1200,margin:"0 auto",textAlign:"center" }}>
           <p style={{ fontSize:13,color:"#94a3b8",fontWeight:600,textTransform:"uppercase",letterSpacing:2,marginBottom:20 }}>Select an industry to try the demo</p>
           <div style={{ display:"flex",justifyContent:"center",gap:12,flexWrap:"wrap" }}>
