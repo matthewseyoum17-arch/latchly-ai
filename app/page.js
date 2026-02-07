@@ -454,7 +454,7 @@ export default function SitePulseLanding() {
       <section id="features" style={{ padding:"0 24px" }}>
         <div style={{ maxWidth:1200,margin:"0 auto" }}>
           <div style={{ textAlign:"center",marginBottom:16 }}>
-            <div style={{ fontSize:12,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>Features</div>
+            <div style={{ fontSize:14,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>Features</div>
             <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5,marginBottom:16 }}>Everything you need to<br/>convert more visitors</h2>
             <p style={{ fontSize:16,color:"#64748b",maxWidth:520,margin:"0 auto" }}>From AI conversations to lead capture to analytics — one platform handles it all.</p>
           </div>
@@ -472,7 +472,7 @@ export default function SitePulseLanding() {
       <section id="demo" style={{ padding:"0 24px",background:"#f1f5f9" }}>
         <div style={{ maxWidth:1200,margin:"0 auto" }}>
           <div style={{ textAlign:"center",marginBottom:16 }}>
-            <div style={{ fontSize:12,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>Live Demo</div>
+            <div style={{ fontSize:14,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>Live Demo</div>
             <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5,marginBottom:16 }}>See it in action</h2>
             <p style={{ fontSize:16,color:"#64748b",maxWidth:580,margin:"0 auto" }}>Select an industry above, then open the chat to experience a fully tailored AI assistant.</p>
           </div>
@@ -493,7 +493,7 @@ export default function SitePulseLanding() {
       <section style={{ padding:"0 24px" }}>
         <div style={{ maxWidth:1000,margin:"0 auto" }}>
           <div style={{ textAlign:"center",marginBottom:16 }}>
-            <div style={{ fontSize:12,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>Setup</div>
+            <div style={{ fontSize:14,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>Setup</div>
             <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5 }}>Up and running in minutes</h2>
           </div>
           <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:32 }}>
@@ -519,7 +519,7 @@ export default function SitePulseLanding() {
       <section id="about" style={{ padding:"0 24px",background:"#f8fafc" }}>
         <div style={{ maxWidth:1000,margin:"0 auto" }}>
           <div style={{ textAlign:"center",marginBottom:16 }}>
-            <div style={{ fontSize:12,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>About Us</div>
+            <div style={{ fontSize:14,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>About Us</div>
             <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5,marginBottom:16 }}>Built for small businesses,{"\n"}by people who get it</h2>
             <p style={{ fontSize:16,color:"#64748b",maxWidth:600,margin:"0 auto",lineHeight:1.7 }}>SitePulse AI was founded to solve one problem: small businesses losing customers after hours. We combine cutting-edge AI with deep industry knowledge to help you capture every opportunity.</p>
           </div>
@@ -539,7 +539,7 @@ export default function SitePulseLanding() {
       <section style={{ padding:"0 24px",background:"#f8fafc" }}>
         <div style={{ maxWidth:1200,margin:"0 auto" }}>
           <div style={{ textAlign:"center",marginBottom:16 }}>
-            <div style={{ fontSize:12,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>ROI Comparison</div>
+            <div style={{ fontSize:14,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>ROI Comparison</div>
             <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5,marginBottom:16 }}>AI assistant vs. traditional staffing</h2>
             <p style={{ fontSize:16,color:"#64748b",maxWidth:600,margin:"0 auto" }}>See the real numbers. SitePulse AI doesn't just save money — it captures revenue you're currently leaving on the table.</p>
           </div>
@@ -576,7 +576,7 @@ export default function SitePulseLanding() {
       <section id="pricing" style={{ padding:"0 24px" }}>
         <div style={{ maxWidth:900,margin:"0 auto" }}>
           <div style={{ textAlign:"center",marginBottom:16 }}>
-            <div style={{ fontSize:12,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>Pricing</div>
+            <div style={{ fontSize:14,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>Pricing</div>
             <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5,marginBottom:16 }}>Simple, transparent pricing</h2>
             <p style={{ fontSize:16,color:"#64748b" }}>Start with a 14-day free trial. No credit card required.</p>
           </div>
@@ -601,7 +601,7 @@ export default function SitePulseLanding() {
       <section id="faq" style={{ padding:"0 24px",background:"#f8fafc" }}>
         <div style={{ maxWidth:780,margin:"0 auto" }}>
           <div style={{ textAlign:"center",marginBottom:16 }}>
-            <div style={{ fontSize:12,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>FAQ</div>
+            <div style={{ fontSize:14,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>FAQ</div>
             <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5 }}>Common questions</h2>
           </div>
           <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
@@ -624,7 +624,7 @@ export default function SitePulseLanding() {
       <section id="contact" style={{ padding:"0 24px" }}>
         <div style={{ maxWidth:1000,margin:"0 auto" }}>
           <div style={{ textAlign:"center",marginBottom:16 }}>
-            <div style={{ fontSize:12,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>Contact</div>
+            <div style={{ fontSize:14,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>Contact</div>
             <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5,marginBottom:16 }}>Get in touch</h2>
             <p style={{ fontSize:16,color:"#64748b",maxWidth:520,margin:"0 auto" }}>Have questions? We&#39;d love to hear from you. Send us a message and we&#39;ll respond as soon as possible.</p>
           </div>
