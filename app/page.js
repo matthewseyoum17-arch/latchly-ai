@@ -355,8 +355,8 @@ export default function SitePulseLanding() {
     { icon: <Icons.Globe />, title: "2-Minute Installation", desc: "Copy one line of code. Paste it on your site. That's it. No developers, no redesign, no headaches. Works on any website platform." },
   ];
   const plans = [
-    { id:"starter",name:"Starter",price:110,period:"/mo",desc:"Perfect for single-location businesses getting started with AI",features:["1 AI assistant","500 chats/month","Lead capture forms","Email notifications","Basic analytics","Industry templates","Email support","2-minute setup"],cta:"Start Free Trial" },
-    { id:"growth",name:"Growth",price:250,period:"/mo",popular:true,desc:"For businesses ready to maximize every lead and scale",features:["1 AI assistant","Unlimited chats","Lead capture + SMS alerts","Owner dashboard","All industry presets","Conversation transcripts","Priority support","Custom branding","CRM integrations","After-hours reporting"],cta:"Start Free Trial" },
+    { id:"starter",name:"Starter",price:"$109.99",period:"/month",desc:"Perfect for single-location businesses getting started with AI",features:["AI chat widget for your website","Up to 100 leads/month","Basic customization","Email notifications","Mobile-friendly chat"],cta:"Start Free Trial",popular:false },
+    { id:"growth",name:"Growth",price:"$249.99",period:"/month",desc:"For businesses ready to maximize every lead and scale",features:["Everything in Starter, plus:","Unlimited leads","Advanced AI training","Custom branding","SMS alerts","CRM integrations","Priority support"],cta:"Start Free Trial",popular:true },
   ];
   const faqs = [
     { q:"How does the AI know about my specific business?", a:"During setup, you provide your business details — services, pricing, hours, FAQs, and service areas. The AI uses this custom knowledge base to answer questions accurately. We also have pre-built templates for 20+ industries." },
@@ -439,7 +439,7 @@ export default function SitePulseLanding() {
       </section>
 
       {/* INDUSTRY SELECTOR */}
-      <section style={{ padding:"40px 40px",borderTop:"1px solid #f1f5f9",borderBottom:"1px solid #f1f5f9" }}>
+      <section style={{ padding:"40px 0" }}>
         <div style={{ maxWidth:1200,margin:"0 auto",textAlign:"center" }}>
           <p style={{ fontSize:13,color:"#94a3b8",fontWeight:600,textTransform:"uppercase",letterSpacing:2,marginBottom:20 }}>Select an industry to try the demo</p>
           <div style={{ display:"flex",justifyContent:"center",gap:12,flexWrap:"wrap" }}>
@@ -451,14 +451,14 @@ export default function SitePulseLanding() {
       </section>
 
       {/* FEATURES */}
-      <section id="features" style={{ padding:"12px 24px" }}>
+      <section id="features" style={{ padding:"0 24px" }}>
         <div style={{ maxWidth:1200,margin:"0 auto" }}>
-          <div style={{ textAlign:"center",marginBottom:24 }}>
+          <div style={{ textAlign:"center",marginBottom:16 }}>
             <div style={{ fontSize:12,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>Features</div>
             <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5,marginBottom:16 }}>Everything you need to<br/>convert more visitors</h2>
             <p style={{ fontSize:16,color:"#64748b",maxWidth:520,margin:"0 auto" }}>From AI conversations to lead capture to analytics — one platform handles it all.</p>
           </div>
-          <div className="features-grid" style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:20 }}>
+          <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:20,marginBottom:20 }}>
             {features.map((f,i)=><div key={i} className="hover-lift" style={{ background:"#fff",borderRadius:18,padding:32,border:"1px solid #f1f5f9" }}>
               <div style={{ width:48,height:48,borderRadius:14,marginBottom:20,background:"linear-gradient(135deg,#0e7c6b12,#0ea5e912)",display:"flex",alignItems:"center",justifyContent:"center",color:"#0e7c6b" }}>{f.icon}</div>
               <h3 style={{ fontSize:17,fontWeight:800,marginBottom:10 }}>{f.title}</h3>
@@ -469,14 +469,14 @@ export default function SitePulseLanding() {
       </section>
 
       {/* DEMO */}
-      <section id="demo" style={{ padding:"12px 24px",background:"#f1f5f9" }}>
+      <section id="demo" style={{ padding:"0 24px",background:"#f1f5f9" }}>
         <div style={{ maxWidth:1200,margin:"0 auto" }}>
-          <div style={{ textAlign:"center",marginBottom:24 }}>
+          <div style={{ textAlign:"center",marginBottom:16 }}>
             <div style={{ fontSize:12,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>Live Demo</div>
             <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5,marginBottom:16 }}>See it in action</h2>
             <p style={{ fontSize:16,color:"#64748b",maxWidth:580,margin:"0 auto" }}>Select an industry above, then open the chat to experience a fully tailored AI assistant.</p>
           </div>
-          <div style={{ display:"flex",justifyContent:"center",gap:16,marginBottom:40 }}>
+          <div style={{ display:"flex",justifyContent:"center",gap:16,marginBottom:24 }}>
             {["landing","dashboard"].map(tab=><button key={tab} onClick={()=>setActiveTab(tab)} style={{ padding:"10px 24px",borderRadius:10,border:"none",fontFamily:"inherit",fontWeight:700,fontSize:14,cursor:"pointer",background:activeTab===tab?"#0e7c6b":"#fff",color:activeTab===tab?"#fff":"#64748b",boxShadow:activeTab===tab?"0 4px 12px #0e7c6b30":"0 1px 3px rgba(0,0,0,0.05)" }}>{tab==="landing"?"Chat Widget":"Owner Dashboard"}</button>)}
           </div>
           {activeTab==="dashboard"?<DashboardPreview />:(
@@ -490,13 +490,13 @@ export default function SitePulseLanding() {
       </section>
 
       {/* HOW IT WORKS */}
-      <section style={{ padding:"12px 24px" }}>
+      <section style={{ padding:"0 24px" }}>
         <div style={{ maxWidth:1000,margin:"0 auto" }}>
-          <div style={{ textAlign:"center",marginBottom:24 }}>
+          <div style={{ textAlign:"center",marginBottom:16 }}>
             <div style={{ fontSize:12,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>Setup</div>
             <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5 }}>Up and running in minutes</h2>
           </div>
-          <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:40 }}>
+          <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:32 }}>
             {[{step:"01",title:"Tell us about your business",desc:"Enter your services, hours, pricing, and FAQs. Or pick an industry template."},{step:"02",title:"Copy one line of code",desc:"We generate a tiny embed snippet. Paste it on your website — any platform."},{step:"03",title:"Start capturing leads",desc:"Your AI assistant is live. Watch leads flow into your dashboard and phone."}].map(s=>(
               <div key={s.step} style={{ textAlign:"center" }}>
                 <div style={{ width:56,height:56,borderRadius:"50%",margin:"0 auto 20px",background:"linear-gradient(135deg,#0e7c6b,#0ea5e9)",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:18,fontFamily:"'Playfair Display',serif" }}>{s.step}</div>
@@ -516,9 +516,9 @@ export default function SitePulseLanding() {
       </section>
 
       {/* ABOUT */}
-      <section id="about" style={{ padding:"12px 24px",background:"#f8fafc" }}>
+      <section id="about" style={{ padding:"0 24px",background:"#f8fafc" }}>
         <div style={{ maxWidth:1000,margin:"0 auto" }}>
-          <div style={{ textAlign:"center",marginBottom:24 }}>
+          <div style={{ textAlign:"center",marginBottom:16 }}>
             <div style={{ fontSize:12,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>About Us</div>
             <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5,marginBottom:16 }}>Built for small businesses,{"\n"}by people who get it</h2>
             <p style={{ fontSize:16,color:"#64748b",maxWidth:600,margin:"0 auto",lineHeight:1.7 }}>SitePulse AI was founded to solve one problem: small businesses losing customers after hours. We combine cutting-edge AI with deep industry knowledge to help you capture every opportunity.</p>
@@ -536,14 +536,14 @@ export default function SitePulseLanding() {
       </section>
 
       {/* ROI SECTION */}
-      <section style={{ padding:"12px 24px",background:"#f8fafc" }}>
+      <section style={{ padding:"0 24px",background:"#f8fafc" }}>
         <div style={{ maxWidth:1200,margin:"0 auto" }}>
-          <div style={{ textAlign:"center",marginBottom:24 }}>
+          <div style={{ textAlign:"center",marginBottom:16 }}>
             <div style={{ fontSize:12,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>ROI Comparison</div>
             <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5,marginBottom:16 }}>AI assistant vs. traditional staffing</h2>
             <p style={{ fontSize:16,color:"#64748b",maxWidth:600,margin:"0 auto" }}>See the real numbers. SitePulse AI doesn't just save money — it captures revenue you're currently leaving on the table.</p>
           </div>
-          <div className="roi-grid" style={{ display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:20,marginBottom:48 }}>
+          <div className="roi-grid" style={{ display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:20,marginBottom:24 }}>
             {roiComparisons.map((item,i)=>(
               <div key={i} className="hover-lift" style={{ background:"#fff",borderRadius:18,padding:28,border:"1px solid #f1f5f9" }}>
                 <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:16 }}>
@@ -573,14 +573,14 @@ export default function SitePulseLanding() {
       </section>
 
       {/* PRICING */}
-      <section id="pricing" style={{ padding:"12px 24px" }}>
+      <section id="pricing" style={{ padding:"0 24px" }}>
         <div style={{ maxWidth:900,margin:"0 auto" }}>
-          <div style={{ textAlign:"center",marginBottom:24 }}>
+          <div style={{ textAlign:"center",marginBottom:16 }}>
             <div style={{ fontSize:12,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>Pricing</div>
             <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5,marginBottom:16 }}>Simple, transparent pricing</h2>
             <p style={{ fontSize:16,color:"#64748b" }}>Start with a 14-day free trial. No credit card required.</p>
           </div>
-          <div className="pricing-grid" style={{ display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:24,alignItems:"start" }}>
+          <div className="pricing-grid" style={{ display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:24,alignItems:"start",marginBottom:20 }}>
             {plans.map(plan=>(
               <div key={plan.id} className="hover-lift" style={{ background:plan.popular?"linear-gradient(135deg,#0e7c6b,#0a6b5c)":"#fff",borderRadius:22,padding:plan.popular?3:0,position:"relative",cursor:"pointer" }} onClick={()=>setSelectedPlan(plan.id)}>
                 {plan.popular&&<div style={{ position:"absolute",top:-12,left:"50%",transform:"translateX(-50%)",padding:"4px 16px",borderRadius:50,background:"#f59e0b",color:"#fff",fontSize:11,fontWeight:800,textTransform:"uppercase",letterSpacing:1 }}>Best Value</div>}
@@ -598,9 +598,9 @@ export default function SitePulseLanding() {
       </section>
 
       {/* FAQ */}
-      <section id="faq" style={{ padding:"12px 24px",background:"#f8fafc" }}>
+      <section id="faq" style={{ padding:"0 24px",background:"#f8fafc" }}>
         <div style={{ maxWidth:780,margin:"0 auto" }}>
-          <div style={{ textAlign:"center",marginBottom:24 }}>
+          <div style={{ textAlign:"center",marginBottom:16 }}>
             <div style={{ fontSize:12,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>FAQ</div>
             <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5 }}>Common questions</h2>
           </div>
@@ -621,9 +621,9 @@ export default function SitePulseLanding() {
       </section>
 
       {/* CONTACT */}
-      <section id="contact" style={{ padding:"12px 24px" }}>
+      <section id="contact" style={{ padding:"0 24px" }}>
         <div style={{ maxWidth:1000,margin:"0 auto" }}>
-          <div style={{ textAlign:"center",marginBottom:24 }}>
+          <div style={{ textAlign:"center",marginBottom:16 }}>
             <div style={{ fontSize:12,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>Contact</div>
             <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5,marginBottom:16 }}>Get in touch</h2>
             <p style={{ fontSize:16,color:"#64748b",maxWidth:520,margin:"0 auto" }}>Have questions? We&#39;d love to hear from you. Send us a message and we&#39;ll respond as soon as possible.</p>
@@ -670,7 +670,7 @@ export default function SitePulseLanding() {
       </section>
 
       {/* FOOTER */}
-      <footer style={{ background:"#0f172a",padding:"12px 24px 0",color:"#cbd5e1" }}>
+      <footer style={{ background:"#0f172a",padding:"0 24px",color:"#cbd5e1" }}>
         <div style={{ maxWidth:1200,margin:"0 auto" }}>
           <div className="footer-grid" style={{ display:"grid",gridTemplateColumns:"1.5fr 1fr 1fr 1.2fr",gap:48,marginBottom:48 }}>
             <div>
