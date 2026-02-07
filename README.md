@@ -1,4 +1,4 @@
-# LeadPilot AI — Landing Page
+# SitePulse AI — Landing Page
 
 A 24/7 AI website assistant that answers questions, captures leads, and sends real customers to your phone.
 
@@ -8,11 +8,11 @@ A 24/7 AI website assistant that answers questions, captures leads, and sends re
 
 1. **Push this project to a GitHub repo:**
    ```bash
-   cd leadpilot-ai
+   cd sitepulse-ai
    git init
    git add .
    git commit -m "Initial commit"
-   git remote add origin https://github.com/YOUR_USERNAME/leadpilot-ai.git
+   git remote add origin https://github.com/YOUR_USERNAME/sitepulse-ai.git
    git branch -M main
    git push -u origin main
    ```
@@ -23,7 +23,7 @@ A 24/7 AI website assistant that answers questions, captures leads, and sends re
 
 4. **Generate a domain:**
    - Go to your service → Settings → Networking → Generate Domain
-   - You'll get a URL like `leadpilot-ai-production.up.railway.app`
+   - You'll get a URL like `sitepulse-ai-production.up.railway.app`
 
 5. **(Optional) Add a custom domain:**
    - Settings → Networking → Custom Domain
@@ -39,7 +39,7 @@ npm install -g @railway/cli
 railway login
 
 # Initialize project
-cd leadpilot-ai
+cd sitepulse-ai
 railway init
 
 # Deploy
@@ -61,7 +61,7 @@ Open [http://localhost:3000](http://localhost:3000)
 ## 📁 Project Structure
 
 ```
-leadpilot-ai/
+sitepulse-ai/
 ├── app/
 │   ├── layout.js      # Root layout with fonts & metadata
 │   ├── globals.css     # Global styles & animations
