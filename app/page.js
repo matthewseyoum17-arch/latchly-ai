@@ -381,7 +381,7 @@ export default function SitePulseLanding() {
     <div style={{ fontFamily:"'DM Sans',sans-serif",background:"#fafbfc",color:"#1e293b",overflowX:"hidden" }}>
 
       {/* NAV */}
-      <nav style={{ position:"fixed",top:0,left:0,right:0,zIndex:1000,background:"rgba(250,251,252,0.85)",backdropFilter:"blur(20px)",borderBottom:"1px solid rgba(0,0,0,0.05)",padding:"0 40px" }}>
+      <nav style={{ position:"fixed",top:0,left:0,right:0,zIndex:1000,background:"rgba(250,251,252,0.85)",backdropFilter:"blur(20px)",borderBottom:"1px solid rgba(0,0,0,0.05)",padding:"0 24px" }}>
         <div style={{ maxWidth:1200,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center",height:64 }}>
           <div style={{ display:"flex",alignItems:"center",gap:8 }}>
             <div style={{ width:32,height:32,borderRadius:10,background:"linear-gradient(135deg,#0e7c6b,#0ea5e9)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff" }}><Icons.Zap /></div>
@@ -395,7 +395,7 @@ export default function SitePulseLanding() {
       </nav>
 
       {/* HERO */}
-      <section style={{ minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:"100px 40px 60px",position:"relative",overflow:"hidden" }}>
+      <section style={{ minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:"80px 24px 60px",position:"relative",overflow:"hidden" }}>
         <div style={{ position:"absolute",top:-200,right:-200,width:600,height:600,borderRadius:"50%",background:"radial-gradient(circle,#0e7c6b08 0%,transparent 70%)",pointerEvents:"none" }} />
         <div className="hero-grid" style={{ maxWidth:1200,margin:"0 auto",display:"grid",gridTemplateColumns:"1fr 1fr",gap:56,alignItems:"center" }}>
           <div>
@@ -451,7 +451,7 @@ export default function SitePulseLanding() {
       </section>
 
       {/* FEATURES */}
-      <section id="features" style={{ padding:"72px 40px" }}>
+      <section id="features" style={{ padding:"48px 24px" }}>
         <div style={{ maxWidth:1200,margin:"0 auto" }}>
           <div style={{ textAlign:"center",marginBottom:44 }}>
             <div style={{ fontSize:12,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>Features</div>
@@ -469,7 +469,7 @@ export default function SitePulseLanding() {
       </section>
 
       {/* DEMO */}
-      <section id="demo" style={{ padding:"72px 40px",background:"#f1f5f9" }}>
+      <section id="demo" style={{ padding:"48px 24px",background:"#f1f5f9" }}>
         <div style={{ maxWidth:1200,margin:"0 auto" }}>
           <div style={{ textAlign:"center",marginBottom:44 }}>
             <div style={{ fontSize:12,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>Live Demo</div>
@@ -516,7 +516,7 @@ export default function SitePulseLanding() {
       </section>
 
       {/* ABOUT */}
-      <section id="about" style={{ padding:"72px 40px",background:"#f8fafc" }}>
+      <section id="about" style={{ padding:"48px 24px",background:"#f8fafc" }}>
         <div style={{ maxWidth:1000,margin:"0 auto" }}>
           <div style={{ textAlign:"center",marginBottom:44 }}>
             <div style={{ fontSize:12,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>About Us</div>
@@ -536,7 +536,7 @@ export default function SitePulseLanding() {
       </section>
 
       {/* ROI SECTION */}
-      <section style={{ padding:"72px 40px",background:"#f8fafc" }}>
+      <section style={{ padding:"48px 24px",background:"#f8fafc" }}>
         <div style={{ maxWidth:1200,margin:"0 auto" }}>
           <div style={{ textAlign:"center",marginBottom:44 }}>
             <div style={{ fontSize:12,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>ROI Comparison</div>
@@ -573,7 +573,7 @@ export default function SitePulseLanding() {
       </section>
 
       {/* PRICING */}
-      <section id="pricing" style={{ padding:"72px 40px" }}>
+      <section id="pricing" style={{ padding:"48px 24px" }}>
         <div style={{ maxWidth:900,margin:"0 auto" }}>
           <div style={{ textAlign:"center",marginBottom:44 }}>
             <div style={{ fontSize:12,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>Pricing</div>
@@ -598,7 +598,7 @@ export default function SitePulseLanding() {
       </section>
 
       {/* FAQ */}
-      <section id="faq" style={{ padding:"72px 40px",background:"#f8fafc" }}>
+      <section id="faq" style={{ padding:"48px 24px",background:"#f8fafc" }}>
         <div style={{ maxWidth:780,margin:"0 auto" }}>
           <div style={{ textAlign:"center",marginBottom:44 }}>
             <div style={{ fontSize:12,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>FAQ</div>
@@ -621,7 +621,7 @@ export default function SitePulseLanding() {
       </section>
 
       {/* CONTACT */}
-      <section id="contact" style={{ padding:"72px 40px" }}>
+      <section id="contact" style={{ padding:"48px 24px" }}>
         <div style={{ maxWidth:1000,margin:"0 auto" }}>
           <div style={{ textAlign:"center",marginBottom:44 }}>
             <div style={{ fontSize:12,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>Contact</div>
@@ -655,7 +655,7 @@ export default function SitePulseLanding() {
       </section>
 
       {/* CTA */}
-      <section style={{ padding:"48px 40px" }}>
+      <section style={{ padding:"32px 24px" }}>
         <div style={{ maxWidth:800,margin:"0 auto",textAlign:"center",background:"linear-gradient(135deg,#0e7c6b,#0ea5e9)",borderRadius:28,padding:"48px 40px",position:"relative",overflow:"hidden" }}>
           <div style={{ position:"absolute",top:-50,right:-50,width:200,height:200,borderRadius:"50%",background:"rgba(255,255,255,0.05)" }} />
           <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:36,fontWeight:900,color:"#fff",marginBottom:12,position:"relative" }}>Ready to never miss a lead again?</h2>
@@ -670,7 +670,7 @@ export default function SitePulseLanding() {
       </section>
 
       {/* FOOTER */}
-      <footer style={{ background:"#0f172a",padding:"64px 40px 0",color:"#cbd5e1" }}>
+      <footer style={{ background:"#0f172a",padding:"48px 24px 0",color:"#cbd5e1" }}>
         <div style={{ maxWidth:1200,margin:"0 auto" }}>
           <div className="footer-grid" style={{ display:"grid",gridTemplateColumns:"1.5fr 1fr 1fr 1.2fr",gap:48,marginBottom:48 }}>
             <div>
@@ -712,7 +712,7 @@ export default function SitePulseLanding() {
       </footer>
 
       {/* STICKY CTA BAR */}
-      {showStickyCta&&!chatOpen&&<div style={{ position:"fixed",bottom:0,left:0,right:0,zIndex:9998,background:"rgba(15,23,42,0.95)",backdropFilter:"blur(12px)",padding:"12px 40px",display:"flex",justifyContent:"center",alignItems:"center",gap:16,borderTop:"1px solid rgba(255,255,255,0.1)" }}>
+      {showStickyCta&&!chatOpen&&<div style={{ position:"fixed",bottom:0,left:0,right:0,zIndex:9998,background:"rgba(15,23,42,0.95)",backdropFilter:"blur(12px)",padding:"12px 24px",display:"flex",justifyContent:"center",alignItems:"center",gap:16,borderTop:"1px solid rgba(255,255,255,0.1)" }}>
         <span style={{ color:"#fff",fontSize:14,fontWeight:600 }}>Turn your website into a lead-capturing machine</span>
         <button onClick={()=>setChatOpen(true)} style={{ padding:"10px 24px",borderRadius:10,background:"linear-gradient(135deg,#0e7c6b,#0a6b5c)",color:"#fff",border:"none",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit" }}>Try Demo</button>
       </div>}
