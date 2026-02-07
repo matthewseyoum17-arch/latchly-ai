@@ -403,7 +403,7 @@ export default function SitePulseLanding() {
               <span style={{ width:6,height:6,borderRadius:"50%",background:"#4ade80",animation:"pulse 2s infinite" }}></span>Your site never sleeps.
             </div>
             <h1 style={{ fontFamily:"'Playfair Display',serif",fontSize:56,fontWeight:900,lineHeight:1.08,letterSpacing:-2,marginBottom:20,color:"#0f172a" }}>
-              Your website's<br/><span style={{ background:"linear-gradient(135deg,#0e7c6b,#0ea5e9)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent" }}>best employee</span><br/>never sleeps.
+              Your company's<br/><span style={{ background:"linear-gradient(135deg,#0e7c6b,#0ea5e9)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent" }}>best employee</span><br/>never sleeps.
             </h1>
             <p style={{ fontSize:18,lineHeight:1.65,color:"#64748b",marginBottom:36,maxWidth:480 }}>A 24/7 AI assistant that answers questions, captures leads, and sends real customers to your phone — even when you're closed.</p>
             <div style={{ display:"flex",gap:14,alignItems:"center",marginBottom:32 }}>
