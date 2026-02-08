@@ -178,7 +178,7 @@ function ChatWidget({ isOpen, onClose, industryKey = "dental", brandColor = "#0e
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const prevRef = useRef(industryKey);
-  const [stableHeight, setStableHeight] = useState(null);
+  const widgetRef = useRef(null);
 
   useEffect(() => {
     if (prevRef.current !== industryKey) { setMessages([]); setChatPhase("chat"); setRating(0); prevRef.current = industryKey; }
@@ -194,31 +194,40 @@ function ChatWidget({ isOpen, onClose, industryKey = "dental", brandColor = "#0e
   }, [messages, isTyping]);
 
   useEffect(() => {
-    if (isOpen && !stableHeight) {
-      const mq = window.matchMedia("(max-width: 500px)");
-      if (mq.matches) setStableHeight(window.innerHeight);
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
     const mq = window.matchMedia("(max-width: 500px)");
-    if (!mq.matches) return;
-    if (isOpen) {
-      const scrollY = window.scrollY;
-      document.body.classList.add("chat-open");
-      document.body.style.top = `-${scrollY}px`;
-      document.body.dataset.scrollY = String(scrollY);
-    } else {
-      const scrollY = parseInt(document.body.dataset.scrollY || "0", 10);
-      document.body.classList.remove("chat-open");
-      document.body.style.top = "";
-      window.scrollTo(0, scrollY);
+    if (!mq.matches || !isOpen) return;
+
+    // Lock body scroll
+    const scrollY = window.scrollY;
+    document.body.classList.add("chat-open");
+    document.body.style.top = `-${scrollY}px`;
+    document.body.dataset.scrollY = String(scrollY);
+
+    // Use visualViewport to track the actual visible area (shrinks when keyboard opens)
+    const vv = window.visualViewport;
+    const el = widgetRef.current;
+    const update = () => {
+      if (!el) return;
+      const h = vv ? vv.height : window.innerHeight;
+      const t = vv ? vv.offsetTop : 0;
+      el.style.setProperty("height", `${h}px`, "important");
+      el.style.setProperty("top", `${t}px`, "important");
+    };
+    update();
+    if (vv) {
+      vv.addEventListener("resize", update);
+      vv.addEventListener("scroll", update);
     }
+
     return () => {
-      const scrollY = parseInt(document.body.dataset.scrollY || "0", 10);
+      if (vv) {
+        vv.removeEventListener("resize", update);
+        vv.removeEventListener("scroll", update);
+      }
+      const sy = parseInt(document.body.dataset.scrollY || "0", 10);
       document.body.classList.remove("chat-open");
       document.body.style.top = "";
-      window.scrollTo(0, scrollY);
+      window.scrollTo(0, sy);
     };
   }, [isOpen]);
 
@@ -272,7 +281,7 @@ function ChatWidget({ isOpen, onClose, industryKey = "dental", brandColor = "#0e
 
   if (!isOpen) return null;
   return (
-    <div className="chat-widget-mobile" style={{ position:"fixed",bottom:24,right:24,width:380,height:stableHeight||600,background:"#fff",borderRadius:20,boxShadow:"0 25px 60px rgba(0,0,0,0.3)",display:"flex",flexDirection:"column",overflow:"hidden",zIndex:10000,fontFamily:"'DM Sans',sans-serif",border:"1px solid rgba(0,0,0,0.08)",animation:"slideUp 0.4s cubic-bezier(0.34,1.56,0.64,1)" }}>
+    <div ref={widgetRef} className="chat-widget-mobile" style={{ position:"fixed",bottom:24,right:24,width:380,height:600,background:"#fff",borderRadius:20,boxShadow:"0 25px 60px rgba(0,0,0,0.3)",display:"flex",flexDirection:"column",overflow:"hidden",zIndex:10000,fontFamily:"'DM Sans',sans-serif",border:"1px solid rgba(0,0,0,0.08)",animation:"slideUp 0.4s cubic-bezier(0.34,1.56,0.64,1)" }}>
       <div style={{ background:`linear-gradient(135deg,${brandColor},${brandColor}dd)`,color:"#fff",padding:"16px 20px",display:"flex",alignItems:"center",gap:12 }}>
         <div style={{ width:40,height:40,borderRadius:12,background:"rgba(255,255,255,0.2)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:20 }}>{industry.emoji}</div>
         <div style={{ flex:1 }}>
