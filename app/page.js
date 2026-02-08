@@ -387,12 +387,27 @@ export default function LatchlyLanding() {
             <div style={{ width:32,height:32,borderRadius:10,background:"linear-gradient(135deg,#0e7c6b,#0ea5e9)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff" }}><Icons.Zap /></div>
             <span style={{ fontWeight:800,fontSize:18,letterSpacing:-0.5 }}>Latchly</span>
           </div>
-          <div style={{ display:"flex",gap:32,alignItems:"center" }}>
-            {["Features","Demo","Pricing","FAQ","About","Contact"].map(item=><a key={item} href={`#${item.toLowerCase()}`} onClick={e=>{e.preventDefault();document.getElementById(item.toLowerCase())?.scrollIntoView({behavior:"smooth",block:"start"});}} style={{ textDecoration:"none",color:"#475569",fontSize:14,fontWeight:600,cursor:"pointer" }}>{item}</a>)}
-            <button onClick={()=>setChatOpen(true)} style={{ padding:"9px 20px",borderRadius:10,background:"linear-gradient(135deg,#0e7c6b,#0a6b5c)",color:"#fff",border:"none",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit" }}>Try Live Demo</button>
+          <div style={{ display:"flex",gap:32,alignItems:"center",overflowX:"auto",whiteSpace:"nowrap",WebkitOverflowScrolling:"touch",msOverflowStyle:"none",scrollbarWidth:"none" }}>
+            {["Features","Demo","Pricing","FAQ","About","Contact"].map(item=><a key={item} href={`#${item.toLowerCase()}`} onClick={e=>{e.preventDefault();document.getElementById(item.toLowerCase())?.scrollIntoView({behavior:"smooth",block:"start"});}} style={{ textDecoration:"none",color:"#475569",fontSize:14,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0 }}>{item}</a>)}
+            <button onClick={()=>setChatOpen(true)} style={{ padding:"9px 20px",borderRadius:10,background:"linear-gradient(135deg,#0e7c6b,#0a6b5c)",color:"#fff",border:"none",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit",flexShrink:0 }}>Try Live Demo</button>
           </div>
         </div>
       </nav>
+      <style jsx>{`
+        @media (max-width: 640px) {
+          nav {
+            padding-left: 16px !important;
+            padding-right: 16px !important;
+          }
+          nav > div > div:first-child {
+            gap: 6px !important;
+          }
+        }
+        /* Hide scrollbar for all browsers */
+        div[style*="overflow-x:auto"]::-webkit-scrollbar {
+          display: none;
+        }
+      `}</style>
 
       {/* HERO */}
       <section style={{ minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:"80px 24px 40px",position:"relative",overflow:"hidden" }}>
