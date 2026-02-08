@@ -355,8 +355,8 @@ export default function LatchlyLanding() {
     { icon: <Icons.Globe />, title: "2-Minute Installation", desc: "Copy one line of code. Paste it on your site. That's it. No developers, no redesign, no headaches. Works on any website platform." },
   ];
   const plans = [
-    { id:"starter",name:"Starter",price:"$109.99",period:"/month",desc:"Perfect for single-location businesses getting started with AI",features:["AI chat widget for your website","Up to 100 leads/month","Basic customization","Email notifications","Mobile-friendly chat"],cta:"Start Free Trial",popular:false },
-    { id:"growth",name:"Growth",price:"$249.99",period:"/month",desc:"For businesses ready to maximize every lead and scale",features:["Everything in Starter, plus:","Unlimited leads","Advanced AI training","Custom branding","SMS alerts","CRM integrations","Priority support"],cta:"Start Free Trial",popular:true },
+    { id:"starter",name:"Starter",price:"$119",period:"/month",desc:"Perfect for single-location businesses getting started with AI",features:["AI chat widget for your website","Up to 100 leads/month","Basic customization","Email notifications","Mobile-friendly chat"],cta:"Start Free Trial",popular:false },
+    { id:"growth",name:"Growth",price:"$229",period:"/month",desc:"For businesses ready to maximize every lead and scale",features:["Everything in Starter, plus:","Unlimited leads","Advanced AI training","Custom branding","SMS notifications (enabled during setup)","CRM integrations","Priority support"],cta:"Start Free Trial",popular:true },
   ];
   const faqs = [
     { q:"How does the AI know about my specific business?", a:"During setup, you provide your business details — services, pricing, hours, FAQs, and service areas. The AI uses this custom knowledge base to answer questions accurately. We also have pre-built templates for 20+ industries." },
@@ -367,12 +367,14 @@ export default function LatchlyLanding() {
     { q:"Is this compliant with privacy regulations?", a:"Yes. Privacy notices, consent checkboxes, no payment info stored. Conversation data encrypted and used only for service improvement." },
     { q:"Can I customize the look and feel?", a:"Absolutely. Brand colors, logo, greeting message, quick-reply buttons. The widget feels like part of your website." },
     { q:"What industries does this work for?", a:"Any service-based business. We have presets for dental, med spa, HVAC, plumbing, legal, real estate, auto repair, salons, fitness, and more." },
+    { q:"Can I review or control what the AI says?", a:"Yes. You can review and edit all AI responses in your dashboard. Set approved answers for common questions and adjust the tone to match your brand." },
+    { q:"Does it capture phone numbers and notify me via SMS?", a:"Yes. The lead form captures phone numbers. SMS notifications are available and can be enabled during setup after your trial." },
   ];
   const roiComparisons = [
     { title:"Cost Per Lead", ai:"$0.50 – $2.00", trad:"$15 – $50+", icon:<Icons.DollarSign />, detail:"AI handles unlimited chats simultaneously. A receptionist handles one call at a time. The math is simple." },
-    { title:"After-Hours Coverage", ai:"24/7/365 — never off", trad:"0 hours covered", icon:<Icons.Clock />, detail:"40–60% of website visits happen outside business hours. Without AI, every one of those visitors bounces to a competitor." },
-    { title:"Response Time", ai:"Under 2 seconds", trad:"4–24+ hours", icon:<Icons.Zap />, detail:"78% of customers buy from the first business that responds. AI responds instantly — every single time." },
-    { title:"Annual Cost", ai:"$1,164 – $2,364/yr", trad:"$35,000 – $55,000/yr", icon:<Icons.TrendingUp />, detail:"A full-time receptionist costs $35K–$55K/yr plus benefits. Latchly works 3x the hours at a fraction of the cost." },
+    { title:"After-Hours Coverage", ai:"24/7/365 — never off", trad:"0 hours covered", icon:<Icons.Clock />, detail:"Many website visits happen outside business hours. Without AI, those visitors often bounce to a competitor." },
+    { title:"Response Time", ai:"Under 2 seconds", trad:"4–24+ hours", icon:<Icons.Zap />, detail:"Many customers buy from the first business that responds. AI responds instantly — every single time." },
+    { title:"Annual Cost", ai:"$1,428 – $2,748/yr", trad:"$35,000 – $55,000/yr", icon:<Icons.TrendingUp />, detail:"A full-time receptionist costs $35K–$55K/yr plus benefits. Latchly works 3x the hours at a fraction of the cost." },
   ];
   const embedCode = `<!-- Latchly Chat Widget -->\n<script src="https://cdn.latchly.com/widget.js"\n  data-business-id="YOUR_ID"\n  data-color="#0e7c6b"\n  async>\n</script>`;
   const ind = INDUSTRIES[selectedIndustry];
@@ -577,18 +579,11 @@ export default function LatchlyLanding() {
                     <div style={{ fontSize:16,fontWeight:800,color:"#dc2626" }}>{item.trad}</div>
                   </div>
                 </div>
-                <p style={{ fontSize:13.5,lineHeight:1.6,color:"#64748b" }}>{item.detail}</p>
-              </div>
-            ))}
-          </div>
-          <div ref={roiStatsRef} className="roi-stats-grid" style={{ background:"linear-gradient(135deg,#0f172a,#1e293b)",borderRadius:20,padding:"36px 40px",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:20,textAlign:"center" }}>
-            {[{label:"Avg. cost per lead",value:"$0.50–$2",sub:"vs. $15–$50 traditional"},{label:"Hours covered",value:"168/week",sub:"vs. 40–50 hrs staffed"},{label:"Avg. response time",value:"< 2 sec",sub:"vs. 4–24 hrs by email"},{label:"Missed-lead reduction",value:"Up to 90%",sub:"capture after-hours visitors"}].map((s,i)=>(
               <div key={i} style={{ opacity:countersVisible?1:0,transform:countersVisible?"translateY(0)":"translateY(8px)",transition:`all 0.6s ease ${i*0.15}s` }}><div style={{ fontSize:11,color:"#64748b",fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:6 }}>{s.label}</div><div style={{ fontSize:24,fontWeight:900,color:"#fff" }}>{s.value}</div><div style={{ fontSize:11,color:"#4ade80",fontWeight:600,marginTop:4 }}>{s.sub}</div></div>
             ))}
           </div>
         </div>
       </section>
-
       {/* PRICING */}
       <section id="pricing" style={{ padding:"60px 40px" }}>
         <div style={{ maxWidth:900,margin:"0 auto" }}>
@@ -611,6 +606,7 @@ export default function LatchlyLanding() {
               </div>
             ))}
           </div>
+          <p style={{ fontSize:13,color:"#64748b",textAlign:"center",marginTop:16 }}>A lead is a captured contact (name, phone, or email). After your 14-day trial, choose a plan to continue.</p>
         </div>
       </section>
 
@@ -647,7 +643,7 @@ export default function LatchlyLanding() {
           </div>
           <div className="contact-grid" style={{ display:"grid",gridTemplateColumns:"1fr 1.2fr",gap:40,alignItems:"start" }}>
             <div style={{ display:"flex",flexDirection:"column",gap:20 }}>
-              {[{icon:"📧",label:"Email",value:"matt@latchlyai.com"},{icon:"📞",label:"Phone",value:"(786) 390-0299"},{icon:"📍",label:"Location",value:"Gainesville, FL"}].map((c,i)=>(
+              {[{icon:"📧",label:"Email",value:"matthewseyoum17@gmail.com"},{icon:"📞",label:"Phone",value:"(786) 390-0299"},{icon:"📍",label:"Location",value:"Gainesville, FL"}].map((c,i)=>(
                 <div key={i} style={{ background:"#f8fafc",borderRadius:16,padding:"20px 24px",display:"flex",alignItems:"center",gap:16,border:"1px solid #f1f5f9" }}>
                   <div style={{ fontSize:24 }}>{c.icon}</div>
                   <div><div style={{ fontSize:12,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:1 }}>{c.label}</div><div style={{ fontSize:15,fontWeight:700,color:"#1e293b" }}>{c.value}</div></div>
@@ -714,7 +710,7 @@ export default function LatchlyLanding() {
               <h4 style={{ fontSize:13,fontWeight:700,color:"#fff",textTransform:"uppercase",letterSpacing:1.5,marginBottom:20 }}>Contact</h4>
               <div style={{ display:"flex",flexDirection:"column",gap:12,fontSize:14,color:"#94a3b8" }}>
                 <span>📧 matt@latchlyai.com</span>
-                <span>📞 (555) 123-4567</span>
+                <span>📞 (786) 390-0299</span>
                 <span>🕐 Mon–Fri, 9am–6pm CT</span>
               </div>
             </div>
