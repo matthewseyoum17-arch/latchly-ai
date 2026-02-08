@@ -42,7 +42,7 @@ export default function LeadsDashboard() {
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32 }}>
           <div>
-            <h1 style={{ fontSize: 24, fontWeight: 900, color: "#fff", margin: 0 }}>SitePulse AI — Admin Dashboard</h1>
+            <h1 style={{ fontSize: 24, fontWeight: 900, color: "#fff", margin: 0 }}>Latchly — Admin Dashboard</h1>
             <p style={{ fontSize: 13, color: "#64748b", margin: "4px 0 0" }}>Real-time lead capture data</p>
           </div>
           <button onClick={() => { setLoading(true); fetch("/api/leads").then(r => r.json()).then(d => setLeads(d.leads || [])).finally(() => setLoading(false)); }} style={{ padding: "8px 16px", borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#94a3b8", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>↻ Refresh</button>

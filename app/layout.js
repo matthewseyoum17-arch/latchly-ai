@@ -1,22 +1,22 @@
 import './globals.css';
 
 export const metadata = {
-  title: 'SitePulse AI — Your Site Never Sleeps',
+  title: 'Latchly — Your Site Never Sleeps',
   description: 'A 24/7 AI website assistant that answers questions, captures leads, and sends real customers to your phone — even when you\'re closed.',
-  metadataBase: new URL('https://sitepulse-ai.vercel.app'),
+  metadataBase: new URL('https://latchly-ai.vercel.app'),
   openGraph: {
-    title: 'SitePulse AI — Your Site Never Sleeps',
+    title: 'Latchly — Your Site Never Sleeps',
     description: 'A 24/7 AI website assistant that answers questions, captures leads, and sends real customers to your phone — even when you\'re closed.',
     type: 'website',
-    url: 'https://sitepulse-ai.vercel.app',
+    url: 'https://latchly-ai.vercel.app',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'SitePulse AI — Your Site Never Sleeps',
+    title: 'Latchly — Your Site Never Sleeps',
     description: 'A 24/7 AI website assistant that answers questions, captures leads, and sends real customers to your phone — even when you\'re closed.',
   },
   alternates: {
-    canonical: 'https://sitepulse-ai.vercel.app',
+    canonical: 'https://latchly-ai.vercel.app',
   },
 };
 
