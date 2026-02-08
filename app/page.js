@@ -333,18 +333,6 @@ export default function LatchlyLanding() {
   const [countersVisible, setCountersVisible] = useState(false);
   const roiStatsRef = useRef(null);
   const industryKeys = Object.keys(INDUSTRIES);
-  const [playgroundUrl, setPlaygroundUrl] = useState("");
-  const [isScanning, setIsScanning] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
-
-  const handlePreviewBot = async () => {
-    if (!playgroundUrl) return;
-    setIsScanning(true);
-    setShowPreview(false);
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setIsScanning(false);
-    setShowPreview(true);
-  };
 
   useEffect(() => {
     const handleScroll = () => { setShowStickyCta(window.scrollY > window.innerHeight); };
@@ -466,67 +454,6 @@ export default function LatchlyLanding() {
               <div style={{ fontSize:10,color:"#64748b",fontWeight:600 }}>After-hours coverage</div><div style={{ fontSize:22,fontWeight:800,color:"#0e7c6b" }}>24/7</div>
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* URL PLAYGROUND */}
-      <section style={{ padding:"60px 40px",background:"#f8fafc" }}>
-        <div style={{ maxWidth:800,margin:"0 auto",textAlign:"center" }}>
-          <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:36,fontWeight:900,letterSpacing:-1,marginBottom:16 }}>See Latchly on Your Website</h2>
-          <p style={{ fontSize:16,color:"#64748b",marginBottom:32 }}>Enter your URL to preview how Latchly will look on your site</p>
-          <div style={{ display:"flex",gap:12,maxWidth:500,margin:"0 auto" }}>
-            <input 
-              type="url" 
-              placeholder="Enter your website URL" 
-              value={playgroundUrl}
-              onChange={(e) => setPlaygroundUrl(e.target.value)}
-              style={{ 
-                flex:1,
-                padding:"16px 20px",
-                borderRadius:12,
-                border:"2px solid #e2e8f0",
-                fontSize:15,
-                fontFamily:"inherit",
-                outline:"none"
-              }}
-            />
-            <button 
-              onClick={handlePreviewBot}
-              disabled={isScanning || !playgroundUrl}
-              style={{
-                padding:"16px 32px",
-                borderRadius:12,
-                background:isScanning || !playgroundUrl ? "#cbd5e1" : "linear-gradient(135deg,#0e7c6b,#0a6b5c)",
-                color:"#fff",
-                border:"none",
-                fontWeight:700,
-                fontSize:15,
-                cursor:isScanning || !playgroundUrl ? "default" : "pointer",
-                fontFamily:"inherit"
-              }}
-            >
-              {isScanning ? "Scanning..." : "Preview My Bot"}
-            </button>
-          </div>
-          {showPreview && (
-            <div style={{ marginTop:40,opacity:isScanning ? 0.7 : 1,transition:"opacity 0.3s" }}>
-              <div style={{ fontSize:13,color:"#64748b",marginBottom:16 }}>Preview: Your Latchly Chat Widget</div>
-              <div style={{ background:"#fff",borderRadius:16,overflow:"hidden",boxShadow:"0 20px 40px rgba(0,0,0,0.08)",border:"1px solid rgba(0,0,0,0.06)",maxWidth:350,margin:"0 auto" }}>
-                <div style={{ background:"linear-gradient(135deg,#0e7c6b,#0e7c6bdd)",padding:"12px 16px",display:"flex",alignItems:"center",gap:8,color:"#fff" }}>
-                  <div style={{ width:28,height:28,borderRadius:8,background:"rgba(255,255,255,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14 }}>🤖</div>
-                  <div><div style={{ fontWeight:600,fontSize:12 }}>Latchly AI</div><div style={{ fontSize:10,opacity:0.8 }}>● Online now</div></div>
-                </div>
-                <div style={{ padding:"16px" }}>
-                  <div style={{ display:"flex",justifyContent:"flex-start",marginBottom:8 }}>
-                    <div style={{ padding:"10px 14px",borderRadius:12,maxWidth:"80%",fontSize:12,lineHeight:1.5,background:"#f1f5f9",color:"#1e293b" }}>Hi! I'm here to help. What can I do for you?</div>
-                  </div>
-                  <div style={{ display:"flex",gap:6,marginTop:12 }}>
-                    {["Book appointment","Pricing","Hours"].map(b=><span key={b} style={{ padding:"4px 10px",borderRadius:16,fontSize:10,fontWeight:600,border:"1px solid #0e7c6b30",color:"#0e7c6b",background:"#0e7c6b08" }}>{b}</span>)}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </section>
 
