@@ -385,7 +385,7 @@ export default function LatchlyLanding() {
   const roiComparisons = [
     { title:"Cost Per Lead", ai:"$0.50 – $2.00", trad:"$15 – $50+", icon:<Icons.DollarSign />, detail:"AI handles unlimited chats simultaneously. A receptionist handles one call at a time. The math is simple." },
     { title:"After-Hours Coverage", ai:"24/7/365 — never off", trad:"0 hours covered", icon:<Icons.Clock />, detail:"Many website visits happen outside business hours. Without AI, those visitors often bounce to a competitor." },
-    { title:"Response Time", ai:"Under 2 seconds", trad:"4–24+ hours", icon:<Icons.Zap />, detail:"Many customers buy from the first business that responds. AI responds instantly — every single time." },
+    { title:"Response Time", ai:"Under 2 seconds", trad:"4–24+ hours", icon:<Icons.Zap />, detail:"Many customers buy from the first business that responds. AI typically responds instantly — every single time." },
     { title:"Annual Cost", ai:"$1,428 – $2,748/yr", trad:"$35,000 – $55,000/yr", icon:<Icons.TrendingUp />, detail:"A full-time receptionist costs $35K–$55K/yr plus benefits. Latchly works 3x the hours at a fraction of the cost." },
   ];
   const embedCode = `<!-- Latchly Chat Widget -->\n<script src="https://cdn.latchly.com/widget.js"\n  data-business-id="YOUR_ID"\n  data-color="#0e7c6b"\n  async>\n</script>`;
@@ -657,7 +657,8 @@ export default function LatchlyLanding() {
           <div style={{ textAlign:"center",marginBottom:44 }}>
             <div style={{ fontSize:14,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>ROI Comparison</div>
             <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5,marginBottom:16 }}>AI assistant vs. traditional staffing</h2>
-            <p style={{ fontSize:16,color:"#64748b",maxWidth:600,margin:"0 auto" }}>See the real numbers. Latchly doesn't just save money — it captures revenue you're currently leaving on the table.</p>
+            <p style={{ fontSize:13,color:"#94a3b8",fontStyle:"italic",marginBottom:16 }}>Estimates only; results vary by business.</p>
+            <p style={{ fontSize:16,color:"#64748b",maxWidth:600,margin:"0 auto" }}>See the real numbers. Latchly doesn't just save money — it can capture revenue you're currently leaving on the table.</p>
           </div>
           <div className="roi-grid" style={{ display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:20,marginBottom:24 }}>
             {roiComparisons.map((item,i)=>(
@@ -781,7 +782,7 @@ export default function LatchlyLanding() {
           </div>
           <div className="contact-grid" style={{ display:"grid",gridTemplateColumns:"1fr 1.2fr",gap:40,alignItems:"start" }}>
             <div style={{ display:"flex",flexDirection:"column",gap:20 }}>
-              {[{icon:"📧",label:"Email",value:"matthewseyoum17@gmail.com"},{icon:"📞",label:"Phone",value:"(786) 390-0299"},{icon:"📍",label:"Location",value:"Gainesville, FL"}].map((c,i)=>(
+              {[{icon:"📧",label:"Email",value:"matt@latchlyai.com"},{icon:"📞",label:"Phone",value:"(786) 390-0299"},{icon:"📍",label:"Location",value:"Gainesville, FL"}].map((c,i)=>(
                 <div key={i} style={{ background:"#f8fafc",borderRadius:16,padding:"20px 24px",display:"flex",alignItems:"center",gap:16,border:"1px solid #f1f5f9" }}>
                   <div style={{ fontSize:24 }}>{c.icon}</div>
                   <div><div style={{ fontSize:12,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:1 }}>{c.label}</div><div style={{ fontSize:15,fontWeight:700,color:"#1e293b" }}>{c.value}</div></div>
@@ -849,7 +850,7 @@ export default function LatchlyLanding() {
               <div style={{ display:"flex",flexDirection:"column",gap:12,fontSize:14,color:"#94a3b8" }}>
                 <span>📧 matt@latchlyai.com</span>
                 <span>📞 (786) 390-0299</span>
-                <span>🕐 Mon–Fri, 9am–6pm CT</span>
+                <span>🕐 Mon–Fri, 9am–6pm ET</span>
               </div>
             </div>
           </div>
