@@ -178,6 +178,7 @@ function ChatWidget({ isOpen, onClose, industryKey = "dental", brandColor = "#0e
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const prevRef = useRef(industryKey);
+  const [stableHeight, setStableHeight] = useState(null);
 
   useEffect(() => {
     if (prevRef.current !== industryKey) { setMessages([]); setChatPhase("chat"); setRating(0); prevRef.current = industryKey; }
@@ -191,6 +192,13 @@ function ChatWidget({ isOpen, onClose, industryKey = "dental", brandColor = "#0e
     const c = messagesContainerRef.current;
     if (c) c.scrollTop = c.scrollHeight;
   }, [messages, isTyping]);
+
+  useEffect(() => {
+    if (isOpen && !stableHeight) {
+      const mq = window.matchMedia("(max-width: 500px)");
+      if (mq.matches) setStableHeight(window.innerHeight);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 500px)");
@@ -239,8 +247,10 @@ function ChatWidget({ isOpen, onClose, industryKey = "dental", brandColor = "#0e
   const humanPhrases = ["talk to a human","speak to someone","real person","talk to someone","human agent","live agent","call me","speak to a person"];
   const getHumanResponse = () => { const b = getBusinessInfo(); return `I'd be happy to connect you with our team! Here's how to reach us:\n\n📞 Phone: ${b.phone}\n📧 Email: ${b.email}\n🕐 Hours: ${b.hours}\n\nYou can also leave your contact info and we'll reach out to you personally!`; };
 
+  const inputRef = useRef(null);
   const sendMessage = async () => {
     if (!input.trim() || isTyping) return;
+    if (inputRef.current) inputRef.current.blur();
     const userMsg = { role: "user", text: input.trim(), time: new Date() };
     const updated = [...messages, userMsg];
     setMessages(updated); setInput(""); setIsTyping(true);
@@ -262,7 +272,7 @@ function ChatWidget({ isOpen, onClose, industryKey = "dental", brandColor = "#0e
 
   if (!isOpen) return null;
   return (
-    <div className="chat-widget-mobile" style={{ position:"fixed",bottom:24,right:24,width:380,height:600,background:"#fff",borderRadius:20,boxShadow:"0 25px 60px rgba(0,0,0,0.3)",display:"flex",flexDirection:"column",overflow:"hidden",zIndex:10000,fontFamily:"'DM Sans',sans-serif",border:"1px solid rgba(0,0,0,0.08)",animation:"slideUp 0.4s cubic-bezier(0.34,1.56,0.64,1)" }}>
+    <div className="chat-widget-mobile" style={{ position:"fixed",bottom:24,right:24,width:380,height:stableHeight||600,background:"#fff",borderRadius:20,boxShadow:"0 25px 60px rgba(0,0,0,0.3)",display:"flex",flexDirection:"column",overflow:"hidden",zIndex:10000,fontFamily:"'DM Sans',sans-serif",border:"1px solid rgba(0,0,0,0.08)",animation:"slideUp 0.4s cubic-bezier(0.34,1.56,0.64,1)" }}>
       <div style={{ background:`linear-gradient(135deg,${brandColor},${brandColor}dd)`,color:"#fff",padding:"16px 20px",display:"flex",alignItems:"center",gap:12 }}>
         <div style={{ width:40,height:40,borderRadius:12,background:"rgba(255,255,255,0.2)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:20 }}>{industry.emoji}</div>
         <div style={{ flex:1 }}>
@@ -287,7 +297,7 @@ function ChatWidget({ isOpen, onClose, industryKey = "dental", brandColor = "#0e
         </div>}
         <div style={{ padding:"12px 16px",borderTop:"1px solid #e9ecf0",background:"#fff",display:"flex",flexDirection:"column",gap:8,flexShrink:0 }}>
           <div style={{ display:"flex",gap:8,alignItems:"center" }}>
-            <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendMessage()} placeholder="Type your message..." style={{ flex:1,padding:"10px 14px",borderRadius:12,border:"1px solid #e2e8f0",fontSize:16,fontFamily:"inherit",outline:"none" }} />
+            <input ref={inputRef} value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendMessage()} placeholder="Type your message..." enterKeyHint="send" style={{ flex:1,padding:"10px 14px",borderRadius:12,border:"1px solid #e2e8f0",fontSize:16,fontFamily:"inherit",outline:"none" }} />
             <button onClick={sendMessage} style={{ width:40,height:40,borderRadius:12,background:brandColor,border:"none",color:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}><Icons.Send /></button>
           </div>
           <div style={{ display:"flex",justifyContent:"flex-end" }}>
