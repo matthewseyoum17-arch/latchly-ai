@@ -194,11 +194,24 @@ function ChatWidget({ isOpen, onClose, industryKey = "dental", brandColor = "#0e
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 500px)");
-    if (mq.matches) {
-      if (isOpen) document.body.classList.add("chat-open");
-      else document.body.classList.remove("chat-open");
+    if (!mq.matches) return;
+    if (isOpen) {
+      const scrollY = window.scrollY;
+      document.body.classList.add("chat-open");
+      document.body.style.top = `-${scrollY}px`;
+      document.body.dataset.scrollY = String(scrollY);
+    } else {
+      const scrollY = parseInt(document.body.dataset.scrollY || "0", 10);
+      document.body.classList.remove("chat-open");
+      document.body.style.top = "";
+      window.scrollTo(0, scrollY);
     }
-    return () => document.body.classList.remove("chat-open");
+    return () => {
+      const scrollY = parseInt(document.body.dataset.scrollY || "0", 10);
+      document.body.classList.remove("chat-open");
+      document.body.style.top = "";
+      window.scrollTo(0, scrollY);
+    };
   }, [isOpen]);
 
   const getBusinessInfo = () => {
@@ -260,7 +273,7 @@ function ChatWidget({ isOpen, onClose, industryKey = "dental", brandColor = "#0e
       </div>
 
       {chatPhase === "chat" && (<>
-        <div ref={messagesContainerRef} style={{ flex:1,overflowY:"auto",padding:"16px 16px 8px",background:"#f8f9fb",minHeight:0 }}>
+        <div ref={messagesContainerRef} style={{ flex:1,overflowY:"auto",padding:"16px 16px 8px",background:"#f8f9fb",minHeight:0,overscrollBehavior:"contain",WebkitOverflowScrolling:"touch" }}>
           {messages.map((msg, i) => (
             <div key={i} style={{ display:"flex",justifyContent:msg.role==="user"?"flex-end":"flex-start",marginBottom:12,animation:"fadeIn 0.3s ease" }}>
               <div style={{ maxWidth:"82%",padding:"10px 14px",borderRadius:16,background:msg.role==="user"?brandColor:"#fff",color:msg.role==="user"?"#fff":"#1e293b",fontSize:13.5,lineHeight:1.5,whiteSpace:"pre-line",boxShadow:msg.role==="bot"?"0 1px 3px rgba(0,0,0,0.06)":"none",borderBottomRightRadius:msg.role==="user"?4:16,borderBottomLeftRadius:msg.role==="bot"?4:16 }}>{msg.text}</div>
@@ -269,12 +282,12 @@ function ChatWidget({ isOpen, onClose, industryKey = "dental", brandColor = "#0e
           {isTyping && <div style={{ display:"flex",gap:4,padding:"10px 14px",background:"#fff",borderRadius:16,width:"fit-content",boxShadow:"0 1px 3px rgba(0,0,0,0.06)" }}>{[0,1,2].map(i=><span key={i} style={{ width:7,height:7,borderRadius:"50%",background:"#94a3b8",display:"inline-block",animation:`bounce 1.4s ease-in-out ${i*0.16}s infinite` }}></span>)}</div>}
           <div ref={messagesEndRef} />
         </div>
-        {messages.length <= 2 && <div style={{ padding:"4px 16px 8px",display:"flex",flexWrap:"wrap",gap:6,background:"#f8f9fb" }}>
+        {messages.length <= 2 && <div style={{ padding:"4px 16px 8px",display:"flex",flexWrap:"wrap",gap:6,background:"#f8f9fb",flexShrink:0 }}>
           {industry.quickReplies.map(q => <button key={q} onClick={()=>handleQuickReply(q)} style={{ padding:"6px 12px",borderRadius:20,border:`1px solid ${brandColor}33`,background:`${brandColor}08`,color:brandColor,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit" }}>{q}</button>)}
         </div>}
-        <div style={{ padding:"12px 16px",borderTop:"1px solid #e9ecf0",background:"#fff",display:"flex",flexDirection:"column",gap:8 }}>
+        <div style={{ padding:"12px 16px",borderTop:"1px solid #e9ecf0",background:"#fff",display:"flex",flexDirection:"column",gap:8,flexShrink:0 }}>
           <div style={{ display:"flex",gap:8,alignItems:"center" }}>
-            <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendMessage()} placeholder="Type your message..." style={{ flex:1,padding:"10px 14px",borderRadius:12,border:"1px solid #e2e8f0",fontSize:13.5,fontFamily:"inherit",outline:"none" }} />
+            <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendMessage()} placeholder="Type your message..." style={{ flex:1,padding:"10px 14px",borderRadius:12,border:"1px solid #e2e8f0",fontSize:16,fontFamily:"inherit",outline:"none" }} />
             <button onClick={sendMessage} style={{ width:40,height:40,borderRadius:12,background:brandColor,border:"none",color:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}><Icons.Send /></button>
           </div>
           <div style={{ display:"flex",justifyContent:"flex-end" }}>
