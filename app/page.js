@@ -176,6 +176,7 @@ function ChatWidget({ isOpen, onClose, industryKey = "dental", brandColor = "#0e
   const [leadForm, setLeadForm] = useState({ name: "", phone: "", email: "", contactMethod: "phone", consent: false });
   const [leadSubmitting, setLeadSubmitting] = useState(false);
   const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
   const prevRef = useRef(industryKey);
 
   useEffect(() => {
@@ -186,7 +187,19 @@ function ChatWidget({ isOpen, onClose, industryKey = "dental", brandColor = "#0e
     if (isOpen && messages.length === 0) setTimeout(() => setMessages([{ role: "bot", text: industry.responses.greeting, time: new Date() }]), 600);
   }, [isOpen, industryKey, messages.length]);
 
-  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, isTyping]);
+  useEffect(() => {
+    const c = messagesContainerRef.current;
+    if (c) c.scrollTop = c.scrollHeight;
+  }, [messages, isTyping]);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 500px)");
+    if (mq.matches) {
+      if (isOpen) document.body.classList.add("chat-open");
+      else document.body.classList.remove("chat-open");
+    }
+    return () => document.body.classList.remove("chat-open");
+  }, [isOpen]);
 
   const getBusinessInfo = () => {
     const r = industry.responses;
@@ -247,7 +260,7 @@ function ChatWidget({ isOpen, onClose, industryKey = "dental", brandColor = "#0e
       </div>
 
       {chatPhase === "chat" && (<>
-        <div style={{ flex:1,overflowY:"auto",padding:"16px 16px 8px",background:"#f8f9fb" }}>
+        <div ref={messagesContainerRef} style={{ flex:1,overflowY:"auto",padding:"16px 16px 8px",background:"#f8f9fb",minHeight:0 }}>
           {messages.map((msg, i) => (
             <div key={i} style={{ display:"flex",justifyContent:msg.role==="user"?"flex-end":"flex-start",marginBottom:12,animation:"fadeIn 0.3s ease" }}>
               <div style={{ maxWidth:"82%",padding:"10px 14px",borderRadius:16,background:msg.role==="user"?brandColor:"#fff",color:msg.role==="user"?"#fff":"#1e293b",fontSize:13.5,lineHeight:1.5,whiteSpace:"pre-line",boxShadow:msg.role==="bot"?"0 1px 3px rgba(0,0,0,0.06)":"none",borderBottomRightRadius:msg.role==="user"?4:16,borderBottomLeftRadius:msg.role==="bot"?4:16 }}>{msg.text}</div>
