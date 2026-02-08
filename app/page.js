@@ -311,12 +311,12 @@ function ChatWidget({ isOpen, onClose, industryKey = "dental", brandColor = "#0e
         </div>
       )}
 
-      <div style={{ padding:"6px 16px 8px",textAlign:"center",fontSize:10,color:"#94a3b8",background:chatPhase==="chat"?"#fff":"#f8f9fb" }}>🔒 We don't store payment info • Powered by <span style={{ fontWeight:700,color:brandColor }}>SitePulse AI</span></div>
+      <div style={{ padding:"6px 16px 8px",textAlign:"center",fontSize:10,color:"#94a3b8",background:chatPhase==="chat"?"#fff":"#f8f9fb" }}>🔒 We don't store payment info • Powered by <span style={{ fontWeight:700,color:brandColor }}>Latchly</span></div>
     </div>
   );
 }
 
-export default function SitePulseLanding() {
+export default function LatchlyLanding() {
   const [chatOpen, setChatOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("landing");
   const [openFaq, setOpenFaq] = useState(null);
@@ -372,9 +372,9 @@ export default function SitePulseLanding() {
     { title:"Cost Per Lead", ai:"$0.50 – $2.00", trad:"$15 – $50+", icon:<Icons.DollarSign />, detail:"AI handles unlimited chats simultaneously. A receptionist handles one call at a time. The math is simple." },
     { title:"After-Hours Coverage", ai:"24/7/365 — never off", trad:"0 hours covered", icon:<Icons.Clock />, detail:"40–60% of website visits happen outside business hours. Without AI, every one of those visitors bounces to a competitor." },
     { title:"Response Time", ai:"Under 2 seconds", trad:"4–24+ hours", icon:<Icons.Zap />, detail:"78% of customers buy from the first business that responds. AI responds instantly — every single time." },
-    { title:"Annual Cost", ai:"$1,164 – $2,364/yr", trad:"$35,000 – $55,000/yr", icon:<Icons.TrendingUp />, detail:"A full-time receptionist costs $35K–$55K/yr plus benefits. SitePulse AI works 3x the hours at a fraction of the cost." },
+    { title:"Annual Cost", ai:"$1,164 – $2,364/yr", trad:"$35,000 – $55,000/yr", icon:<Icons.TrendingUp />, detail:"A full-time receptionist costs $35K–$55K/yr plus benefits. Latchly works 3x the hours at a fraction of the cost." },
   ];
-  const embedCode = `<!-- SitePulse AI Chat Widget -->\n<script src="https://cdn.sitepulse.ai/widget.js"\n  data-business-id="YOUR_ID"\n  data-color="#0e7c6b"\n  async>\n</script>`;
+  const embedCode = `<!-- Latchly Chat Widget -->\n<script src="https://cdn.latchly.com/widget.js"\n  data-business-id="YOUR_ID"\n  data-color="#0e7c6b"\n  async>\n</script>`;
   const ind = INDUSTRIES[selectedIndustry];
 
   return (
@@ -385,7 +385,7 @@ export default function SitePulseLanding() {
         <div style={{ maxWidth:1200,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center",height:64 }}>
           <div style={{ display:"flex",alignItems:"center",gap:8 }}>
             <div style={{ width:32,height:32,borderRadius:10,background:"linear-gradient(135deg,#0e7c6b,#0ea5e9)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff" }}><Icons.Zap /></div>
-            <span style={{ fontWeight:800,fontSize:18,letterSpacing:-0.5 }}>SitePulse<span style={{ color:"#0e7c6b" }}>AI</span></span>
+            <span style={{ fontWeight:800,fontSize:18,letterSpacing:-0.5 }}>Latchly</span>
           </div>
           <div style={{ display:"flex",gap:32,alignItems:"center" }}>
             {["Features","Demo","Pricing","FAQ","About","Contact"].map(item=><a key={item} href={`#${item.toLowerCase()}`} onClick={e=>{e.preventDefault();document.getElementById(item.toLowerCase())?.scrollIntoView({behavior:"smooth",block:"start"});}} style={{ textDecoration:"none",color:"#475569",fontSize:14,fontWeight:600,cursor:"pointer" }}>{item}</a>)}
@@ -523,7 +523,7 @@ export default function SitePulseLanding() {
           <div style={{ textAlign:"center",marginBottom:44 }}>
             <div style={{ fontSize:14,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>About Us</div>
             <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5,marginBottom:16 }}>Built for small businesses,{"\n"}by people who get it</h2>
-            <p style={{ fontSize:16,color:"#64748b",maxWidth:600,margin:"0 auto",lineHeight:1.7 }}>SitePulse AI was founded to solve one problem: small businesses losing customers after hours. We combine cutting-edge AI with deep industry knowledge to help you capture every opportunity.</p>
+            <p style={{ fontSize:16,color:"#64748b",maxWidth:600,margin:"0 auto",lineHeight:1.7 }}>Latchly was founded to solve one problem: small businesses losing customers after hours. We combine cutting-edge AI with deep industry knowledge to help you capture every opportunity.</p>
           </div>
           <div className="about-grid" style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:24 }}>
             {[{icon:"🎯",title:"Mission-Driven",desc:"We exist to level the playing field — giving small businesses enterprise-grade AI tools at a fraction of the cost."},{icon:"🔬",title:"Industry Expertise",desc:"Our team has built AI solutions for 20+ industries. Every template is crafted from real business conversations."},{icon:"🤝",title:"Customer-First",desc:"We measure success by your success. Dedicated support, continuous improvements, and transparent pricing — always."}].map((v,i)=>(
@@ -543,7 +543,7 @@ export default function SitePulseLanding() {
           <div style={{ textAlign:"center",marginBottom:44 }}>
             <div style={{ fontSize:14,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>ROI Comparison</div>
             <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5,marginBottom:16 }}>AI assistant vs. traditional staffing</h2>
-            <p style={{ fontSize:16,color:"#64748b",maxWidth:600,margin:"0 auto" }}>See the real numbers. SitePulse AI doesn't just save money — it captures revenue you're currently leaving on the table.</p>
+            <p style={{ fontSize:16,color:"#64748b",maxWidth:600,margin:"0 auto" }}>See the real numbers. Latchly doesn't just save money — it captures revenue you're currently leaving on the table.</p>
           </div>
           <div className="roi-grid" style={{ display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:20,marginBottom:24 }}>
             {roiComparisons.map((item,i)=>(
@@ -554,7 +554,7 @@ export default function SitePulseLanding() {
                 </div>
                 <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16 }}>
                   <div style={{ background:"#0e7c6b08",borderRadius:12,padding:"14px 16px",border:"1px solid #0e7c6b15" }}>
-                    <div style={{ fontSize:10,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:1,marginBottom:4 }}>⚡ SitePulse AI</div>
+                    <div style={{ fontSize:10,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:1,marginBottom:4 }}>⚡ Latchly</div>
                     <div style={{ fontSize:16,fontWeight:800,color:"#0e7c6b" }}>{item.ai}</div>
                   </div>
                   <div style={{ background:"#fef2f2",borderRadius:12,padding:"14px 16px",border:"1px solid #fecaca" }}>
@@ -632,7 +632,7 @@ export default function SitePulseLanding() {
           </div>
           <div className="contact-grid" style={{ display:"grid",gridTemplateColumns:"1fr 1.2fr",gap:40,alignItems:"start" }}>
             <div style={{ display:"flex",flexDirection:"column",gap:20 }}>
-              {[{icon:"📧",label:"Email",value:"hello@sitepulse.ai"},{icon:"📞",label:"Phone",value:"(555) 123-4567"},{icon:"📍",label:"Location",value:"Austin, TX"}].map((c,i)=>(
+              {[{icon:"📧",label:"Email",value:"matt@latchlyai.com"},{icon:"📞",label:"Phone",value:"(786) 390-0299"},{icon:"📍",label:"Location",value:"Gainesville, FL"}].map((c,i)=>(
                 <div key={i} style={{ background:"#f8fafc",borderRadius:16,padding:"20px 24px",display:"flex",alignItems:"center",gap:16,border:"1px solid #f1f5f9" }}>
                   <div style={{ fontSize:24 }}>{c.icon}</div>
                   <div><div style={{ fontSize:12,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:1 }}>{c.label}</div><div style={{ fontSize:15,fontWeight:700,color:"#1e293b" }}>{c.value}</div></div>
@@ -678,10 +678,10 @@ export default function SitePulseLanding() {
             <div>
               <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:16 }}>
                 <div style={{ width:32,height:32,borderRadius:10,background:"linear-gradient(135deg,#0e7c6b,#0ea5e9)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff" }}><Icons.Zap /></div>
-                <span style={{ fontWeight:800,fontSize:18,color:"#fff" }}>SitePulse<span style={{ color:"#0e7c6b" }}>AI</span></span>
+                <span style={{ fontWeight:800,fontSize:18,color:"#fff" }}>Latchly</span>
               </div>
               <p style={{ fontSize:14,lineHeight:1.7,color:"#94a3b8",marginBottom:16 }}>AI-powered chat assistants that capture leads 24/7 for service-based businesses.</p>
-              <p style={{ fontSize:13,color:"#64748b" }}>📍 Austin, TX</p>
+              <p style={{ fontSize:13,color:"#64748b" }}>📍 Gainesville, FL</p>
             </div>
             <div>
               <h4 style={{ fontSize:13,fontWeight:700,color:"#fff",textTransform:"uppercase",letterSpacing:1.5,marginBottom:20 }}>Quick Links</h4>
@@ -698,14 +698,14 @@ export default function SitePulseLanding() {
             <div>
               <h4 style={{ fontSize:13,fontWeight:700,color:"#fff",textTransform:"uppercase",letterSpacing:1.5,marginBottom:20 }}>Contact</h4>
               <div style={{ display:"flex",flexDirection:"column",gap:12,fontSize:14,color:"#94a3b8" }}>
-                <span>📧 hello@sitepulse.ai</span>
+                <span>📧 matt@latchlyai.com</span>
                 <span>📞 (555) 123-4567</span>
                 <span>🕐 Mon–Fri, 9am–6pm CT</span>
               </div>
             </div>
           </div>
           <div style={{ borderTop:"1px solid #1e293b",padding:"24px 0",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:16 }}>
-            <div style={{ fontSize:13,color:"#64748b" }}>© 2026 SitePulse AI. All rights reserved.</div>
+            <div style={{ fontSize:13,color:"#64748b" }}> 2026 Latchly. All rights reserved.</div>
             <div style={{ display:"flex",gap:24 }}>
               {["Privacy Policy","Terms of Service","Sitemap"].map(l=><a key={l} href="#" style={{ fontSize:13,color:"#64748b",textDecoration:"none" }}>{l}</a>)}
             </div>
