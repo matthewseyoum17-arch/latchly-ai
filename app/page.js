@@ -203,27 +203,36 @@ function ChatWidget({ isOpen, onClose, industryKey = "dental", brandColor = "#0e
     document.body.style.top = `-${scrollY}px`;
     document.body.dataset.scrollY = String(scrollY);
 
-    // Use visualViewport to track the actual visible area (shrinks when keyboard opens)
+    // Use visualViewport to track visible area above keyboard
     const vv = window.visualViewport;
     const el = widgetRef.current;
+    let rafId;
     const update = () => {
-      if (!el) return;
-      const h = vv ? vv.height : window.innerHeight;
-      const t = vv ? vv.offsetTop : 0;
-      el.style.setProperty("height", `${h}px`, "important");
-      el.style.setProperty("top", `${t}px`, "important");
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        if (!el) return;
+        const h = vv ? vv.height : window.innerHeight;
+        const t = vv ? vv.offsetTop : 0;
+        el.style.setProperty("height", `${h}px`, "important");
+        el.style.setProperty("top", `${t}px`, "important");
+      });
     };
     update();
     if (vv) {
       vv.addEventListener("resize", update);
       vv.addEventListener("scroll", update);
     }
+    window.addEventListener("scroll", update);
+    document.addEventListener("focusin", update);
 
     return () => {
+      cancelAnimationFrame(rafId);
       if (vv) {
         vv.removeEventListener("resize", update);
         vv.removeEventListener("scroll", update);
       }
+      window.removeEventListener("scroll", update);
+      document.removeEventListener("focusin", update);
       const sy = parseInt(document.body.dataset.scrollY || "0", 10);
       document.body.classList.remove("chat-open");
       document.body.style.top = "";

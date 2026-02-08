@@ -1,5 +1,12 @@
 import './globals.css';
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
+
 export const metadata = {
   title: 'Latchly — Your Site Never Sleeps',
   description: 'A 24/7 AI website assistant that answers questions, captures leads, and sends real customers to your phone — even when you\'re closed.',
