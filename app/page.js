@@ -412,7 +412,7 @@ export default function LatchlyLanding() {
       `}</style>
 
       {/* HERO */}
-      <section style={{ minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:"80px 24px 40px",position:"relative",overflow:"hidden" }}>
+      <section style={{ display:"flex",alignItems:"center",justifyContent:"center",padding:"120px 24px 80px",position:"relative",overflow:"hidden" }}>
         <div style={{ position:"absolute",top:-200,right:-200,width:600,height:600,borderRadius:"50%",background:"radial-gradient(circle,#0e7c6b08 0%,transparent 70%)",pointerEvents:"none" }} />
         <div className="hero-grid" style={{ maxWidth:1200,margin:"0 auto",display:"grid",gridTemplateColumns:"1fr 1fr",gap:56,alignItems:"center" }}>
           <div>
