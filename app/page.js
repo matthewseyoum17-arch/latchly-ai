@@ -26,11 +26,11 @@ const Icons = {
 
 const INDUSTRIES = {
   dental: {
-    name: "Bright Smile Dental", emoji: "🦷", label: "Dental Offices",
+    name: "ClearSmile Dental Care", emoji: "🦷", label: "Dental Offices",
     quickReplies: ["Book a cleaning", "Pricing", "Hours & location", "Emergency dental"],
     heroQ: "How much is teeth whitening?", heroA: "Great question! Our teeth whitening starts at $300. Want me to book a consultation?",
     responses: {
-      greeting: "Hi there! 👋 Welcome to Bright Smile Dental. I'm your virtual assistant, available 24/7. How can I help you today?",
+      greeting: "Hi there! 👋 Welcome to ClearSmile Dental Care. I'm your virtual assistant, available 24/7. How can I help you today?",
       services: "We offer a full range of dental services:\n\n• General Dentistry (cleanings, fillings, exams)\n• Cosmetic Dentistry (veneers, whitening, bonding)\n• Orthodontics (Invisalign, traditional braces)\n• Oral Surgery (extractions, implants)\n• Pediatric Dentistry\n\nWould you like to book an appointment or get a quote?",
       pricing: "Here are our general pricing ranges:\n\n• Routine Cleaning: $75–$150\n• Teeth Whitening: $300–$600\n• Dental Implant: $1,500–$3,000\n• Invisalign: $3,500–$6,000\n• Crown: $800–$1,500\n\nMost insurance accepted! Want a personalized quote?",
       hours: "Our office hours:\n\n📅 Mon–Fri: 8:00 AM – 6:00 PM\n📅 Saturday: 9:00 AM – 2:00 PM\n📅 Sunday: Closed\n\n🚨 Dental emergencies? Call (555) 123-4567",
