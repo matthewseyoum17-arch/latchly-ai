@@ -579,6 +579,12 @@ export default function LatchlyLanding() {
                     <div style={{ fontSize:16,fontWeight:800,color:"#dc2626" }}>{item.trad}</div>
                   </div>
                 </div>
+                <p style={{ fontSize:13.5,lineHeight:1.6,color:"#64748b" }}>{item.detail}</p>
+              </div>
+            ))}
+          </div>
+          <div ref={roiStatsRef} className="roi-stats-grid" style={{ background:"linear-gradient(135deg,#0f172a,#1e293b)",borderRadius:20,padding:"36px 40px",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:20,textAlign:"center" }}>
+            {[{label:"Avg. cost per lead",value:"$0.50–$2",sub:"vs. $15–$50 traditional"},{label:"Hours covered",value:"168/week",sub:"vs. 40–50 hrs staffed"},{label:"Avg. response time",value:"< 2 sec",sub:"vs. 4–24 hrs by email"},{label:"Lead capture",value:"After-hours visitors",sub:"often missed without AI"}].map((s,i)=>(
               <div key={i} style={{ opacity:countersVisible?1:0,transform:countersVisible?"translateY(0)":"translateY(8px)",transition:`all 0.6s ease ${i*0.15}s` }}><div style={{ fontSize:11,color:"#64748b",fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:6 }}>{s.label}</div><div style={{ fontSize:24,fontWeight:900,color:"#fff" }}>{s.value}</div><div style={{ fontSize:11,color:"#4ade80",fontWeight:600,marginTop:4 }}>{s.sub}</div></div>
             ))}
           </div>
