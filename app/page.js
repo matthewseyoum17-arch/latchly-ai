@@ -197,13 +197,19 @@ function ChatWidget({ isOpen, onClose, industryKey = "dental", brandColor = "#0e
     const mq = window.matchMedia("(max-width: 500px)");
     if (!mq.matches || !isOpen) return;
 
-    // Lock body scroll
-    const scrollY = window.scrollY;
+    // Save scroll position and add class (no position:fixed on body — it breaks visualViewport on iOS)
+    const savedScrollY = window.scrollY;
     document.body.classList.add("chat-open");
-    document.body.style.top = `-${scrollY}px`;
-    document.body.dataset.scrollY = String(scrollY);
 
-    // Use visualViewport to track visible area above keyboard
+    // Block background scrolling via touchmove (position:fixed on body prevents vv.offsetTop from updating)
+    const mc = messagesContainerRef.current;
+    const blockBgScroll = (e) => {
+      if (mc && mc.contains(e.target)) return; // allow messages scroll
+      e.preventDefault();
+    };
+    document.addEventListener("touchmove", blockBgScroll, { passive: false });
+
+    // Track visible area with visualViewport (shrinks when keyboard opens)
     const vv = window.visualViewport;
     const el = widgetRef.current;
     let rafId;
@@ -223,20 +229,17 @@ function ChatWidget({ isOpen, onClose, industryKey = "dental", brandColor = "#0e
       vv.addEventListener("scroll", update);
     }
     window.addEventListener("scroll", update);
-    document.addEventListener("focusin", update);
 
     return () => {
       cancelAnimationFrame(rafId);
+      document.removeEventListener("touchmove", blockBgScroll);
       if (vv) {
         vv.removeEventListener("resize", update);
         vv.removeEventListener("scroll", update);
       }
       window.removeEventListener("scroll", update);
-      document.removeEventListener("focusin", update);
-      const sy = parseInt(document.body.dataset.scrollY || "0", 10);
       document.body.classList.remove("chat-open");
-      document.body.style.top = "";
-      window.scrollTo(0, sy);
+      window.scrollTo(0, savedScrollY);
     };
   }, [isOpen]);
 
