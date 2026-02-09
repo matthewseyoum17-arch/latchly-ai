@@ -27,86 +27,86 @@ const Icons = {
 const INDUSTRIES = {
   dental: {
     name: "ClearSmile Dental Care", emoji: "🦷", label: "Dental Offices",
-    quickReplies: ["Book a cleaning", "Pricing", "Hours & location", "Emergency dental"],
-    heroQ: "How much is teeth whitening?", heroA: "Great question! Our teeth whitening starts at $300. Want me to book a consultation?",
+    quickReplies: ["Get info on cleanings", "Pricing", "Hours & location", "Emergency dental"],
+    heroQ: "How much is teeth whitening?", heroA: "Great question! Our teeth whitening starts at $300. Let me grab your info so the team can get you scheduled!",
     responses: {
       greeting: "Hi there! 👋 Welcome to ClearSmile Dental Care. I'm your virtual assistant, available 24/7. How can I help you today?",
-      services: "We offer a full range of dental services:\n\n• General Dentistry (cleanings, fillings, exams)\n• Cosmetic Dentistry (veneers, whitening, bonding)\n• Orthodontics (Invisalign, traditional braces)\n• Oral Surgery (extractions, implants)\n• Pediatric Dentistry\n\nWould you like to book an appointment or get a quote?",
+      services: "We offer a full range of dental services:\n\n• General Dentistry (cleanings, fillings, exams)\n• Cosmetic Dentistry (veneers, whitening, bonding)\n• Orthodontics (Invisalign, traditional braces)\n• Oral Surgery (extractions, implants)\n• Pediatric Dentistry\n\nWant more details or a personalized quote?",
       pricing: "Here are our general pricing ranges:\n\n• Routine Cleaning: $75–$150\n• Teeth Whitening: $300–$600\n• Dental Implant: $1,500–$3,000\n• Invisalign: $3,500–$6,000\n• Crown: $800–$1,500\n\nMost insurance accepted! Want a personalized quote?",
       hours: "Our office hours:\n\n📅 Mon–Fri: 8:00 AM – 6:00 PM\n📅 Saturday: 9:00 AM – 2:00 PM\n📅 Sunday: Closed\n\n🚨 Dental emergencies? Call (555) 123-4567",
-      appointment: "I'd love to help you book! Could you share:\n\n1. Your preferred date and time?\n2. Type of visit?\n3. First visit with us?\n\nOr I can have our team call you directly!",
+      appointment: "I'd love to help! Let me grab your info so our team can get you scheduled.\n\nCould you share your name and phone number? We'll reach out to confirm a time that works for you!",
       emergency: "For dental emergencies:\n\n🚨 During hours: Call (555) 123-4567\n🚨 After hours: Emergency line (555) 123-4568\n\nWe handle: severe toothache, knocked-out teeth, broken crowns, abscesses.",
-      default: "Great question! Let me connect you with our dental team.\n\n• 📞 Call: (555) 123-4567\n• 📅 Book online\n• 💬 Keep chatting!\n\nWhat else can I help with?"
+      default: "Great question! Let me connect you with our dental team.\n\n• 📞 Call: (555) 123-4567\n• 💬 Keep chatting!\n\nWhat else can I help with?"
     }
   },
   medspa: {
     name: "Glow Aesthetics Med Spa", emoji: "💆", label: "Med Spas",
-    quickReplies: ["Book a consultation", "Treatment pricing", "Hours & location", "Current specials"],
-    heroQ: "How much is Botox?", heroA: "Botox starts at $10–$15 per unit! Want to book a free consultation?",
+    quickReplies: ["Learn about treatments", "Treatment pricing", "Hours & location", "Current specials"],
+    heroQ: "How much is Botox?", heroA: "Botox starts at $10–$15 per unit! Let me grab your info so the team can set up a consultation.",
     responses: {
       greeting: "Hi there! ✨ Welcome to Glow Aesthetics. I'm your virtual assistant, available 24/7. Curious about Botox, fillers, facials, or body contouring? I'm here to help!",
-      services: "We offer a full menu of aesthetic treatments:\n\n• Injectables (Botox, Dysport, dermal fillers)\n• Laser Treatments (hair removal, skin resurfacing)\n• Facials & Chemical Peels\n• Body Contouring (CoolSculpting, EmSculpt)\n• IV Therapy & Vitamin Drips\n• Microneedling & PRP\n\nWant to book a free consultation?",
+      services: "We offer a full menu of aesthetic treatments:\n\n• Injectables (Botox, Dysport, dermal fillers)\n• Laser Treatments (hair removal, skin resurfacing)\n• Facials & Chemical Peels\n• Body Contouring (CoolSculpting, EmSculpt)\n• IV Therapy & Vitamin Drips\n• Microneedling & PRP\n\nWant more info or a personalized quote?",
       pricing: "Our popular treatment ranges:\n\n• Botox: $10–$15 per unit\n• Dermal Fillers: $600–$1,200/syringe\n• Chemical Peel: $150–$350\n• Laser Hair Removal: $150–$500/session\n• CoolSculpting: $750–$1,500/area\n\nWe offer financing! Want a personalized quote?",
       hours: "Our spa hours:\n\n📅 Mon–Fri: 9:00 AM – 7:00 PM\n📅 Saturday: 10:00 AM – 5:00 PM\n📅 Sunday: Closed\n\n✨ Evening appointments available by request!",
-      appointment: "I'd love to help you book! Tell me:\n\n1. What treatment interests you?\n2. Preferred date and time?\n3. Have you visited us before?\n\nAll new clients get a complimentary consultation!",
+      appointment: "I'd love to help get you set up! Let me grab your info so our team can reach out and find the perfect time.\n\nCould you share your name and phone number? We'll follow up to confirm!",
       emergency: "For urgent skincare concerns:\n\n📞 Call us directly: (555) 234-5678\n\nIf you're experiencing a reaction to a treatment, please call immediately.\n\nFor medical emergencies, call 911.",
-      default: "Great question! Let me connect you with our aesthetics team.\n\n• 📞 Call: (555) 234-5678\n• 📅 Book a free consultation\n• 💬 Keep chatting!\n\nWhat else can I help with?"
+      default: "Great question! Let me connect you with our aesthetics team.\n\n• 📞 Call: (555) 234-5678\n• 💬 Keep chatting!\n\nWhat else can I help with?"
     }
   },
   hvac: {
     name: "CoolAir Heating & Cooling", emoji: "❄️", label: "HVAC Companies",
     quickReplies: ["Get a quote", "Emergency repair", "Hours & service area", "Maintenance plans"],
-    heroQ: "My AC stopped working!", heroA: "Sorry to hear that! We offer same-day emergency AC repair. Want me to schedule a tech?",
+    heroQ: "My AC stopped working!", heroA: "Sorry to hear that! We offer same-day emergency AC repair. Let me grab your info so the team can send a tech out!",
     responses: {
       greeting: "Hey there! 🔧 Welcome to CoolAir Heating & Cooling. I'm available 24/7. AC not cooling? Heater acting up? Let me help!",
       services: "We handle all heating and cooling needs:\n\n• AC Repair & Installation\n• Furnace Repair & Replacement\n• Heat Pump Services\n• Duct Cleaning & Sealing\n• Preventive Maintenance Plans\n• Smart Thermostat Installation\n\nNeed a free estimate?",
       pricing: "Our typical service ranges:\n\n• Diagnostic Call: $79–$129\n• AC Repair: $150–$600\n• New AC Installed: $3,500–$7,500\n• Furnace Repair: $150–$500\n• Maintenance Plan: $149–$299/yr\n\nWant a free in-home estimate?",
       hours: "We're here when you need us:\n\n📅 Mon–Fri: 7:00 AM – 7:00 PM\n📅 Saturday: 8:00 AM – 4:00 PM\n📅 Sunday: Emergency calls only\n\n🚨 24/7 Emergency: (555) 345-6789",
-      appointment: "Let's get you scheduled! I'll need:\n\n1. Type of service (repair, install, maintenance)?\n2. Your address / zip code?\n3. Preferred date and time?\n\nOr call us for same-day service!",
+      appointment: "Let me grab your info so our team can get you on the schedule!\n\nCould you share your name, phone number, and address? We'll reach out to confirm a time that works.",
       emergency: "🚨 HVAC Emergency? We're here 24/7!\n\n📞 Emergency Line: (555) 345-6789\n\nNo heat? No AC? Gas smell? We dispatch technicians around the clock.\n\nCall now — most emergencies resolved same-day!",
-      default: "Good question! Let me get our HVAC team on it.\n\n• 📞 Call: (555) 345-6789\n• 📅 Schedule a free estimate\n• 💬 Keep chatting!\n\nWhat else can I help with?"
+      default: "Good question! Let me get our HVAC team on it.\n\n• 📞 Call: (555) 345-6789\n• 💬 Keep chatting!\n\nWhat else can I help with?"
     }
   },
   plumbing: {
     name: "FlowRight Plumbing", emoji: "🔧", label: "Plumbing Services",
     quickReplies: ["Get a quote", "Emergency plumbing", "Hours & service area", "Drain cleaning"],
-    heroQ: "I have a leaky faucet", heroA: "We can help! Faucet repairs run $150–$350. Want a free estimate?",
+    heroQ: "I have a leaky faucet", heroA: "We can help! Faucet repairs run $150–$350. Let me grab your info so the team can get you taken care of!",
     responses: {
       greeting: "Hey! 🔧 Welcome to FlowRight Plumbing. I'm your 24/7 assistant. Leaky faucet? Clogged drain? Water heater issues? Let me help!",
       services: "We handle all plumbing needs:\n\n• Drain Cleaning & Unclogging\n• Leak Detection & Repair\n• Water Heater Install & Repair\n• Sewer Line Services\n• Pipe Repair & Replacement\n• Sump Pump Services\n\nNeed a free estimate?",
       pricing: "Our common service ranges:\n\n• Service Call + Diagnosis: $49–$99\n• Drain Cleaning: $99–$250\n• Faucet Repair: $150–$350\n• Water Heater Install: $1,200–$3,000\n• Sewer Line Repair: $1,500–$4,000\n\nNo hidden fees! Want an exact quote?",
       hours: "Our service hours:\n\n📅 Mon–Fri: 7:00 AM – 6:00 PM\n📅 Saturday: 8:00 AM – 3:00 PM\n📅 Sunday: Emergency calls only\n\n🚨 24/7 Emergency: (555) 456-7890",
-      appointment: "Let's get a plumber to you! I'll need:\n\n1. What's the issue?\n2. Your address?\n3. Preferred date and time?\n4. How urgent is it?\n\nSame-day service often available!",
+      appointment: "Let me grab your info so our team can get a plumber out to you!\n\nCould you share your name, phone number, and address? We'll reach out to confirm a time.",
       emergency: "🚨 Plumbing Emergency? Don't wait!\n\n📞 24/7 Emergency: (555) 456-7890\n\nBurst pipes, major leaks, sewage backup — we respond fast.\n\n⚡ Average response: 45 minutes",
-      default: "Let me get our plumbing team on this.\n\n• 📞 Call: (555) 456-7890\n• 📅 Schedule a visit\n• 💬 Keep chatting!\n\nWhat else can I help with?"
+      default: "Let me get our plumbing team on this.\n\n• 📞 Call: (555) 456-7890\n• 💬 Keep chatting!\n\nWhat else can I help with?"
     }
   },
   legal: {
     name: "Summit Legal Group", emoji: "⚖️", label: "Law Firms",
     quickReplies: ["Free consultation", "Practice areas", "Hours & location", "How billing works"],
-    heroQ: "I need a free consultation", heroA: "Absolutely! All initial consultations are free and confidential. When works best for you?",
+    heroQ: "I need a free consultation", heroA: "Absolutely! All initial consultations are free and confidential. Let me grab your info so the team can reach out!",
     responses: {
       greeting: "Hello! ⚖️ Welcome to Summit Legal Group. I'm your virtual assistant, available 24/7. I can help with practice areas, scheduling a free consultation, or general questions.",
       services: "Our practice areas:\n\n• Personal Injury\n• Family Law (divorce, custody, support)\n• Criminal Defense\n• Estate Planning (wills, trusts)\n• Business Law & Contracts\n• Real Estate Law\n• Employment Law\n\n📋 Free initial consultations available.",
       pricing: "Our fee structures by practice area:\n\n• Personal Injury: Contingency (no fee unless we win)\n• Family Law: $250–$450/hour\n• Criminal Defense: Flat fee or retainer\n• Estate Planning: Flat fee from $500\n• Business Law: $200–$400/hour\n\nFree initial consultation for all new clients!",
       hours: "Our office hours:\n\n📅 Mon–Fri: 8:30 AM – 5:30 PM\n📅 Saturday: By appointment\n📅 Sunday: Closed\n\n📞 After-hours? Leave a message at (555) 567-8901",
-      appointment: "Let's schedule a consultation!\n\n1. Which practice area?\n2. Brief description of your situation?\n3. Preferred date and time?\n\nAll initial consultations are free and confidential.",
+      appointment: "I'd be happy to help get that set up! Let me grab your info so our team can reach out to schedule your free consultation.\n\nCould you share your name and phone number? We'll follow up shortly!",
       emergency: "For urgent legal matters:\n\n📞 Call: (555) 567-8901\n\nArrested or served papers? Contact us immediately.\n\n⚠️ This is general info, not legal advice. For safety emergencies, call 911.",
-      default: "Let me connect you with our legal team.\n\n• 📞 Call: (555) 567-8901\n• 📅 Book a free consultation\n• 💬 Keep chatting!\n\n⚠️ I provide general info, not legal advice."
+      default: "Let me connect you with our legal team.\n\n• 📞 Call: (555) 567-8901\n• 💬 Keep chatting!\n\n⚠️ I provide general info, not legal advice."
     }
   },
   realestate: {
     name: "Keystone Realty", emoji: "🏠", label: "Real Estate",
     quickReplies: ["Search listings", "Home valuation", "Hours & location", "Selling my home"],
-    heroQ: "What homes are available?", heroA: "I'd love to help! What area and price range are you looking in?",
+    heroQ: "What homes are available?", heroA: "I'd love to help! Let me grab your info so one of our agents can send you some options.",
     responses: {
       greeting: "Welcome! 🏠 I'm the virtual assistant for Keystone Realty, available 24/7. Buying, selling, or browsing — I'm here to help you find your next home!",
       services: "We offer full-service real estate:\n\n• Home Buying (first-time & experienced)\n• Home Selling & Listing\n• Free Home Valuations / CMA\n• Investment Property Guidance\n• Relocation Assistance\n• New Construction\n\nWant to connect with an agent?",
       pricing: "Our services:\n\n• Buyers: Free to you (seller pays commission)\n• Sellers: Competitive commission (typically 5–6%)\n• Free Home Valuation: No obligation\n• Consultation: Always free\n\nMedian home price in our area: $325K–$550K\n\nWant a free home valuation?",
       hours: "Our office hours:\n\n📅 Mon–Fri: 9:00 AM – 6:00 PM\n📅 Saturday: 10:00 AM – 4:00 PM\n📅 Sunday: Open houses only\n\n📞 Reach an agent: (555) 678-9012\nShowings available evenings & weekends!",
-      appointment: "Let's get you connected!\n\n1. Buying or selling (or both)?\n2. What area interests you?\n3. Budget range or home value?\n4. Preferred time to chat?\n\nNo obligation — just a friendly conversation!",
+      appointment: "Let me grab your info so one of our agents can reach out!\n\nCould you share your name and phone number? We'll follow up to learn more about what you're looking for.",
       emergency: "Need immediate real estate help?\n\n📞 Call an agent: (555) 678-9012\n\nClosing deadline? Contract questions? Our agents are responsive and can help fast.",
-      default: "Great question! Let me connect you with an agent.\n\n• 📞 Call: (555) 678-9012\n• 📅 Schedule a free consultation\n• 💬 Keep chatting!\n\nWhat else can I help with?"
+      default: "Great question! Let me connect you with an agent.\n\n• 📞 Call: (555) 678-9012\n• 💬 Keep chatting!\n\nWhat else can I help with?"
     }
   },
 };
@@ -141,10 +141,10 @@ function getAIResponse(message, industryKey, conversationHistory = []) {
 
   if (bucketHits === 2) {
     const t1 = {
-      services: `I shared our services above! Want me to narrow it down?\n\n• 💰 Ask me about pricing for any specific one\n• 📅 Ready to book? I can help with that\n• 📞 Or call us directly at ${phone}`,
-      pricing: `I listed our pricing above! To get a quote specific to your situation:\n\n📅 Book a free consultation — no obligation\n📞 Or call ${phone} and our team can walk you through it\n\nWhich works best for you?`,
-      hours: `Those are our hours above! Is there anything else I can help with?\n\n• 💰 Pricing questions?\n• 📅 Want to book a visit?\n• 📞 Call us at ${phone}`,
-      appointment: `Great — to lock in your appointment, I just need a few details:\n\n1. What service are you coming in for?\n2. What day works best for you?\n3. Your name and phone number so we can confirm\n\nOr call ${phone} to book directly!`,
+      services: `I shared our services above! Want me to narrow it down?\n\n• 💰 Ask me about pricing for any specific one\n• 📋 Want me to grab your info for the team?\n• 📞 Or call us directly at ${phone}`,
+      pricing: `I listed our pricing above! To get a quote specific to your situation:\n\n📋 Leave your info and our team will follow up — no obligation\n📞 Or call ${phone} and our team can walk you through it\n\nWhich works best for you?`,
+      hours: `Those are our hours above! Is there anything else I can help with?\n\n• 💰 Pricing questions?\n• 📋 Want me to grab your info so the team can reach out?\n• 📞 Call us at ${phone}`,
+      appointment: `Let me grab your info so our team can get you scheduled!\n\n1. Your name and phone number\n2. What service you're interested in\n\nWe'll reach out to confirm a time that works for you. Or call ${phone} directly!`,
       emergency: `For emergencies, the fastest option is always to call:\n\n📞 ${phone} — available 24/7\n\nIf you can't call right now, share your number and we'll reach out to you ASAP.`,
       default: `I want to help, but I may not have that specific info. Here's what I'd suggest:\n\n📞 Call ${phone} — our team can answer that in a minute\n📅 Or tell me your name and number and we'll call you back\n\nWhat would you prefer?`,
     };
@@ -412,8 +412,8 @@ export default function LatchlyLanding() {
     { icon: <Icons.Globe />, title: "2-Minute Installation", desc: "Copy one line of code. Paste it on your site. That's it. No developers, no redesign, no headaches. Works on any website platform." },
   ];
   const plans = [
-    { id:"starter",name:"Starter",price:"$119",period:"/month",desc:"Perfect for single-location businesses getting started with AI",features:["AI chat widget for your website","Up to 100 leads/month","Basic customization","Email notifications","Mobile-friendly chat"],cta:"Start Free Trial",popular:false },
-    { id:"growth",name:"Growth",price:"$229",period:"/month",desc:"For businesses ready to maximize every lead and scale",features:["Everything in Starter, plus:","Unlimited leads","Advanced AI training","Custom branding","SMS notifications (enabled during setup)","CRM integrations","Priority support"],cta:"Start Free Trial",popular:true },
+    { id:"starter",name:"Starter",price:"$119",period:"/month",desc:"Perfect for single-location businesses getting started with AI",features:["AI chat widget for your website","Smart lead capture & follow-up","Up to 100 leads/month","Basic customization","Email notifications","Mobile-friendly chat"],cta:"Start Free Trial",popular:false },
+    { id:"growth",name:"Growth",price:"$229",period:"/month",desc:"For businesses ready to maximize every lead and scale",features:["Everything in Starter, plus:","Direct appointment booking","Unlimited leads","Advanced AI training","Custom branding","SMS notifications (enabled during setup)","CRM integrations","Priority support"],cta:"Start Free Trial",popular:true },
   ];
   const faqs = [
     { q:"How does the AI know about my specific business?", a:"During setup, you provide your business details — services, pricing, hours, FAQs, and service areas. The AI uses this custom knowledge base to answer questions accurately. We also have pre-built templates for 20+ industries." },
