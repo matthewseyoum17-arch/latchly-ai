@@ -420,7 +420,7 @@ export default function LatchlyLanding() {
               <span style={{ width:6,height:6,borderRadius:"50%",background:"#4ade80",animation:"pulse 2s infinite" }}></span>Your website never sleeps.
             </div>
             <h1 style={{ fontFamily:"'Playfair Display',serif",fontSize:56,fontWeight:900,lineHeight:1.08,letterSpacing:-2,marginBottom:14,color:"#0f172a" }}>
-              Leads While You Sleep.<br/><span style={{ background:"linear-gradient(135deg,#0e7c6b,#0ea5e9)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent" }}>The 24/7 Sales Agent Built</span><br/>for Small Businesses.
+              Capture Leads While You Sleep.<br/><span style={{ background:"linear-gradient(135deg,#0e7c6b,#0ea5e9)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent" }}>The 24/7 Sales Agent Built</span><br/>for Small Businesses.
             </h1>
             <p style={{ fontSize:18,lineHeight:1.65,color:"#64748b",marginBottom:24,maxWidth:480 }}>Latchly turns your website into a 24/7 sales team. It learns your business in seconds to answer questions and book appointments while you're offline.</p>
             <div style={{ display:"flex",gap:14,alignItems:"center",marginBottom:20 }}>
