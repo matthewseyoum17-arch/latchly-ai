@@ -638,6 +638,11 @@ export default function LatchlyLanding() {
               </div>
             ))}
           </div>
+          <div style={{ background:"#f1f5f9",borderRadius:16,padding:"28px 32px",display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:20,textAlign:"center" }}>
+            {[{value:"$3.60/day",sub:"Starter plan"},{value:"2 minutes",sub:"Setup time — no coding"},{value:"14 days",sub:"Free trial — no credit card"}].map((s,i)=>(
+              <div key={i}><div style={{ fontSize:22,fontWeight:800,color:"#1e293b",marginBottom:4 }}>{s.value}</div><div style={{ fontSize:13,color:"#64748b" }}>{s.sub}</div></div>
+            ))}
+          </div>
         </div>
       </section>
 
