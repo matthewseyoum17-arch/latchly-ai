@@ -408,7 +408,7 @@ export default function LatchlyLanding() {
     <div style={{ fontFamily:"'DM Sans',sans-serif",background:"#fafbfc",color:"#1e293b",overflowX:"hidden" }}>
 
       {/* NAV */}
-      <nav style={{ position:"fixed",top:0,left:0,right:0,zIndex:1000,background:"rgba(250,251,252,0.85)",backdropFilter:"blur(20px)",borderBottom:"1px solid rgba(0,0,0,0.05)",padding:"0 40px" }}>
+      <nav style={{ position:"fixed",top:0,left:0,right:0,zIndex:1000,background:"rgba(250,251,252,0.85)",backdropFilter:"blur(20px)",borderBottom:"1px solid rgba(0,0,0,0.05)",padding:"0 20px" }}>
         <div style={{ maxWidth:1200,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center",height:64 }}>
           <div style={{ display:"flex",alignItems:"center",gap:8 }}>
             <div style={{ width:32,height:32,borderRadius:10,background:"linear-gradient(135deg,#0e7c6b,#0ea5e9)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff" }}><Icons.Zap /></div>
@@ -437,22 +437,22 @@ export default function LatchlyLanding() {
       `}</style>
 
       {/* HERO */}
-      <section style={{ display:"flex",alignItems:"center",justifyContent:"center",padding:"120px 24px 80px",position:"relative",overflow:"hidden" }}>
+      <section style={{ display:"flex",alignItems:"center",justifyContent:"center",padding:"100px 20px 60px",position:"relative",overflow:"hidden" }}>
         <div style={{ position:"absolute",top:-200,right:-200,width:600,height:600,borderRadius:"50%",background:"radial-gradient(circle,#0e7c6b08 0%,transparent 70%)",pointerEvents:"none" }} />
         <div className="hero-grid" style={{ maxWidth:1200,margin:"0 auto",display:"grid",gridTemplateColumns:"1fr 1fr",gap:56,alignItems:"center" }}>
           <div>
             <div style={{ display:"inline-flex",alignItems:"center",gap:6,padding:"6px 14px",borderRadius:50,background:"#0e7c6b10",border:"1px solid #0e7c6b20",fontSize:12.5,fontWeight:700,color:"#0e7c6b",marginBottom:12 }}>
               <span style={{ width:6,height:6,borderRadius:"50%",background:"#4ade80",animation:"pulse 2s infinite" }}></span>Your site never sleeps.
             </div>
-            <h1 style={{ fontFamily:"'Playfair Display',serif",fontSize:56,fontWeight:900,lineHeight:1.08,letterSpacing:-2,marginBottom:14,color:"#0f172a" }}>
+            <h1 className="hero-headline" style={{ fontFamily:"'Playfair Display',serif",fontSize:56,fontWeight:900,lineHeight:1.08,letterSpacing:-2,marginBottom:14,color:"#0f172a" }}>
               Your website's best employee<br/><span style={{ background:"linear-gradient(135deg,#0e7c6b,#0ea5e9)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent" }}>never sleeps.</span>
             </h1>
-            <p style={{ fontSize:18,lineHeight:1.65,color:"#64748b",marginBottom:24,maxWidth:480 }}>A 24/7 AI assistant that answers questions, captures leads, and sends real customers to your phone — even when you're closed.</p>
-            <div style={{ display:"flex",gap:14,alignItems:"center",marginBottom:20 }}>
+            <p className="hero-sub" style={{ fontSize:18,lineHeight:1.65,color:"#64748b",marginBottom:24,maxWidth:480 }}>A 24/7 AI assistant that answers questions, captures leads, and sends real customers to your phone — even when you're closed.</p>
+            <div className="hero-buttons" style={{ display:"flex",gap:14,alignItems:"center",marginBottom:20 }}>
               <button onClick={()=>setChatOpen(true)} style={{ padding:"16px 32px",borderRadius:14,background:"linear-gradient(135deg,#0e7c6b,#0a6b5c)",color:"#fff",border:"none",fontWeight:800,fontSize:15,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:8,boxShadow:"0 8px 30px #0e7c6b40" }}>See it in action → </button>
               <a href="#pricing" onClick={e=>{e.preventDefault();document.getElementById("pricing")?.scrollIntoView({behavior:"smooth",block:"start"});}} style={{ padding:"16px 32px",borderRadius:14,border:"2px solid #e2e8f0",color:"#475569",textDecoration:"none",fontWeight:700,fontSize:15,fontFamily:"'DM Sans',sans-serif" }}>View Pricing</a>
             </div>
-            <div style={{ display:"flex",gap:24,fontSize:13,color:"#94a3b8" }}>{["No credit card required","2-minute setup","Cancel anytime"].map(t=><span key={t} style={{ display:"flex",alignItems:"center",gap:5 }}><span style={{ color:"#0e7c6b" }}><Icons.Check /></span> {t}</span>)}</div>
+            <div className="hero-checks" style={{ display:"flex",gap:24,fontSize:13,color:"#94a3b8" }}>{["No credit card required","2-minute setup","Cancel anytime"].map(t=><span key={t} style={{ display:"flex",alignItems:"center",gap:5 }}><span style={{ color:"#0e7c6b" }}><Icons.Check /></span> {t}</span>)}</div>
           </div>
           <div style={{ position:"relative" }}>
             <div onClick={()=>setChatOpen(true)} style={{ cursor:"pointer",background:"#fff",borderRadius:24,overflow:"hidden",boxShadow:"0 40px 80px rgba(0,0,0,0.08)",border:"1px solid rgba(0,0,0,0.06)",animation:"float 6s ease-in-out infinite",minHeight:380 }}>
@@ -483,13 +483,13 @@ export default function LatchlyLanding() {
       </section>
 
       {/* TRUST BAR */}
-      <div style={{ textAlign:"center",padding:"16px 24px 0",fontSize:14,color:"#888" }}>Built in Gainesville, FL · No contracts, ever · Cancel with one email</div>
+      <div className="trust-bar" style={{ textAlign:"center",padding:"16px 24px 0",fontSize:14,color:"#888" }}>Built in Gainesville, FL · No contracts, ever · Cancel with one email</div>
 
       {/* INDUSTRY SELECTOR */}
       <section style={{ padding:"24px 0" }}>
         <div style={{ maxWidth:1200,margin:"0 auto",textAlign:"center" }}>
           <p style={{ fontSize:13,color:"#94a3b8",fontWeight:600,textTransform:"uppercase",letterSpacing:2,marginBottom:20 }}>Select an industry to try the demo</p>
-          <div style={{ display:"flex",justifyContent:"center",gap:12,flexWrap:"wrap" }}>
+          <div className="industry-selector" style={{ display:"flex",justifyContent:"center",gap:12,flexWrap:"wrap" }}>
             {industryKeys.map(key=>{const i=INDUSTRIES[key];const active=selectedIndustry===key;return(
               <button key={key} onClick={()=>setSelectedIndustry(key)} style={{ padding:"10px 20px",borderRadius:12,fontSize:14,fontWeight:700,color:active?"#fff":"#1e293b",whiteSpace:"nowrap",background:active?"linear-gradient(135deg,#0e7c6b,#0a6b5c)":"#fff",border:active?"2px solid #0e7c6b":"2px solid #e2e8f0",cursor:"pointer",fontFamily:"inherit",transition:"all 0.25s",boxShadow:active?"0 4px 16px #0e7c6b30":"0 1px 3px rgba(0,0,0,0.04)",display:"flex",alignItems:"center",gap:6 }}><span style={{ fontSize:16 }}>{i.emoji}</span> {i.label}</button>
             );})}
@@ -498,14 +498,14 @@ export default function LatchlyLanding() {
       </section>
 
       {/* FEATURES */}
-      <section id="features" style={{ padding:"60px 40px" }}>
+      <section id="features" style={{ padding:"60px 24px" }}>
         <div style={{ maxWidth:1200,margin:"0 auto" }}>
           <div style={{ textAlign:"center",marginBottom:44 }}>
             <div style={{ fontSize:14,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>Features</div>
-            <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5,marginBottom:16 }}>Everything you need to<br/>convert more visitors</h2>
+            <h2 className="section-title" style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5,marginBottom:16 }}>Everything you need to<br/>convert more visitors</h2>
             <p style={{ fontSize:16,color:"#64748b",maxWidth:520,margin:"0 auto" }}>From AI conversations to lead capture to analytics — one platform handles it all.</p>
           </div>
-          <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:20,marginBottom:20 }}>
+          <div className="features-grid" style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:20,marginBottom:20 }}>
             {features.map((f,i)=><div key={i} className="hover-lift" style={{ background:"#fff",borderRadius:18,padding:32,border:"1px solid #f1f5f9" }}>
               <div style={{ width:48,height:48,borderRadius:14,marginBottom:20,background:"linear-gradient(135deg,#0e7c6b12,#0ea5e912)",display:"flex",alignItems:"center",justifyContent:"center",color:"#0e7c6b" }}>{f.icon}</div>
               <h3 style={{ fontSize:17,fontWeight:800,marginBottom:10 }}>{f.title}</h3>
@@ -516,11 +516,11 @@ export default function LatchlyLanding() {
       </section>
 
       {/* DEMO */}
-      <section id="demo" style={{ padding:"60px 40px",background:"#f1f5f9" }}>
+      <section id="demo" style={{ padding:"60px 24px",background:"#f1f5f9" }}>
         <div style={{ maxWidth:1200,margin:"0 auto" }}>
           <div style={{ textAlign:"center",marginBottom:44 }}>
             <div style={{ fontSize:14,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>Live Demo</div>
-            <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5,marginBottom:16 }}>See it in action</h2>
+            <h2 className="section-title" style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5,marginBottom:16 }}>See it in action</h2>
             <p style={{ fontSize:16,color:"#64748b",maxWidth:580,margin:"0 auto" }}>Select an industry above, then open the chat to experience a fully tailored AI assistant.</p>
           </div>
           <div style={{ display:"flex",justifyContent:"center",gap:16,marginBottom:24 }}>
@@ -537,11 +537,11 @@ export default function LatchlyLanding() {
       </section>
 
       {/* HOW IT WORKS */}
-      <section style={{ padding:"60px 40px" }}>
+      <section style={{ padding:"60px 24px" }}>
         <div style={{ maxWidth:1000,margin:"0 auto" }}>
           <div style={{ textAlign:"center",marginBottom:44 }}>
             <div style={{ fontSize:14,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>Setup</div>
-            <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5 }}>Up and running in minutes</h2>
+            <h2 className="section-title" style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5 }}>Up and running in minutes</h2>
           </div>
           <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:32 }}>
             {[{step:"01",title:"Tell us about your business",desc:"Enter your services, hours, pricing, and FAQs. Or pick an industry template."},{step:"02",title:"Copy one line of code",desc:"We generate a tiny embed snippet. Paste it on your website — any platform."},{step:"03",title:"Start capturing leads",desc:"Your AI assistant is live. Watch leads flow into your dashboard and phone."}].map(s=>(
@@ -557,17 +557,17 @@ export default function LatchlyLanding() {
               <div style={{ display:"flex",gap:6 }}><span style={{ width:10,height:10,borderRadius:"50%",background:"#ef4444" }}></span><span style={{ width:10,height:10,borderRadius:"50%",background:"#f59e0b" }}></span><span style={{ width:10,height:10,borderRadius:"50%",background:"#22c55e" }}></span></div>
               <button onClick={()=>{navigator.clipboard.writeText(embedCode).then(()=>{setEmbedCopied(true);setTimeout(()=>setEmbedCopied(false),2000);});}} style={{ display:"flex",alignItems:"center",gap:6,padding:"5px 12px",borderRadius:6,background:"#1e293b",border:"1px solid #334155",color:embedCopied?"#4ade80":"#94a3b8",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit" }}><Icons.Copy /> {embedCopied?"Copied!":"Copy"}</button>
             </div>
-            <pre style={{ color:"#e2e8f0",fontSize:13,lineHeight:1.7,fontFamily:"'Fira Code','SF Mono',monospace",overflow:"auto" }}><code>{embedCode}</code></pre>
+            <pre style={{ color:"#e2e8f0",fontSize:13,lineHeight:1.7,fontFamily:"'Fira Code','SF Mono',monospace",overflow:"auto",overflowX:"auto" }}><code>{embedCode}</code></pre>
           </div>
         </div>
       </section>
 
       {/* ABOUT */}
-      <section id="about" style={{ padding:"60px 40px",background:"#f8fafc" }}>
+      <section id="about" style={{ padding:"60px 24px",background:"#f8fafc" }}>
         <div style={{ maxWidth:1000,margin:"0 auto" }}>
           <div style={{ textAlign:"center",marginBottom:44 }}>
             <div style={{ fontSize:14,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>About Us</div>
-            <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5,marginBottom:16 }}>Built for small businesses,{"\n"}by people who get it</h2>
+            <h2 className="section-title" style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5,marginBottom:16 }}>Built for small businesses,{"\n"}by people who get it</h2>
             <p style={{ fontSize:16,color:"#64748b",maxWidth:600,margin:"0 auto",lineHeight:1.7 }}>Latchly was founded to solve one problem: small businesses losing customers after hours. We combine cutting-edge AI with deep industry knowledge to help you capture every opportunity.</p>
           </div>
           <div className="about-grid" style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:24 }}>
@@ -583,11 +583,11 @@ export default function LatchlyLanding() {
       </section>
 
       {/* BUILT FOR YOUR BUSINESS */}
-      <section style={{ padding:"60px 40px",background:"#fff" }}>
+      <section style={{ padding:"60px 24px",background:"#fff" }}>
         <div style={{ maxWidth:1200,margin:"0 auto" }}>
           <div style={{ textAlign:"center",marginBottom:44 }}>
             <div style={{ fontSize:14,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>Built for Your Business</div>
-            <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5,marginBottom:16 }}>Industry-Specific Solutions</h2>
+            <h2 className="section-title" style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5,marginBottom:16 }}>Industry-Specific Solutions</h2>
           </div>
           <div className="business-grid" style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:24 }}>
             {[
@@ -609,11 +609,11 @@ export default function LatchlyLanding() {
       </section>
 
       {/* ROI SECTION */}
-      <section style={{ padding:"60px 40px",background:"#f8fafc" }}>
+      <section style={{ padding:"60px 24px",background:"#f8fafc" }}>
         <div style={{ maxWidth:1200,margin:"0 auto" }}>
           <div style={{ textAlign:"center",marginBottom:44 }}>
             <div style={{ fontSize:14,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>ROI Comparison</div>
-            <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5,marginBottom:16 }}>AI assistant vs. traditional staffing</h2>
+            <h2 className="section-title" style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5,marginBottom:16 }}>AI assistant vs. traditional staffing</h2>
             <p style={{ fontSize:13,color:"#94a3b8",fontStyle:"italic",marginBottom:16 }}>Estimates only; results vary by business.</p>
             <p style={{ fontSize:16,color:"#64748b",maxWidth:600,margin:"0 auto" }}>See the real numbers. Latchly doesn't just save money — it can capture revenue you're currently leaving on the table.</p>
           </div>
@@ -638,7 +638,7 @@ export default function LatchlyLanding() {
               </div>
             ))}
           </div>
-          <div style={{ background:"#f1f5f9",borderRadius:16,padding:"28px 32px",display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:20,textAlign:"center" }}>
+          <div className="roi-factual-strip" style={{ background:"#f1f5f9",borderRadius:16,padding:"28px 32px",display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:20,textAlign:"center" }}>
             {[{value:"$3.60/day",sub:"Starter plan"},{value:"2 minutes",sub:"Setup time — no coding"},{value:"14 days",sub:"Free trial — no credit card"}].map((s,i)=>(
               <div key={i}><div style={{ fontSize:22,fontWeight:800,color:"#1e293b",marginBottom:4 }}>{s.value}</div><div style={{ fontSize:13,color:"#64748b" }}>{s.sub}</div></div>
             ))}
@@ -647,7 +647,7 @@ export default function LatchlyLanding() {
       </section>
 
       {/* HUMAN HANDOFF */}
-      <section style={{ padding:"60px 40px",background:"#fff" }}>
+      <section style={{ padding:"60px 24px",background:"#fff" }}>
         <div style={{ maxWidth:800,margin:"0 auto",textAlign:"center" }}>
           <div style={{ fontSize:48,marginBottom:24 }}>🤝</div>
           <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:36,fontWeight:900,letterSpacing:-1,marginBottom:16 }}>Human Handoff</h2>
@@ -656,11 +656,11 @@ export default function LatchlyLanding() {
       </section>
 
       {/* PRICING */}
-      <section id="pricing" style={{ padding:"60px 40px" }}>
+      <section id="pricing" style={{ padding:"60px 24px" }}>
         <div style={{ maxWidth:900,margin:"0 auto" }}>
           <div style={{ textAlign:"center",marginBottom:44 }}>
             <div style={{ fontSize:14,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>Pricing</div>
-            <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5,marginBottom:16 }}>Simple, transparent pricing</h2>
+            <h2 className="section-title" style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5,marginBottom:16 }}>Simple, transparent pricing</h2>
             <p style={{ fontSize:16,color:"#64748b" }}>Start with a 14-day free trial. No credit card required.</p>
           </div>
           <div className="pricing-grid" style={{ display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:24,alignItems:"start",marginBottom:20 }}>
@@ -683,11 +683,11 @@ export default function LatchlyLanding() {
 
 
       {/* FAQ */}
-      <section id="faq" style={{ padding:"60px 40px",background:"#f8fafc" }}>
+      <section id="faq" style={{ padding:"60px 24px",background:"#f8fafc" }}>
         <div style={{ maxWidth:780,margin:"0 auto" }}>
           <div style={{ textAlign:"center",marginBottom:44 }}>
             <div style={{ fontSize:14,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>FAQ</div>
-            <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5 }}>Common questions</h2>
+            <h2 className="section-title" style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5 }}>Common questions</h2>
           </div>
           <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
             {faqs.map((faq,i)=>(
@@ -706,11 +706,11 @@ export default function LatchlyLanding() {
       </section>
 
       {/* CONTACT */}
-      <section id="contact" style={{ padding:"60px 40px" }}>
+      <section id="contact" style={{ padding:"60px 24px" }}>
         <div style={{ maxWidth:1000,margin:"0 auto" }}>
           <div style={{ textAlign:"center",marginBottom:44 }}>
             <div style={{ fontSize:14,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>Contact</div>
-            <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5,marginBottom:16 }}>Get in touch</h2>
+            <h2 className="section-title" style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5,marginBottom:16 }}>Get in touch</h2>
             <p style={{ fontSize:16,color:"#64748b",maxWidth:520,margin:"0 auto" }}>Have questions? We&#39;d love to hear from you. Send us a message and we&#39;ll respond as soon as possible.</p>
           </div>
           <div className="contact-grid" style={{ display:"grid",gridTemplateColumns:"1fr 1.2fr",gap:40,alignItems:"start" }}>
@@ -746,7 +746,7 @@ export default function LatchlyLanding() {
           <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:36,fontWeight:900,color:"#fff",marginBottom:12,position:"relative" }}>Start capturing leads tonight</h2>
           <p style={{ fontSize:16,color:"rgba(255,255,255,0.8)",marginBottom:32,position:"relative" }}>Join local businesses that never miss an after-hours customer.</p>
           {!emailSubmitted?(
-            <div style={{ display:"flex",gap:10,maxWidth:440,margin:"0 auto",position:"relative" }}>
+            <div className="cta-email-box" style={{ display:"flex",gap:10,maxWidth:440,margin:"0 auto",position:"relative" }}>
               <input type="email" placeholder="Enter your email" value={emailInput} onChange={e=>setEmailInput(e.target.value)} style={{ flex:1,padding:"14px 18px",borderRadius:12,border:"2px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.15)",color:"#fff",fontSize:14,fontFamily:"inherit" }} />
               <button onClick={async()=>{if(!emailInput)return;setEmailLoading(true);try{await fetch('/api/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:emailInput})});setEmailSubmitted(true);}catch(err){console.error('Subscribe failed:',err);setEmailSubmitted(true);}finally{setEmailLoading(false);}}} disabled={emailLoading} style={{ padding:"14px 28px",borderRadius:12,background:"#fff",color:"#0e7c6b",border:"none",fontWeight:800,fontSize:14,cursor:emailLoading?"default":"pointer",fontFamily:"inherit",whiteSpace:"nowrap",opacity:emailLoading?0.7:1 }}>{emailLoading?'Sending...':'Get Started Free'}</button>
             </div>
@@ -755,7 +755,7 @@ export default function LatchlyLanding() {
       </section>
 
       {/* FOOTER */}
-      <footer style={{ background:"#0f172a",padding:"60px 40px 0",color:"#cbd5e1" }}>
+      <footer style={{ background:"#0f172a",padding:"60px 24px 0",color:"#cbd5e1" }}>
         <div style={{ maxWidth:1200,margin:"0 auto" }}>
           <div className="footer-grid" style={{ display:"grid",gridTemplateColumns:"1.5fr 1fr 1fr 1.2fr",gap:48,marginBottom:48 }}>
             <div>
@@ -797,7 +797,7 @@ export default function LatchlyLanding() {
       </footer>
 
       {/* STICKY CTA BAR */}
-      {showStickyCta&&!chatOpen&&<div style={{ position:"fixed",bottom:0,left:0,right:0,zIndex:9998,background:"rgba(15,23,42,0.95)",backdropFilter:"blur(12px)",padding:"12px 24px",display:"flex",justifyContent:"center",alignItems:"center",gap:16,borderTop:"1px solid rgba(255,255,255,0.1)" }}>
+      {showStickyCta&&!chatOpen&&<div className="sticky-cta-bar" style={{ position:"fixed",bottom:0,left:0,right:0,zIndex:9998,background:"rgba(15,23,42,0.95)",backdropFilter:"blur(12px)",padding:"12px 24px",display:"flex",justifyContent:"center",alignItems:"center",gap:16,borderTop:"1px solid rgba(255,255,255,0.1)" }}>
         <span style={{ color:"#fff",fontSize:14,fontWeight:600 }}>Turn your website into a lead-capturing machine</span>
         <button onClick={()=>setChatOpen(true)} style={{ padding:"10px 24px",borderRadius:10,background:"linear-gradient(135deg,#0e7c6b,#0a6b5c)",color:"#fff",border:"none",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit" }}>Try Demo</button>
       </div>}
