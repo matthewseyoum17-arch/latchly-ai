@@ -166,7 +166,7 @@ function getAIResponse(message, industryKey, conversationHistory = []) {
   return `I appreciate your questions! I've shared what I can on this topic. The fastest way to get exactly what you need:\n\n📞 Call ${name}: ${phone}\n📋 Or leave your name and phone number — we'll reach out within minutes!\n\nWhat would you prefer?`;
 }
 
-function ChatWidget({ isOpen, onClose, industryKey = "dental", brandColor = "#0e7c6b" }) {
+function ChatWidget({ isOpen, onClose, industryKey = "dental", brandColor = "#0e7c6b", onAppointmentToast }) {
   const industry = INDUSTRIES[industryKey] || INDUSTRIES.dental;
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -175,11 +175,13 @@ function ChatWidget({ isOpen, onClose, industryKey = "dental", brandColor = "#0e
   const [rating, setRating] = useState(0);
   const [leadForm, setLeadForm] = useState({ name: "", phone: "", email: "", contactMethod: "phone", consent: false });
   const [leadSubmitting, setLeadSubmitting] = useState(false);
+  const [bookingStep, setBookingStep] = useState(null);
+  const [selectedTime, setSelectedTime] = useState(null);
   const messagesEndRef = useRef(null);
   const prevRef = useRef(industryKey);
 
   useEffect(() => {
-    if (prevRef.current !== industryKey) { setMessages([]); setChatPhase("chat"); setRating(0); prevRef.current = industryKey; }
+    if (prevRef.current !== industryKey) { setMessages([]); setChatPhase("chat"); setRating(0); setBookingStep(null); setSelectedTime(null); prevRef.current = industryKey; }
   }, [industryKey]);
 
   useEffect(() => {
@@ -298,15 +300,44 @@ function ChatWidget({ isOpen, onClose, industryKey = "dental", brandColor = "#0e
             <input type="checkbox" checked={leadForm.consent} onChange={e=>setLeadForm(p=>({...p,consent:e.target.checked}))} style={{ marginTop:2,accentColor:brandColor }} />
             I consent to being contacted. Standard message rates may apply.
           </label>
-          <button onClick={async()=>{if(!leadForm.name||!leadForm.phone||!leadForm.consent)return;setLeadSubmitting(true);try{const transcript=messages.map(m=>`${m.role==='user'?'Customer':'Bot'}: ${m.text}`).join('\n');await fetch('/api/leads',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:leadForm.name,phone:leadForm.phone,email:leadForm.email,contactMethod:leadForm.contactMethod,rating,industry:industryKey,transcript})});} catch(err){console.error('Lead save failed:',err);} finally{setLeadSubmitting(false);setChatPhase('complete');}}} disabled={!leadForm.name||!leadForm.phone||!leadForm.consent||leadSubmitting} style={{ width:"100%",padding:"12px",borderRadius:12,background:(leadForm.name&&leadForm.phone&&leadForm.consent&&!leadSubmitting)?brandColor:"#cbd5e1",color:"#fff",border:"none",fontWeight:700,fontSize:14,cursor:(leadForm.name&&leadForm.phone&&leadForm.consent&&!leadSubmitting)?"pointer":"default",fontFamily:"inherit" }}>{leadSubmitting?'Submitting...':'Submit'}</button>
+          <button onClick={async()=>{if(!leadForm.name||!leadForm.phone||!leadForm.consent)return;setLeadSubmitting(true);try{const transcript=messages.map(m=>`${m.role==='user'?'Customer':'Bot'}: ${m.text}`).join('\n');await fetch('/api/leads',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:leadForm.name,phone:leadForm.phone,email:leadForm.email,contactMethod:leadForm.contactMethod,rating,industry:industryKey,transcript})});} catch(err){console.error('Lead save failed:',err);} finally{setLeadSubmitting(false);setBookingStep('offer');setChatPhase('booking');}}} disabled={!leadForm.name||!leadForm.phone||!leadForm.consent||leadSubmitting} style={{ width:"100%",padding:"12px",borderRadius:12,background:(leadForm.name&&leadForm.phone&&leadForm.consent&&!leadSubmitting)?brandColor:"#cbd5e1",color:"#fff",border:"none",fontWeight:700,fontSize:14,cursor:(leadForm.name&&leadForm.phone&&leadForm.consent&&!leadSubmitting)?"pointer":"default",fontFamily:"inherit" }}>{leadSubmitting?'Submitting...':'Send my info →'}</button>
+        </div>
+      )}
+
+      {chatPhase === "booking" && (
+        <div style={{ flex:1,overflowY:"auto",padding:24,background:"#f8f9fb",display:"flex",flexDirection:"column",gap:12 }}>
+          {bookingStep === "offer" && (<>
+            <div style={{ maxWidth:"82%",padding:"10px 14px",borderRadius:16,background:"#fff",color:"#1e293b",fontSize:13.5,lineHeight:1.5,whiteSpace:"pre-line",boxShadow:"0 1px 3px rgba(0,0,0,0.06)",borderBottomLeftRadius:4 }}>
+              {`Thanks ${leadForm.name}! I've sent your info to the team. You'll get a call within the hour. Want to pick a time that works best?`}
+            </div>
+            <div style={{ display:"flex",gap:8,marginTop:4 }}>
+              {["Tomorrow 10:00 AM","Tomorrow 2:00 PM"].map(t=>(
+                <button key={t} onClick={()=>{setSelectedTime(t);setBookingStep("confirmed");if(onAppointmentToast)onAppointmentToast(t);}} style={{ padding:"6px 12px",borderRadius:20,border:`1px solid ${brandColor}33`,background:`${brandColor}08`,color:brandColor,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit" }}>{t}</button>
+              ))}
+            </div>
+          </>)}
+          {bookingStep === "confirmed" && (<>
+            <div style={{ maxWidth:"82%",padding:"10px 14px",borderRadius:16,background:"#fff",color:"#1e293b",fontSize:13.5,lineHeight:1.5,whiteSpace:"pre-line",boxShadow:"0 1px 3px rgba(0,0,0,0.06)",borderBottomLeftRadius:4 }}>
+              {`Thanks ${leadForm.name}! I've sent your info to the team. You'll get a call within the hour. Want to pick a time that works best?`}
+            </div>
+            <div style={{ display:"flex",justifyContent:"flex-end",marginBottom:4 }}>
+              <div style={{ padding:"10px 14px",borderRadius:16,background:brandColor,color:"#fff",fontSize:13.5,lineHeight:1.5,borderBottomRightRadius:4 }}>{selectedTime}</div>
+            </div>
+            <div style={{ maxWidth:"82%",padding:"10px 14px",borderRadius:16,background:"#fff",color:"#1e293b",fontSize:13.5,lineHeight:1.5,whiteSpace:"pre-line",boxShadow:"0 1px 3px rgba(0,0,0,0.06)",borderBottomLeftRadius:4 }}>
+              {`Got it — I've requested a ${industry.label.replace(/s$/,'')} appointment for ${selectedTime}. The team will confirm by phone shortly. Anything else I can help with?`}
+            </div>
+            <div style={{ textAlign:"center",marginTop:12 }}>
+              <button onClick={()=>setChatPhase("complete")} style={{ padding:"10px 24px",borderRadius:12,background:brandColor,color:"#fff",border:"none",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit" }}>Close chat</button>
+            </div>
+          </>)}
         </div>
       )}
 
       {chatPhase === "complete" && (
         <div style={{ flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:32,textAlign:"center",background:"#f8f9fb" }}>
           <div style={{ width:64,height:64,borderRadius:"50%",background:`${brandColor}15`,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:16,color:brandColor }}><Icons.Check /></div>
-          <h3 style={{ fontSize:18,fontWeight:700,color:"#1e293b",margin:"0 0 8px" }}>Thank you! 🎉</h3>
-          <p style={{ fontSize:13,color:"#64748b",margin:"0 0 24px" }}>Our team will reach out shortly.</p>
+          <h3 style={{ fontSize:18,fontWeight:700,color:"#1e293b",margin:"0 0 8px" }}>You're all set! 🎉</h3>
+          <p style={{ fontSize:13,color:"#64748b",margin:"0 0 24px" }}>The team will reach out shortly.</p>
           <button onClick={onClose} style={{ padding:"12px 32px",borderRadius:12,background:brandColor,color:"#fff",border:"none",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"inherit" }}>Close</button>
         </div>
       )}
@@ -331,6 +362,7 @@ export default function LatchlyLanding() {
   const [contactSubmitting, setContactSubmitting] = useState(false);
   const [contactSubmitted, setContactSubmitted] = useState(false);
   const [countersVisible, setCountersVisible] = useState(false);
+  const [appointmentToast, setAppointmentToast] = useState(null);
   const roiStatsRef = useRef(null);
   const industryKeys = Object.keys(INDUSTRIES);
 
@@ -355,8 +387,8 @@ export default function LatchlyLanding() {
     { icon: <Icons.Globe />, title: "2-Minute Installation", desc: "Copy one line of code. Paste it on your site. That's it. No developers, no redesign, no headaches. Works on any website platform." },
   ];
   const plans = [
-    { id:"starter",name:"Starter",price:"$119",period:"/month",desc:"Perfect for single-location businesses getting started with AI",features:["AI chat widget for your website","Up to 100 leads/month","Basic customization","Email notifications","Mobile-friendly chat"],cta:"Start Free Trial",popular:false },
-    { id:"growth",name:"Growth",price:"$229",period:"/month",desc:"For businesses ready to maximize every lead and scale",features:["Everything in Starter, plus:","Unlimited leads","Advanced AI training","Custom branding","SMS notifications (enabled during setup)","CRM integrations","Priority support"],cta:"Start Free Trial",popular:true },
+    { id:"starter",name:"Starter",price:"$110",period:"/month",desc:"Everything you need to capture leads 24/7",features:["1 AI chat assistant","500 chats/month","Lead capture with transcripts","Email lead notifications","Industry-specific presets","Owner dashboard","Email support"],cta:"Start Free Trial",popular:false },
+    { id:"growth",name:"Growth",price:"$250",period:"/month",desc:"Turn your website into a booking engine",features:["1 AI chat assistant","Unlimited chats","Lead capture with transcripts","Email + SMS lead alerts","Appointment request flow","Lead-to-booked pipeline tracking","Custom branding (remove Latchly badge)","Priority support","Multi-location support"],cta:"Start Free Trial",popular:true },
   ];
   const faqs = [
     { q:"How does the AI know about my specific business?", a:"During setup, you provide your business details — services, pricing, hours, FAQs, and service areas. The AI uses this custom knowledge base to answer questions accurately. We also have pre-built templates for 20+ industries." },
@@ -417,17 +449,17 @@ export default function LatchlyLanding() {
         <div className="hero-grid" style={{ maxWidth:1200,margin:"0 auto",display:"grid",gridTemplateColumns:"1fr 1fr",gap:56,alignItems:"center" }}>
           <div>
             <div style={{ display:"inline-flex",alignItems:"center",gap:6,padding:"6px 14px",borderRadius:50,background:"#0e7c6b10",border:"1px solid #0e7c6b20",fontSize:12.5,fontWeight:700,color:"#0e7c6b",marginBottom:12 }}>
-              <span style={{ width:6,height:6,borderRadius:"50%",background:"#4ade80",animation:"pulse 2s infinite" }}></span>Your website never sleeps.
+              <span style={{ width:6,height:6,borderRadius:"50%",background:"#4ade80",animation:"pulse 2s infinite" }}></span>Your site never sleeps.
             </div>
             <h1 style={{ fontFamily:"'Playfair Display',serif",fontSize:56,fontWeight:900,lineHeight:1.08,letterSpacing:-2,marginBottom:14,color:"#0f172a" }}>
-              Capture Leads While You Sleep.<br/><span style={{ background:"linear-gradient(135deg,#0e7c6b,#0ea5e9)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent" }}>The 24/7 Sales Agent Built</span><br/>for Small Businesses.
+              Your website's best employee<br/><span style={{ background:"linear-gradient(135deg,#0e7c6b,#0ea5e9)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent" }}>never sleeps.</span>
             </h1>
-            <p style={{ fontSize:18,lineHeight:1.65,color:"#64748b",marginBottom:24,maxWidth:480 }}>Latchly turns your website into a 24/7 sales team. It learns your business in seconds to answer questions and book appointments while you're offline.</p>
+            <p style={{ fontSize:18,lineHeight:1.65,color:"#64748b",marginBottom:24,maxWidth:480 }}>A 24/7 AI assistant that answers questions, captures leads, and sends real customers to your phone — even when you're closed.</p>
             <div style={{ display:"flex",gap:14,alignItems:"center",marginBottom:20 }}>
-              <button onClick={()=>setChatOpen(true)} style={{ padding:"16px 32px",borderRadius:14,background:"linear-gradient(135deg,#0e7c6b,#0a6b5c)",color:"#fff",border:"none",fontWeight:800,fontSize:15,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:8,boxShadow:"0 8px 30px #0e7c6b40" }}>Start Your Free Trial <Icons.ArrowRight /></button>
+              <button onClick={()=>setChatOpen(true)} style={{ padding:"16px 32px",borderRadius:14,background:"linear-gradient(135deg,#0e7c6b,#0a6b5c)",color:"#fff",border:"none",fontWeight:800,fontSize:15,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:8,boxShadow:"0 8px 30px #0e7c6b40" }}>See it in action → </button>
               <a href="#pricing" onClick={e=>{e.preventDefault();document.getElementById("pricing")?.scrollIntoView({behavior:"smooth",block:"start"});}} style={{ padding:"16px 32px",borderRadius:14,border:"2px solid #e2e8f0",color:"#475569",textDecoration:"none",fontWeight:700,fontSize:15,fontFamily:"'DM Sans',sans-serif" }}>View Pricing</a>
             </div>
-            <div style={{ display:"flex",gap:24,fontSize:13,color:"#94a3b8" }}>{["No credit card required","2-min setup","Cancel anytime"].map(t=><span key={t} style={{ display:"flex",alignItems:"center",gap:5 }}><span style={{ color:"#0e7c6b" }}><Icons.Check /></span> {t}</span>)}</div>
+            <div style={{ display:"flex",gap:24,fontSize:13,color:"#94a3b8" }}>{["No credit card required","2-minute setup","Cancel anytime"].map(t=><span key={t} style={{ display:"flex",alignItems:"center",gap:5 }}><span style={{ color:"#0e7c6b" }}><Icons.Check /></span> {t}</span>)}</div>
           </div>
           <div style={{ position:"relative" }}>
             <div onClick={()=>setChatOpen(true)} style={{ cursor:"pointer",background:"#fff",borderRadius:24,overflow:"hidden",boxShadow:"0 40px 80px rgba(0,0,0,0.08)",border:"1px solid rgba(0,0,0,0.06)",animation:"float 6s ease-in-out infinite",minHeight:380 }}>
@@ -456,6 +488,9 @@ export default function LatchlyLanding() {
           </div>
         </div>
       </section>
+
+      {/* TRUST BAR */}
+      <div style={{ textAlign:"center",padding:"16px 24px 0",fontSize:14,color:"#888" }}>Built in Gainesville, FL · No contracts, ever · Cancel with one email</div>
 
       {/* INDUSTRY SELECTOR */}
       <section style={{ padding:"24px 0" }}>
@@ -608,8 +643,8 @@ export default function LatchlyLanding() {
               </div>
             ))}
           </div>
-          <div ref={roiStatsRef} className="roi-stats-grid" style={{ background:"linear-gradient(135deg,#0f172a,#1e293b)",borderRadius:20,padding:"36px 40px",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:20,textAlign:"center" }}>
-            {[{label:"Avg. cost per lead",value:"$0.50–$2",sub:"vs. $15–$50 traditional"},{label:"Hours covered",value:"168/week",sub:"vs. 40–50 hrs staffed"},{label:"Avg. response time",value:"< 2 sec",sub:"vs. 4–24 hrs by email"},{label:"Lead capture",value:"After-hours visitors",sub:"often missed without AI"}].map((s,i)=>(
+          <div ref={roiStatsRef} className="roi-stats-grid" style={{ background:"linear-gradient(135deg,#0f172a,#1e293b)",borderRadius:20,padding:"36px 40px",display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:20,textAlign:"center" }}>
+            {[{label:"Starter Plan",value:"$3.60/day",sub:"Less than a coffee"},{label:"Setup Time",value:"2 minutes",sub:"No coding required"},{label:"Free Trial",value:"14 days",sub:"No credit card"}].map((s,i)=>(
               <div key={i} style={{ opacity:countersVisible?1:0,transform:countersVisible?"translateY(0)":"translateY(8px)",transition:`all 0.6s ease ${i*0.15}s` }}><div style={{ fontSize:11,color:"#64748b",fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:6 }}>{s.label}</div><div style={{ fontSize:24,fontWeight:900,color:"#fff" }}>{s.value}</div><div style={{ fontSize:11,color:"#4ade80",fontWeight:600,marginTop:4 }}>{s.sub}</div></div>
             ))}
           </div>
@@ -737,12 +772,12 @@ export default function LatchlyLanding() {
       <section style={{ padding:"32px 24px" }}>
         <div style={{ maxWidth:800,margin:"0 auto",textAlign:"center",background:"linear-gradient(135deg,#0e7c6b,#0ea5e9)",borderRadius:28,padding:"48px 40px",position:"relative",overflow:"hidden" }}>
           <div style={{ position:"absolute",top:-50,right:-50,width:200,height:200,borderRadius:"50%",background:"rgba(255,255,255,0.05)" }} />
-          <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:36,fontWeight:900,color:"#fff",marginBottom:12,position:"relative" }}>Ready to never miss a lead again?</h2>
-          <p style={{ fontSize:16,color:"rgba(255,255,255,0.8)",marginBottom:32,position:"relative" }}>Start your 14-day free trial. Set up in 2 minutes. No credit card required.</p>
+          <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:36,fontWeight:900,color:"#fff",marginBottom:12,position:"relative" }}>Start capturing leads tonight</h2>
+          <p style={{ fontSize:16,color:"rgba(255,255,255,0.8)",marginBottom:32,position:"relative" }}>Join local businesses that never miss an after-hours customer.</p>
           {!emailSubmitted?(
             <div style={{ display:"flex",gap:10,maxWidth:440,margin:"0 auto",position:"relative" }}>
               <input type="email" placeholder="Enter your email" value={emailInput} onChange={e=>setEmailInput(e.target.value)} style={{ flex:1,padding:"14px 18px",borderRadius:12,border:"2px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.15)",color:"#fff",fontSize:14,fontFamily:"inherit" }} />
-              <button onClick={async()=>{if(!emailInput)return;setEmailLoading(true);try{await fetch('/api/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:emailInput})});setEmailSubmitted(true);}catch(err){console.error('Subscribe failed:',err);setEmailSubmitted(true);}finally{setEmailLoading(false);}}} disabled={emailLoading} style={{ padding:"14px 28px",borderRadius:12,background:"#fff",color:"#0e7c6b",border:"none",fontWeight:800,fontSize:14,cursor:emailLoading?"default":"pointer",fontFamily:"inherit",whiteSpace:"nowrap",opacity:emailLoading?0.7:1 }}>{emailLoading?'Sending...':'Get Started'}</button>
+              <button onClick={async()=>{if(!emailInput)return;setEmailLoading(true);try{await fetch('/api/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:emailInput})});setEmailSubmitted(true);}catch(err){console.error('Subscribe failed:',err);setEmailSubmitted(true);}finally{setEmailLoading(false);}}} disabled={emailLoading} style={{ padding:"14px 28px",borderRadius:12,background:"#fff",color:"#0e7c6b",border:"none",fontWeight:800,fontSize:14,cursor:emailLoading?"default":"pointer",fontFamily:"inherit",whiteSpace:"nowrap",opacity:emailLoading?0.7:1 }}>{emailLoading?'Sending...':'Get Started Free'}</button>
             </div>
           ):<div style={{ color:"#fff",fontSize:16,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",gap:8,position:"relative" }}><Icons.Check /> Check your inbox! We've sent you a setup link.</div>}
         </div>
@@ -799,7 +834,15 @@ export default function LatchlyLanding() {
       {/* FAB */}
       {!chatOpen&&<button onClick={()=>setChatOpen(true)} style={{ position:"fixed",bottom:showStickyCta?60:24,right:24,width:60,height:60,borderRadius:18,background:"linear-gradient(135deg,#0e7c6b,#0a6b5c)",color:"#fff",border:"none",cursor:"pointer",zIndex:9999,boxShadow:"0 8px 30px #0e7c6b50",display:"flex",alignItems:"center",justifyContent:"center",animation:"pulse 3s infinite",transition:"bottom 0.3s" }}><Icons.MessageSquare /><span style={{ position:"absolute",top:-4,right:-4,width:18,height:18,borderRadius:"50%",background:"#ef4444",fontSize:10,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center" }}>1</span></button>}
 
-      <ChatWidget isOpen={chatOpen} onClose={()=>setChatOpen(false)} industryKey={selectedIndustry} />
+      <ChatWidget isOpen={chatOpen} onClose={()=>setChatOpen(false)} industryKey={selectedIndustry} onAppointmentToast={(time)=>{setAppointmentToast(time);setTimeout(()=>setAppointmentToast(null),4000);}} />
+
+      {/* APPOINTMENT TOAST */}
+      {appointmentToast && (
+        <div style={{ position:"fixed",top:24,right:24,zIndex:10001,background:"#fff",borderRadius:14,padding:"12px 20px",boxShadow:"0 8px 30px rgba(0,0,0,0.15)",display:"flex",alignItems:"center",gap:10,animation:"slideUp 0.4s cubic-bezier(0.34,1.56,0.64,1)",border:"1px solid #10b98130" }}>
+          <div style={{ width:36,height:36,borderRadius:8,background:"#d1fae5",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18 }}>📅</div>
+          <div><div style={{ fontSize:13,fontWeight:700,color:"#1e293b" }}>Appointment requested!</div><div style={{ fontSize:12,color:"#64748b" }}>{appointmentToast}</div></div>
+        </div>
+      )}
     </div>
   );
 }
