@@ -361,9 +361,7 @@ export default function LatchlyLanding() {
   const [contactForm, setContactForm] = useState({ name:"", email:"", business:"", message:"" });
   const [contactSubmitting, setContactSubmitting] = useState(false);
   const [contactSubmitted, setContactSubmitted] = useState(false);
-  const [countersVisible, setCountersVisible] = useState(false);
   const [appointmentToast, setAppointmentToast] = useState(null);
-  const roiStatsRef = useRef(null);
   const industryKeys = Object.keys(INDUSTRIES);
 
   useEffect(() => {
@@ -372,11 +370,6 @@ export default function LatchlyLanding() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  useEffect(() => {
-    const obs = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) setCountersVisible(true); }, { threshold: 0.3 });
-    if (roiStatsRef.current) obs.observe(roiStatsRef.current);
-    return () => obs.disconnect();
-  }, []);
 
   const features = [
     { icon: <Icons.MessageSquare />, title: "24/7 AI Chat Assistant", desc: "Never miss a customer. Your AI answers questions, qualifies leads, and books appointments around the clock — even when you're closed." },
@@ -578,7 +571,7 @@ export default function LatchlyLanding() {
             <p style={{ fontSize:16,color:"#64748b",maxWidth:600,margin:"0 auto",lineHeight:1.7 }}>Latchly was founded to solve one problem: small businesses losing customers after hours. We combine cutting-edge AI with deep industry knowledge to help you capture every opportunity.</p>
           </div>
           <div className="about-grid" style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:24 }}>
-            {[{icon:"🎯",title:"Mission-Driven",desc:"We exist to level the playing field — giving small businesses enterprise-grade AI tools at a fraction of the cost."},{icon:"🔬",title:"Industry Expertise",desc:"Our team has built AI solutions for 20+ industries. Every template is crafted from real business conversations."},{icon:"🤝",title:"Customer-First",desc:"We measure success by your success. Dedicated support, continuous improvements, and transparent pricing — always."}].map((v,i)=>(
+            {[{icon:"🎯",title:"Built by a Founder Who Gets It",desc:"Latchly was built by a UF student who watched local businesses lose customers every night. We exist to fix that."},{icon:"🔬",title:"Industry-Specific From Day One",desc:"Pre-built templates for dental, HVAC, med spa, plumbing, legal, and more — no training required."},{icon:"🤝",title:"Customer-First",desc:"Dedicated support, continuous improvements, and transparent pricing — always."}].map((v,i)=>(
               <div key={i} className="hover-lift" style={{ background:"#fff",borderRadius:18,padding:32,border:"1px solid #f1f5f9",textAlign:"center" }}>
                 <div style={{ fontSize:32,marginBottom:16 }}>{v.icon}</div>
                 <h3 style={{ fontSize:17,fontWeight:800,marginBottom:10 }}>{v.title}</h3>
@@ -596,12 +589,14 @@ export default function LatchlyLanding() {
             <div style={{ fontSize:14,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>Built for Your Business</div>
             <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5,marginBottom:16 }}>Industry-Specific Solutions</h2>
           </div>
-          <div className="business-grid" style={{ display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:24 }}>
+          <div className="business-grid" style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:24 }}>
             {[
-              { icon:"🏠",title:"Real Estate",desc:"Automate property inquiries and tour bookings." },
-              { icon:"⚖️",title:"Law Firms",desc:"Qualify leads and intake client info 24/7." },
-              { icon:"🛒",title:"E-commerce",desc:"Handle FAQs and track orders instantly." },
-              { icon:"🔧",title:"Local Services",desc:"Book appointments and provide instant quotes." }
+              { icon:"🦷",title:"Dental Offices",desc:"Answer patient questions and capture appointment requests 24/7." },
+              { icon:"💆",title:"Med Spas",desc:"Book consultations and share treatment pricing after hours." },
+              { icon:"❄️",title:"HVAC Companies",desc:"Capture emergency repair leads around the clock." },
+              { icon:"🔧",title:"Plumbing Services",desc:"Turn after-hours visitors into booked service calls." },
+              { icon:"⚖️",title:"Law Firms",desc:"Qualify leads and intake client info while you sleep." },
+              { icon:"🏠",title:"Real Estate",desc:"Automate property inquiries and schedule showings." }
             ].map((item,i)=>(
               <div key={i} className="hover-lift" style={{ background:"#f8fafc",borderRadius:18,padding:32,border:"1px solid #f1f5f9",textAlign:"center" }}>
                 <div style={{ fontSize:40,marginBottom:16 }}>{item.icon}</div>
@@ -643,11 +638,6 @@ export default function LatchlyLanding() {
               </div>
             ))}
           </div>
-          <div ref={roiStatsRef} className="roi-stats-grid" style={{ background:"linear-gradient(135deg,#0f172a,#1e293b)",borderRadius:20,padding:"36px 40px",display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:20,textAlign:"center" }}>
-            {[{label:"Starter Plan",value:"$3.60/day",sub:"Less than a coffee"},{label:"Setup Time",value:"2 minutes",sub:"No coding required"},{label:"Free Trial",value:"14 days",sub:"No credit card"}].map((s,i)=>(
-              <div key={i} style={{ opacity:countersVisible?1:0,transform:countersVisible?"translateY(0)":"translateY(8px)",transition:`all 0.6s ease ${i*0.15}s` }}><div style={{ fontSize:11,color:"#64748b",fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:6 }}>{s.label}</div><div style={{ fontSize:24,fontWeight:900,color:"#fff" }}>{s.value}</div><div style={{ fontSize:11,color:"#4ade80",fontWeight:600,marginTop:4 }}>{s.sub}</div></div>
-            ))}
-          </div>
         </div>
       </section>
 
@@ -686,30 +676,6 @@ export default function LatchlyLanding() {
         </div>
       </section>
 
-      {/* 3 MINUTES TO LIVE */}
-      <section style={{ padding:"60px 40px",background:"#f8fafc" }}>
-        <div style={{ maxWidth:1000,margin:"0 auto" }}>
-          <div style={{ textAlign:"center",marginBottom:44 }}>
-            <div style={{ fontSize:14,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>Quick Setup</div>
-            <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5,marginBottom:16 }}>3 Minutes to Live</h2>
-            <p style={{ fontSize:16,color:"#64748b",maxWidth:600,margin:"0 auto" }}>Get your AI sales agent up and running in less time than making coffee</p>
-          </div>
-          <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:32 }}>
-            {[
-              { step:"1",title:"Connect",desc:"Paste your URL",icon:"🔗" },
-              { step:"2",title:"Train",desc:"AI learns site data",icon:"🧠" },
-              { step:"3",title:"Deploy",desc:"Copy-paste code",icon:"🚀" }
-            ].map((item,i)=>(
-              <div key={i} style={{ textAlign:"center" }}>
-                <div style={{ width:60,height:60,borderRadius:"50%",background:"linear-gradient(135deg,#0e7c6b,#0ea5e9)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px",color:"#fff",fontSize:24,fontWeight:800 }}>{item.step}</div>
-                <div style={{ fontSize:32,marginBottom:12 }}>{item.icon}</div>
-                <h3 style={{ fontSize:20,fontWeight:800,marginBottom:8 }}>{item.title}</h3>
-                <p style={{ fontSize:14,color:"#64748b" }}>{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* FAQ */}
       <section id="faq" style={{ padding:"60px 40px",background:"#f8fafc" }}>
