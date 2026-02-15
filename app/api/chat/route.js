@@ -43,7 +43,7 @@ Rules:
     }));
 
     const response = await anthropic.messages.create({
-      model: "claude-haiku-4-5-20251001",
+      model: "claude-3-haiku-20240307",
       max_tokens: 200,
       temperature: 0.7,
       system: systemPrompt,
