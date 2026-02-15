@@ -43,7 +43,7 @@ Rules:
     }));
 
     const response = await anthropic.messages.create({
-      model: "claude-3-5-haiku-20241022",
+      model: "claude-haiku-4-5-20251001",
       max_tokens: 200,
       temperature: 0.7,
       system: systemPrompt,
@@ -55,6 +55,12 @@ Rules:
     return Response.json({ text });
   } catch (error) {
     console.error("Anthropic API error:", error);
+    console.error("Error details:", {
+      message: error.message,
+      status: error.status,
+      type: error.type,
+      error: error.error
+    });
     return Response.json(
       { error: "Failed to get response. Please try again." },
       { status: 500 }
