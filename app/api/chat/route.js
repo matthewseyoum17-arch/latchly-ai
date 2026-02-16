@@ -6,7 +6,9 @@ const anthropic = new Anthropic({
 
 export async function POST(request) {
   try {
+    console.log("POST /api/chat received");
     const { messages, businessInfo } = await request.json();
+    console.log("Parsed request body:", { messagesCount: messages?.length, businessInfoKeys: Object.keys(businessInfo || {}) });
 
     if (!messages || !businessInfo) {
       return Response.json({ error: "Missing messages or businessInfo" }, { status: 400 });
@@ -42,13 +44,20 @@ Rules:
       content: m.text,
     }));
 
-    const response = await anthropic.messages.create({
-      model: "claude-3-haiku-20240307",
-      max_tokens: 200,
-      temperature: 0.7,
-      system: systemPrompt,
-      messages: claudeMessages,
-    });
+    console.log("Calling Anthropic API with model: claude-3-haiku-20240307");
+    const response = await Promise.race([
+      anthropic.messages.create({
+        model: "claude-3-haiku-20240307",
+        max_tokens: 200,
+        temperature: 0.7,
+        system: systemPrompt,
+        messages: claudeMessages,
+      }),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("API call timeout after 15 seconds")), 15000)
+      )
+    ]);
+    console.log("Anthropic API response received");
 
     const text = response.content[0]?.text || "I'm sorry, I didn't catch that. Could you try again?";
 
