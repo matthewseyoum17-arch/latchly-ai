@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 import Navbar from "@/components/landing/Navbar";
 import HeroSection from "@/components/landing/HeroSection";
@@ -16,15 +16,37 @@ import ChatWidget from "@/components/chat/ChatWidget";
 
 export default function LatchlyLanding() {
   const [mounted, setMounted] = useState(false);
+  const scrollPosRef = useRef(0);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      history.scrollRestoration = "manual";
-      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
+    if (typeof window === "undefined") return;
+    
+    // Aggressive scroll reset
+    history.scrollRestoration = "manual";
+    scrollPosRef.current = 0;
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    
+    // Prevent any scroll events during initial load
+    const preventScroll = (e: Event) => {
+      if (window.scrollY !== 0) {
+        window.scrollTo(0, 0);
+      }
+    };
+    
+    window.addEventListener("scroll", preventScroll, { passive: true });
+    
+    // Remove the listener after a short delay
+    const timeout = setTimeout(() => {
+      window.removeEventListener("scroll", preventScroll);
       setMounted(true);
-    }
+    }, 500);
+    
+    return () => {
+      clearTimeout(timeout);
+      window.removeEventListener("scroll", preventScroll);
+    };
   }, []);
   return (
     <div className="font-sans bg-white text-slate-800 overflow-x-hidden">
