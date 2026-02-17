@@ -10,6 +10,7 @@ import TestimonialsSection from "@/components/landing/TestimonialsSection";
 import FAQSection from "@/components/landing/FAQSection";
 import FinalCTA from "@/components/landing/FinalCTA";
 import Footer from "@/components/landing/Footer";
+import ChatWidget from "@/components/chat/ChatWidget";
 
 export default function LatchlyLanding() {
   return (
@@ -24,6 +25,21 @@ export default function LatchlyLanding() {
       <FAQSection />
       <FinalCTA />
       <Footer />
+
+      {/* Global floating chat widget */}
+      <ChatWidget
+        config={{
+          brandColor: "#0e7c6b",
+          businessName: "Gainesville Family Dental",
+          businessType: "dental",
+          hours: {
+            "mon-fri": "8am-6pm",
+            sat: "9am-2pm",
+            sun: "closed",
+          },
+          nudgeDelay: 5000,
+        }}
+      />
     </div>
   );
 }
