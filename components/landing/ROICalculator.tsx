@@ -5,16 +5,16 @@ import { motion } from "framer-motion";
 import { Calculator, TrendingUp } from "lucide-react";
 
 export default function ROICalculator() {
-  const [missedCalls, setMissedCalls] = useState(5);
-  const [avgValue, setAvgValue] = useState(500);
-  const [marketingSpend, setMarketingSpend] = useState(1000);
+  const [missedCalls, setMissedCalls] = useState(3);
+  const [avgValue, setAvgValue] = useState(250);
+  const [marketingSpend, setMarketingSpend] = useState(250);
 
   const monthlyLoss = missedCalls * 4 * avgValue;
   const latchlyCost = 110;
   const roi = monthlyLoss > 0 ? Math.round(((monthlyLoss - latchlyCost) / latchlyCost) * 100) : 0;
 
   return (
-    <section id="roi" className="py-14 px-5">
+    <section id="roi" className="py-10 px-5">
       <div className="max-w-4xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

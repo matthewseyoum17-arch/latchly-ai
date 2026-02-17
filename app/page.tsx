@@ -12,7 +12,12 @@ import FinalCTA from "@/components/landing/FinalCTA";
 import Footer from "@/components/landing/Footer";
 import ChatWidget from "@/components/chat/ChatWidget";
 
+import { useEffect } from "react";
+
 export default function LatchlyLanding() {
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
   return (
     <div className="font-sans bg-white text-slate-800 overflow-x-hidden">
       <Navbar />

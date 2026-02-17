@@ -40,7 +40,7 @@ const integrations = [
 
 export default function HowItWorksSection() {
   return (
-    <section className="py-14 px-5 bg-white">
+    <section className="py-10 px-5 bg-white">
       <div className="max-w-5xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

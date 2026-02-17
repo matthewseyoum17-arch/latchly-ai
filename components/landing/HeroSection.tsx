@@ -10,7 +10,7 @@ export default function HeroSection() {
   };
 
   return (
-    <section className="relative min-h-[80vh] flex items-center pt-20 pb-16 px-5">
+    <section className="relative min-h-[80vh] flex items-center pt-16 pb-10 px-5">
       {/* Background gradient blob */}
       <div className="absolute -top-48 -right-48 w-[600px] h-[600px] rounded-full bg-brand/3 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -left-32 w-[400px] h-[400px] rounded-full bg-sky-500/3 blur-3xl pointer-events-none" />
