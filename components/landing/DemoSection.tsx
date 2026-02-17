@@ -69,19 +69,28 @@ export default function DemoSection() {
   const currentPreset = DEMO_PRESETS[selectedPreset];
 
   useEffect(() => {
+    const scrollYBefore = window.scrollY;
     setMessages([]);
     setShowQuickReplies(true);
     setTimeout(() => {
       setMessages([{ role: "bot", text: currentPreset.greeting }]);
+      if (window.scrollY !== scrollYBefore) {
+        window.scrollTo(0, scrollYBefore);
+      }
     }, 400);
   }, [selectedPreset]);
 
   useEffect(() => {
+    const scrollYBefore = window.scrollY;
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (window.scrollY !== scrollYBefore) {
+      window.scrollTo(0, scrollYBefore);
+    }
   }, [messages, isTyping]);
 
   const sendMessage = async (text: string) => {
     if (!text.trim() || isTyping) return;
+    const scrollYBefore = window.scrollY;
     const userMsg: Message = { role: "user", text: text.trim() };
     const updated = [...messages, userMsg];
     setMessages(updated);
@@ -117,6 +126,9 @@ export default function DemoSection() {
       ]);
     } finally {
       setIsTyping(false);
+      if (window.scrollY !== scrollYBefore) {
+        window.scrollTo(0, scrollYBefore);
+      }
     }
   };
 

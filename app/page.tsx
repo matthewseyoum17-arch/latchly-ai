@@ -16,7 +16,10 @@ import { useEffect } from "react";
 
 export default function LatchlyLanding() {
   useEffect(() => {
-    window.scrollTo(0, 0);
+    if (typeof window !== "undefined") {
+      history.scrollRestoration = "manual";
+      window.scrollTo(0, 0);
+    }
   }, []);
   return (
     <div className="font-sans bg-white text-slate-800 overflow-x-hidden">

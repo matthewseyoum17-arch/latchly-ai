@@ -85,14 +85,14 @@ export default function HeroSection() {
             </div>
 
             {/* Fake page content with chat widget inside */}
-            <div className="p-5 bg-slate-50 min-h-[320px] flex flex-col">
-              <div className="h-4 w-48 bg-slate-200 rounded mb-3" />
-              <div className="h-3 w-full bg-slate-100 rounded mb-2" />
-              <div className="h-3 w-3/4 bg-slate-100 rounded mb-4" />
-              <div className="h-8 w-32 bg-brand/10 rounded mb-6" />
+            <div className="p-4 bg-slate-50 min-h-[220px] flex flex-col">
+              <div className="h-3 w-40 bg-slate-200 rounded mb-2" />
+              <div className="h-2 w-full bg-slate-100 rounded mb-1" />
+              <div className="h-2 w-3/4 bg-slate-100 rounded mb-3" />
+              <div className="h-6 w-24 bg-brand/10 rounded mb-4" />
               
               {/* Chat widget preview - fully contained */}
-              <div className="mt-auto w-72 bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden self-end">
+              <div className="mt-auto w-60 bg-white rounded-lg shadow-lg border border-slate-200 overflow-hidden self-end">
                 <div className="bg-gradient-to-br from-brand to-brand-dark px-4 py-3 flex items-center gap-2 text-white">
                   <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-sm">
                     🦷

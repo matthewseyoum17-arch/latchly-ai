@@ -120,10 +120,10 @@ export default function PricingSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              className={`relative rounded-2xl overflow-hidden ${
+              className={`relative rounded-2xl ${
                 plan.popular
                   ? "bg-gradient-to-br from-brand to-brand-dark p-[3px]"
-                  : ""
+                  : "border border-slate-100"
               }`}
             >
               {plan.popular && (
@@ -135,7 +135,7 @@ export default function PricingSection() {
               )}
               <div
                 className={`bg-white rounded-2xl p-7 h-full ${
-                  plan.popular ? "" : "border border-slate-100 shadow-sm"
+                  plan.popular ? "border-0" : ""
                 }`}
               >
                 <div className="text-sm font-bold text-brand mb-1">{plan.name}</div>
