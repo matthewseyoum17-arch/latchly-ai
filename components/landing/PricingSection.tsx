@@ -84,7 +84,7 @@ export default function PricingSection() {
         </motion.div>
 
         {/* Annual toggle */}
-        <div className="flex items-center justify-center gap-3 mb-12">
+        <div className="flex items-center justify-center gap-4 mb-12">
           <span
             className={`text-sm font-semibold ${!annual ? "text-slate-800" : "text-slate-400"}`}
           >
@@ -92,13 +92,13 @@ export default function PricingSection() {
           </span>
           <button
             onClick={() => setAnnual(!annual)}
-            className={`relative w-14 h-7 rounded-full transition-colors ${
+            className={`relative w-12 h-6 rounded-full transition-colors ${
               annual ? "bg-brand" : "bg-slate-300"
             }`}
           >
             <span
-              className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${
-                annual ? "translate-x-7" : "translate-x-0.5"
+              className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                annual ? "translate-x-6" : "translate-x-0"
               }`}
             />
           </button>
