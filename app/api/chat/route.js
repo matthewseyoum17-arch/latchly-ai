@@ -1,4 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { detectLeadInfo } from "@/lib/leadDetection";
+import { sendLeadNotification } from "@/lib/email";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -6,9 +8,7 @@ const anthropic = new Anthropic({
 
 export async function POST(request) {
   try {
-    console.log("POST /api/chat received");
     const { messages, businessInfo } = await request.json();
-    console.log("Parsed request body:", { messagesCount: messages?.length, businessInfoKeys: Object.keys(businessInfo || {}) });
 
     if (!messages || !businessInfo) {
       return Response.json({ error: "Missing messages or businessInfo" }, { status: 400 });
@@ -44,7 +44,6 @@ Rules:
       content: m.text,
     }));
 
-    console.log("Calling Anthropic API with model: claude-3-haiku-20240307");
     const response = await Promise.race([
       anthropic.messages.create({
         model: "claude-3-haiku-20240307",
@@ -57,19 +56,31 @@ Rules:
         setTimeout(() => reject(new Error("API call timeout after 15 seconds")), 15000)
       )
     ]);
-    console.log("Anthropic API response received");
 
     const text = response.content[0]?.text || "I'm sorry, I didn't catch that. Could you try again?";
 
-    return Response.json({ text });
+    // Lead detection: check if conversation contains a complete lead
+    const detected = detectLeadInfo(messages);
+    let leadDetected = false;
+
+    if (detected.isComplete) {
+      leadDetected = true;
+      // Fire-and-forget: save lead + send notification
+      const transcript = messages
+        .map((m) => `${m.role === "user" ? "Customer" : "Bot"}: ${m.text}`)
+        .join("\n");
+
+      sendLeadNotification({
+        name: detected.name,
+        phone: detected.phone,
+        email: detected.email,
+        transcript,
+      }).catch((err) => console.error("Auto lead notification failed:", err));
+    }
+
+    return Response.json({ text, leadDetected });
   } catch (error) {
     console.error("Anthropic API error:", error);
-    console.error("Error details:", {
-      message: error.message,
-      status: error.status,
-      type: error.type,
-      error: error.error
-    });
     return Response.json(
       { error: "Failed to get response. Please try again." },
       { status: 500 }
