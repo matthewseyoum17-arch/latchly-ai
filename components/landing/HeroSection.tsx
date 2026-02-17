@@ -84,15 +84,30 @@ export default function HeroSection() {
               </div>
             </div>
 
-            {/* Fake page content with chat widget inside */}
-            <div className="p-2.5 bg-slate-50 min-h-[140px] flex flex-col">
-              <div className="h-2 w-24 bg-slate-200 rounded mb-1" />
-              <div className="h-1.5 w-full bg-slate-100 rounded mb-0.5" />
-              <div className="h-1.5 w-2/3 bg-slate-100 rounded mb-1.5" />
-              <div className="h-4 w-16 bg-brand/10 rounded mb-2" />
+            {/* Fake page content with skeleton layout */}
+            <div className="p-4 bg-slate-50 min-h-[280px] flex flex-col relative">
+              {/* Skeleton webpage content */}
+              <div className="space-y-3 mb-4">
+                <div className="h-3 w-3/4 bg-slate-200 rounded" />
+                <div className="h-2 w-full bg-slate-100 rounded" />
+                <div className="h-2 w-5/6 bg-slate-100 rounded" />
+                <div className="h-2 w-4/5 bg-slate-100 rounded" />
+              </div>
               
-              {/* Chat widget preview - fully contained */}
-              <div className="mt-auto w-44 bg-white rounded-md shadow-md border border-slate-200 overflow-hidden self-end">
+              <div className="flex gap-3 mb-4">
+                <div className="h-20 w-1/3 bg-slate-200 rounded" />
+                <div className="h-20 w-1/3 bg-slate-200 rounded" />
+                <div className="h-20 w-1/3 bg-slate-200 rounded" />
+              </div>
+              
+              <div className="space-y-2 mb-4">
+                <div className="h-2 w-full bg-slate-100 rounded" />
+                <div className="h-2 w-11/12 bg-slate-100 rounded" />
+                <div className="h-2 w-3/4 bg-slate-100 rounded" />
+              </div>
+              
+              {/* Chat widget - floating in center-right */}
+              <div className="absolute bottom-4 right-4 w-52 bg-white rounded-lg shadow-lg border border-slate-200 overflow-hidden">
                 <div className="bg-gradient-to-br from-brand to-brand-dark px-3 py-2 flex items-center gap-1.5 text-white">
                   <div className="w-6 h-6 rounded bg-white/20 flex items-center justify-center text-xs">
                     🦷
@@ -132,11 +147,11 @@ export default function HeroSection() {
             </div>
           </div>
 
-          {/* Floating badges - overlapping edges of mockup */}
+          {/* Floating badges - overlapping edges by ~20px */}
           <motion.div
             animate={{ y: [0, -8, 0] }}
             transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute -top-2 -right-4 bg-white rounded-xl px-4 py-2.5 shadow-lg flex items-center gap-2 border border-slate-100 z-10"
+            className="absolute -top-3 -right-5 bg-white rounded-xl px-4 py-2.5 shadow-lg flex items-center gap-2 border border-slate-100 z-10"
           >
             <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center text-sm">
               📱
@@ -150,7 +165,7 @@ export default function HeroSection() {
           <motion.div
             animate={{ y: [0, -6, 0] }}
             transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
-            className="absolute -bottom-2 -left-4 bg-white rounded-xl px-4 py-2.5 shadow-lg border border-slate-100 z-10"
+            className="absolute -bottom-3 -left-5 bg-white rounded-xl px-4 py-2.5 shadow-lg border border-slate-100 z-10"
           >
             <div className="text-[10px] text-slate-500 font-semibold">After-hours coverage</div>
             <div className="text-xl font-black text-brand">24/7</div>
