@@ -84,50 +84,50 @@ export default function HeroSection() {
               </div>
             </div>
 
-            {/* Fake page content */}
-            <div className="p-5 bg-slate-50 min-h-[180px]">
+            {/* Fake page content with chat widget inside */}
+            <div className="p-5 bg-slate-50 min-h-[320px] flex flex-col">
               <div className="h-4 w-48 bg-slate-200 rounded mb-3" />
               <div className="h-3 w-full bg-slate-100 rounded mb-2" />
               <div className="h-3 w-3/4 bg-slate-100 rounded mb-4" />
-              <div className="h-8 w-32 bg-brand/10 rounded" />
-            </div>
-
-            {/* Chat widget preview overlaid */}
-            <div className="absolute bottom-4 right-4 w-72 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden">
-              <div className="bg-gradient-to-br from-brand to-brand-dark px-4 py-3 flex items-center gap-2 text-white">
-                <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-sm">
-                  🦷
-                </div>
-                <div>
-                  <div className="text-xs font-bold">Dental Office Demo</div>
-                  <div className="text-[10px] opacity-80 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
-                    Online now
+              <div className="h-8 w-32 bg-brand/10 rounded mb-6" />
+              
+              {/* Chat widget preview - fully contained */}
+              <div className="mt-auto w-72 bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden self-end">
+                <div className="bg-gradient-to-br from-brand to-brand-dark px-4 py-3 flex items-center gap-2 text-white">
+                  <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-sm">
+                    🦷
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold">Dental Office Demo</div>
+                    <div className="text-[10px] opacity-80 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+                      Online now
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="p-3 space-y-2 bg-slate-50">
-                <div className="bg-white rounded-xl rounded-bl-sm p-2.5 text-xs text-slate-700 shadow-sm max-w-[85%]">
-                  Hi! 👋 Welcome to our office. How can I help you today?
-                </div>
-                <div className="flex justify-end">
-                  <div className="bg-brand text-white rounded-xl rounded-br-sm p-2.5 text-xs max-w-[85%]">
-                    Do you accept Delta Dental?
+                <div className="p-3 space-y-2 bg-slate-50">
+                  <div className="bg-white rounded-xl rounded-bl-sm p-2.5 text-xs text-slate-700 shadow-sm max-w-[85%]">
+                    Hi! 👋 Welcome to our office. How can I help you today?
+                  </div>
+                  <div className="flex justify-end">
+                    <div className="bg-brand text-white rounded-xl rounded-br-sm p-2.5 text-xs max-w-[85%]">
+                      Do you accept Delta Dental?
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-xl rounded-bl-sm p-2.5 text-xs text-slate-700 shadow-sm max-w-[85%]">
+                    Yes, we accept Delta Dental! Want me to check your specific plan coverage?
                   </div>
                 </div>
-                <div className="bg-white rounded-xl rounded-bl-sm p-2.5 text-xs text-slate-700 shadow-sm max-w-[85%]">
-                  Yes, we accept Delta Dental! Want me to check your specific plan coverage?
+                <div className="px-3 pb-2 flex gap-1.5 bg-slate-50">
+                  {["Book appt", "Insurance", "Hours"].map((t) => (
+                    <span
+                      key={t}
+                      className="px-2 py-1 rounded-full text-[10px] font-semibold border border-brand/20 text-brand bg-brand/5"
+                    >
+                      {t}
+                    </span>
+                  ))}
                 </div>
-              </div>
-              <div className="px-3 pb-2 flex gap-1.5 bg-slate-50">
-                {["Book appt", "Insurance", "Hours"].map((t) => (
-                  <span
-                    key={t}
-                    className="px-2 py-1 rounded-full text-[10px] font-semibold border border-brand/20 text-brand bg-brand/5"
-                  >
-                    {t}
-                  </span>
-                ))}
               </div>
             </div>
           </div>
