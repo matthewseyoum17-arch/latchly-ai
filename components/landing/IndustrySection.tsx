@@ -10,10 +10,10 @@ const industries = [
     title: "Never Miss a New Patient Again",
     industry: "Dental",
     bullets: [
-      "Automated appointment scheduling from your operatory availability",
-      "Insurance verification — handles Delta Dental, Cigna, Aetna questions instantly",
-      "New patient intake & treatment coordinator handoff",
-      "After-hours emergency triage with case acceptance follow-up",
+      "Qualifies new patients and collects insurance details instantly",
+      "Books appointments directly via Calendly (Team plan)",
+      "Routes emergency cases and captures after-hours leads",
+      "Hands off warm leads to your front desk with full context",
     ],
   },
   {
@@ -22,10 +22,10 @@ const industries = [
     title: "Capture Emergency Calls 24/7",
     industry: "HVAC",
     bullets: [
-      "Emergency dispatch triage — classifies no-heat, no-AC, gas smell priority",
-      "Service area validation by zip code before scheduling a service call",
-      "Seasonal promotion upsells (SEER rating upgrades, maintenance plans)",
-      "Real-time technician availability & same-day booking",
+      "Qualifies emergency vs. routine requests by priority level",
+      "Validates service area by zip code before scheduling",
+      "Upsells seasonal maintenance plans and upgrades",
+      "Books same-day service calls for qualified leads",
     ],
   },
   {
@@ -34,23 +34,23 @@ const industries = [
     title: "Qualify Leads Before the Consultation",
     industry: "Legal",
     bullets: [
-      "Case type classification — PI, family, criminal, estate auto-routed",
-      "Consultation booking with conflict check & confidentiality disclaimers",
-      "Intake completed before attorney review — saves billable hours",
-      "After-hours case qualified leads delivered to your inbox by morning",
+      "Classifies case type and routes to the right attorney",
+      "Books consultations with conflict check disclaimers",
+      "Completes intake before attorney review to save billable hours",
+      "Captures after-hours leads and delivers them by morning",
     ],
   },
 ];
 
 export default function IndustrySection() {
   return (
-    <section id="industries" className="py-20 px-5 bg-white">
+    <section id="industries" className="py-14 px-5 bg-white">
       <div className="max-w-7xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center mb-14"
+          className="text-center mb-10"
         >
           <p className="text-sm font-bold text-brand uppercase tracking-widest mb-3">
             Industries

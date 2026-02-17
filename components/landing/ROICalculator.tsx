@@ -14,13 +14,13 @@ export default function ROICalculator() {
   const roi = monthlyLoss > 0 ? Math.round(((monthlyLoss - latchlyCost) / latchlyCost) * 100) : 0;
 
   return (
-    <section id="roi" className="py-20 px-5">
+    <section id="roi" className="py-14 px-5">
       <div className="max-w-4xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center mb-12"
+          className="text-center mb-8"
         >
           <p className="text-sm font-bold text-brand uppercase tracking-widest mb-3">
             ROI Calculator
@@ -120,6 +120,10 @@ export default function ROICalculator() {
               <p className="text-sm text-emerald-700 font-semibold mb-1">Your ROI</p>
               <p className="text-5xl font-black text-emerald-600">{roi}%</p>
             </div>
+
+            <p className="text-xs text-slate-400 mt-4">
+              Estimates based on your inputs. Assumes missed calls and unanswered website visitors convert to leads at current close rates.
+            </p>
           </div>
         </motion.div>
       </div>

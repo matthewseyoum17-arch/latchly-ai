@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, X, MessageSquare, Star, Check } from "lucide-react";
+import { Send, X, MessageSquare, Star, Check, CalendarCheck, ExternalLink } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -19,6 +19,8 @@ export interface ChatWidgetConfig {
   businessType?: "dental" | "hvac" | "legal" | "medspa" | "plumbing" | "realestate";
   hours?: BusinessHours;
   nudgeDelay?: number;
+  plan?: "solo" | "team" | "multi";
+  calendlyUrl?: string;
 }
 
 interface Message {
@@ -148,6 +150,19 @@ function ProactiveNudge({
 
 // ── Main Chat Widget ───────────────────────────────────────────────────────────
 
+// ── Booking Intent Detection ───────────────────────────────────────────────────
+
+const BOOKING_KEYWORDS = [
+  "book", "schedule", "appointment", "consultation", "estimate",
+  "reserve", "set up a time", "available times", "open slots",
+  "make an appointment", "book a time", "schedule a visit",
+];
+
+function detectBookingIntent(text: string): boolean {
+  const lower = text.toLowerCase();
+  return BOOKING_KEYWORDS.some((kw) => lower.includes(kw));
+}
+
 export default function ChatWidget({ config = {} }: { config?: ChatWidgetConfig }) {
   const {
     brandColor = "#0e7c6b",
@@ -158,14 +173,20 @@ export default function ChatWidget({ config = {} }: { config?: ChatWidgetConfig 
     businessType = "dental",
     hours,
     nudgeDelay = 5000,
+    plan = "solo",
+    calendlyUrl,
   } = config;
+
+  const hasBooking = (plan === "team" || plan === "multi") && !!calendlyUrl;
 
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [showQuickReplies, setShowQuickReplies] = useState(true);
-  const [chatPhase, setChatPhase] = useState<"chat" | "rating" | "leadCapture" | "complete">("chat");
+  const [chatPhase, setChatPhase] = useState<"chat" | "booking" | "rating" | "leadCapture" | "complete">("chat");
+  const [bookingForm, setBookingForm] = useState({ name: "", email: "", phone: "", service: "" });
+  const [bookingStep, setBookingStep] = useState(0);
   const [rating, setRating] = useState(0);
   const [leadForm, setLeadForm] = useState({ name: "", phone: "", email: "" });
   const [leadSubmitting, setLeadSubmitting] = useState(false);
@@ -181,10 +202,10 @@ export default function ChatWidget({ config = {} }: { config?: ChatWidgetConfig 
   const getGreeting = useCallback(() => {
     if (greeting) return greeting;
     if (!open) {
-      return `We're currently closed, but I can still help! I'll collect your info and our team will follow up first thing tomorrow. How can I assist you?`;
+      return `We're currently closed, but I can still help! Leave your info and our team will follow up first thing tomorrow.`;
     }
-    return `Hi there! 👋 Welcome to ${businessName}. I'm your virtual assistant, available 24/7. How can I help you today?`;
-  }, [greeting, open, businessName]);
+    return `Hi there! 👋 Welcome to ${businessName}. I can answer questions, qualify your needs, and ${hasBooking ? "book an appointment" : "connect you with our team"}. How can I help?`;
+  }, [greeting, open, businessName, hasBooking]);
 
   useEffect(() => {
     if (isOpen && messages.length === 0) {
@@ -230,6 +251,37 @@ export default function ChatWidget({ config = {} }: { config?: ChatWidgetConfig 
     setInput("");
     setIsTyping(true);
     setShowQuickReplies(false);
+
+    // Booking intent detection
+    if (detectBookingIntent(text.trim())) {
+      setTimeout(() => {
+        if (hasBooking) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "bot",
+              text: "I'd love to help you book an appointment! Let me collect a few details first.",
+              time: new Date(),
+            },
+          ]);
+          setIsTyping(false);
+          setChatPhase("booking");
+          setBookingStep(0);
+        } else {
+          // Solo plan: no booking, offer callback
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "bot",
+              text: "Appointment booking is available on the Team plan. I can still capture your info so the team can call you back to schedule. Would you like to leave your contact details?",
+              time: new Date(),
+            },
+          ]);
+          setIsTyping(false);
+        }
+      }, 600);
+      return;
+    }
 
     try {
       const res = await fetch("/api/chat", {
@@ -459,6 +511,144 @@ export default function ChatWidget({ config = {} }: { config?: ChatWidgetConfig 
                   </button>
                 </div>
               </>
+            )}
+
+            {/* ── Booking Phase (Team+ only) ── */}
+            {chatPhase === "booking" && (
+              <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
+                <div className="flex items-center gap-2 mb-4">
+                  <div
+                    className="w-10 h-10 rounded-lg flex items-center justify-center"
+                    style={{ background: `${brandColor}15`, color: brandColor }}
+                  >
+                    <CalendarCheck size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-800">Book an Appointment</h3>
+                    <p className="text-xs text-slate-400">We just need a few details</p>
+                  </div>
+                </div>
+
+                {/* Step-by-step booking form, one question at a time */}
+                {bookingStep >= 0 && (
+                  <div className="mb-3">
+                    <label className="text-xs font-semibold text-slate-500 block mb-1">Your name *</label>
+                    <input
+                      type="text"
+                      placeholder="John Smith"
+                      value={bookingForm.name}
+                      onChange={(e) => setBookingForm((p) => ({ ...p, name: e.target.value }))}
+                      onKeyDown={(e) => e.key === "Enter" && bookingForm.name && setBookingStep(1)}
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:border-brand/50"
+                      autoFocus
+                    />
+                  </div>
+                )}
+
+                {bookingStep >= 1 && (
+                  <div className="mb-3">
+                    <label className="text-xs font-semibold text-slate-500 block mb-1">Phone number *</label>
+                    <input
+                      type="tel"
+                      placeholder="(555) 000-0000"
+                      value={bookingForm.phone}
+                      onChange={(e) => setBookingForm((p) => ({ ...p, phone: e.target.value }))}
+                      onKeyDown={(e) => e.key === "Enter" && bookingForm.phone && setBookingStep(2)}
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:border-brand/50"
+                      autoFocus
+                    />
+                  </div>
+                )}
+
+                {bookingStep >= 2 && (
+                  <div className="mb-3">
+                    <label className="text-xs font-semibold text-slate-500 block mb-1">Email *</label>
+                    <input
+                      type="email"
+                      placeholder="john@email.com"
+                      value={bookingForm.email}
+                      onChange={(e) => setBookingForm((p) => ({ ...p, email: e.target.value }))}
+                      onKeyDown={(e) => e.key === "Enter" && bookingForm.email && setBookingStep(3)}
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:border-brand/50"
+                      autoFocus
+                    />
+                  </div>
+                )}
+
+                {bookingStep >= 3 && (
+                  <div className="mb-3">
+                    <label className="text-xs font-semibold text-slate-500 block mb-1">What service do you need?</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Cleaning, consultation, emergency"
+                      value={bookingForm.service}
+                      onChange={(e) => setBookingForm((p) => ({ ...p, service: e.target.value }))}
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:border-brand/50"
+                      autoFocus
+                    />
+                  </div>
+                )}
+
+                {/* Progress + Next button */}
+                {bookingStep < 3 && (
+                  <button
+                    onClick={() => setBookingStep((s) => s + 1)}
+                    disabled={
+                      (bookingStep === 0 && !bookingForm.name) ||
+                      (bookingStep === 1 && !bookingForm.phone) ||
+                      (bookingStep === 2 && !bookingForm.email)
+                    }
+                    style={{
+                      background:
+                        (bookingStep === 0 && bookingForm.name) ||
+                        (bookingStep === 1 && bookingForm.phone) ||
+                        (bookingStep === 2 && bookingForm.email)
+                          ? brandColor
+                          : "#cbd5e1",
+                    }}
+                    className="w-full py-2.5 rounded-xl text-white font-bold text-sm mt-2 cursor-pointer disabled:cursor-default"
+                  >
+                    Next
+                  </button>
+                )}
+
+                {/* Final: open Calendly with prefilled info */}
+                {bookingStep >= 3 && (
+                  <div className="mt-3 space-y-2">
+                    <a
+                      href={`${calendlyUrl}?name=${encodeURIComponent(bookingForm.name)}&email=${encodeURIComponent(bookingForm.email)}&a1=${encodeURIComponent(bookingForm.phone)}&a2=${encodeURIComponent(bookingForm.service)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => {
+                        // Save lead with booking intent
+                        const transcript = messages.map((m) => `${m.role === "user" ? "Customer" : "Bot"}: ${m.text}`).join("\n");
+                        fetch("/api/leads", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            name: bookingForm.name,
+                            phone: bookingForm.phone,
+                            email: bookingForm.email,
+                            industry: businessType,
+                            contactMethod: "booking",
+                            transcript: transcript + `\n[Booking intent: ${bookingForm.service}]`,
+                          }),
+                        }).catch((err) => console.error("Lead save failed:", err));
+                      }}
+                      style={{ background: brandColor }}
+                      className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-white font-bold text-sm"
+                    >
+                      <CalendarCheck size={16} /> Choose a Time on Calendly <ExternalLink size={12} />
+                    </a>
+                    <button
+                      onClick={() => setChatPhase("complete")}
+                      className="w-full py-2 text-xs text-slate-500 font-semibold hover:text-slate-700 cursor-pointer"
+                    >
+                      I already booked / Done
+                    </button>
+                  </div>
+                )}
+              </div>
             )}
 
             {/* ── Rating Phase ── */}

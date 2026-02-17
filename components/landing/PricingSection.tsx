@@ -16,6 +16,7 @@ const plans = [
     features: [
       "Up to 500 conversations/month",
       "1 chat widget",
+      "Lead qualification + capture",
       "Email lead notifications",
       "Basic analytics dashboard",
     ],
@@ -27,12 +28,13 @@ const plans = [
     name: "Team",
     monthly: 250,
     annual: 2400,
-    desc: "For growing practices & shops",
+    desc: "For growing practices and shops",
     features: [
       "Unlimited conversations",
-      "Custom branding & colors",
+      "Custom branding and colors",
       "SMS + email lead notifications",
-      "Appointment booking integration",
+      "Appointment booking integration (Calendly)",
+      "Booking rules (hours, buffers, service types)",
       "Priority support",
       "Weekly performance reports",
     ],
@@ -49,6 +51,7 @@ const plans = [
       "Everything in Team",
       "Multiple widget deployments",
       "Location-specific AI training",
+      "Location routing for leads",
       "Dedicated account manager",
       "Custom integrations",
     ],
@@ -61,7 +64,7 @@ export default function PricingSection() {
   const [annual, setAnnual] = useState(false);
 
   return (
-    <section id="pricing" className="py-20 px-5 bg-slate-50">
+    <section id="pricing" className="py-14 px-5 bg-slate-50">
       <div className="max-w-6xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -76,8 +79,7 @@ export default function PricingSection() {
             Simple, Transparent Pricing
           </h2>
           <p className="text-slate-500 max-w-xl mx-auto">
-            A part-time receptionist costs $2,000–3,500/month. Latchly starts at
-            $3.67/day.
+            Missed leads cost more than software. Latchly starts at $3.67/day.
           </p>
         </motion.div>
 
@@ -178,8 +180,8 @@ export default function PricingSection() {
             All plans include a{" "}
             <span className="font-bold text-slate-700">
               $400 one-time Done-For-You Setup
-            </span>{" "}
-            — we train your AI, install the widget, and walk you through
+            </span>.
+            We train your AI, install the widget, and walk you through
             everything.
           </p>
           <p className="text-sm font-semibold text-brand">

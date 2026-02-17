@@ -6,7 +6,7 @@ import DemoSection from "@/components/landing/DemoSection";
 import ROICalculator from "@/components/landing/ROICalculator";
 import IndustrySection from "@/components/landing/IndustrySection";
 import PricingSection from "@/components/landing/PricingSection";
-import TestimonialsSection from "@/components/landing/TestimonialsSection";
+import HowItWorksSection from "@/components/landing/HowItWorksSection";
 import FAQSection from "@/components/landing/FAQSection";
 import FinalCTA from "@/components/landing/FinalCTA";
 import Footer from "@/components/landing/Footer";
@@ -21,7 +21,7 @@ export default function LatchlyLanding() {
       <ROICalculator />
       <IndustrySection />
       <PricingSection />
-      <TestimonialsSection />
+      <HowItWorksSection />
       <FAQSection />
       <FinalCTA />
       <Footer />
@@ -30,8 +30,10 @@ export default function LatchlyLanding() {
       <ChatWidget
         config={{
           brandColor: "#0e7c6b",
-          businessName: "Gainesville Family Dental",
+          businessName: "Dental Office Demo",
           businessType: "dental",
+          plan: "team",
+          calendlyUrl: "https://calendly.com/latchly/setup",
           hours: {
             "mon-fri": "8am-6pm",
             sat: "9am-2pm",

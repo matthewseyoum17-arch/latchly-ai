@@ -5,9 +5,9 @@ import { motion } from "framer-motion";
 import { Send, X } from "lucide-react";
 
 const DENTAL_CONTEXT = {
-  name: "Gainesville Family Dental",
+  name: "Dental Office Demo",
   greeting:
-    "Hi there! 👋 Welcome to Gainesville Family Dental. I can help with appointment booking, insurance questions, or anything else. How can I help you today?",
+    "Hi there! 👋 Welcome to our dental office. I can help with appointment booking, insurance questions, or anything else. How can I help you today?",
   quickReplies: [
     "Do you accept Delta Dental?",
     "What are your hours?",
@@ -59,9 +59,9 @@ export default function DemoSection() {
             name: DENTAL_CONTEXT.name,
             phone: "(352) 555-0123",
             pricing:
-              "Routine Cleaning: $75–$150, Teeth Whitening: $300–$600, Dental Implant: $1,500–$3,000, Invisalign: $3,500–$6,000, Crown: $800–$1,500. Most insurance accepted.",
+              "Routine Cleaning: $75 to $150, Teeth Whitening: $300 to $600, Dental Implant: $1,500 to $3,000, Invisalign: $3,500 to $6,000, Crown: $800 to $1,500. Most insurance accepted.",
             hours:
-              "Mon–Fri: 8:00 AM – 6:00 PM, Saturday: 9:00 AM – 2:00 PM, Sunday: Closed. Emergency line: (352) 555-0124",
+              "Mon to Fri: 8:00 AM to 6:00 PM, Saturday: 9:00 AM to 2:00 PM, Sunday: Closed. Emergency line: (352) 555-0124",
             services:
               "General Dentistry (cleanings, fillings, exams), Cosmetic Dentistry (veneers, whitening, bonding), Orthodontics (Invisalign, braces), Oral Surgery (extractions, implants), Pediatric Dentistry. We accept Delta Dental, Cigna, Aetna, MetLife, and most PPO plans.",
           },
@@ -84,13 +84,13 @@ export default function DemoSection() {
   };
 
   return (
-    <section id="demo" className="py-20 px-5 bg-slate-50">
+    <section id="demo" className="py-14 px-5 bg-slate-50">
       <div className="max-w-4xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center mb-12"
+          className="text-center mb-8"
         >
           <p className="text-sm font-bold text-brand uppercase tracking-widest mb-3">
             Live Demo
@@ -99,7 +99,7 @@ export default function DemoSection() {
             Try It Right Now
           </h2>
           <p className="text-slate-500 max-w-lg mx-auto">
-            See how Latchly handles real customer questions for a dental office
+            See how Latchly qualifies leads and answers customer questions in real time
           </p>
         </motion.div>
 
@@ -119,7 +119,7 @@ export default function DemoSection() {
               <span className="w-3 h-3 rounded-full bg-emerald-400" />
             </div>
             <div className="flex-1 bg-white rounded-md px-3 py-1 text-xs text-slate-400 border border-slate-200 font-mono">
-              www.gainesvilledental.com
+              demo.yourbusiness.com
             </div>
           </div>
 
@@ -211,6 +211,10 @@ export default function DemoSection() {
             </button>
           </div>
         </motion.div>
+
+        <p className="text-center text-xs text-slate-400 mt-4">
+          Sample demo experience. Not a real customer.
+        </p>
       </div>
     </section>
   );

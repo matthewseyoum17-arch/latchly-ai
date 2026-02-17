@@ -1,4 +1,4 @@
-// Lead detection logic — analyzes chat messages to identify captured lead info
+// Lead detection logic: analyzes chat messages to identify captured lead info
 
 export interface DetectedLead {
   name?: string;

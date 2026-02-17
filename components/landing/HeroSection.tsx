@@ -10,13 +10,13 @@ export default function HeroSection() {
   };
 
   return (
-    <section className="relative min-h-[90vh] flex items-center pt-20 pb-16 px-5 overflow-hidden">
+    <section className="relative min-h-[80vh] flex items-center pt-20 pb-10 px-5 overflow-hidden">
       {/* Background gradient blob */}
       <div className="absolute -top-48 -right-48 w-[600px] h-[600px] rounded-full bg-brand/3 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -left-32 w-[400px] h-[400px] rounded-full bg-sky-500/3 blur-3xl pointer-events-none" />
 
       <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-12 lg:gap-16 items-center w-full">
-        {/* Left — Copy */}
+        {/* Left - Copy */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -24,22 +24,21 @@ export default function HeroSection() {
         >
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand/10 border border-brand/20 text-xs font-bold text-brand mb-5">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            Your site never sleeps.
+            Your AI sales agent is live.
           </div>
 
           <h1 className="font-display text-4xl sm:text-5xl lg:text-[56px] font-black leading-[1.08] tracking-tight text-slate-900 mb-4">
-            Stop Losing Customers{" "}
+            Stop Losing Leads{" "}
             <span className="bg-gradient-to-r from-brand to-sky-500 bg-clip-text text-transparent">
               While You&apos;re Busy
             </span>
           </h1>
 
-          <p className="text-lg text-slate-500 leading-relaxed mb-8 max-w-lg">
-            Local businesses lose $126,000/year from missed calls and unanswered
-            website visitors. Latchly answers every one — 24/7, in seconds.
+          <p className="text-lg text-slate-500 leading-relaxed mb-6 max-w-lg">
+            Latchly qualifies leads, captures contact info, and books appointments on your website 24/7. No missed calls, no lost revenue.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-3 mb-6">
+          <div className="flex flex-col sm:flex-row gap-3 mb-5">
             <Button size="lg" onClick={() => scrollTo("demo")} className="gap-2">
               See It In Action <ArrowRight size={16} />
             </Button>
@@ -55,16 +54,16 @@ export default function HeroSection() {
 
           {/* Trust bar */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 text-xs text-slate-400">
-            <span>Trusted by local businesses in Gainesville, FL</span>
+            <span>Built on</span>
             <div className="flex items-center gap-4">
-              <span className="font-bold text-slate-500">Anthropic</span>
+              <span className="font-bold text-slate-500">Anthropic AI</span>
               <span className="font-bold text-slate-500">Vercel</span>
               <span className="font-bold text-slate-500">Calendly</span>
             </div>
           </div>
         </motion.div>
 
-        {/* Right — Chat widget mockup */}
+        {/* Right - Chat widget mockup */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -81,7 +80,7 @@ export default function HeroSection() {
                 <span className="w-3 h-3 rounded-full bg-emerald-400" />
               </div>
               <div className="flex-1 bg-white rounded-md px-3 py-1 text-xs text-slate-400 border border-slate-200">
-                www.gainesvilledental.com
+                demo.yourbusiness.com
               </div>
             </div>
 
@@ -100,7 +99,7 @@ export default function HeroSection() {
                   🦷
                 </div>
                 <div>
-                  <div className="text-xs font-bold">Gainesville Dental</div>
+                  <div className="text-xs font-bold">Dental Office Demo</div>
                   <div className="text-[10px] opacity-80 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
                     Online now
@@ -109,7 +108,7 @@ export default function HeroSection() {
               </div>
               <div className="p-3 space-y-2 bg-slate-50">
                 <div className="bg-white rounded-xl rounded-bl-sm p-2.5 text-xs text-slate-700 shadow-sm max-w-[85%]">
-                  Hi! 👋 Welcome to Gainesville Dental. How can I help you today?
+                  Hi! 👋 Welcome to our office. How can I help you today?
                 </div>
                 <div className="flex justify-end">
                   <div className="bg-brand text-white rounded-xl rounded-br-sm p-2.5 text-xs max-w-[85%]">

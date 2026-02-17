@@ -24,7 +24,7 @@ export default function Footer() {
               <span className="font-extrabold text-lg text-white">Latchly</span>
             </div>
             <p className="text-sm leading-relaxed mb-3">
-              AI-powered chat assistants that capture leads 24/7 for service-based businesses.
+              AI sales agents that qualify leads, book appointments, and capture contact info 24/7 for service-based businesses.
             </p>
             <p className="text-xs text-slate-500">📍 Gainesville, FL</p>
           </div>
@@ -76,7 +76,7 @@ export default function Footer() {
             <div className="flex flex-col gap-3 text-sm">
               <span>📧 matt@latchlyai.com</span>
               <span>📞 (786) 390-0299</span>
-              <span>🕐 Mon–Fri, 9am–6pm ET</span>
+              <span>🕐 Mon to Fri, 9am to 6pm ET</span>
             </div>
           </div>
         </div>

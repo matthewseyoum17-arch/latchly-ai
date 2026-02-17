@@ -21,7 +21,7 @@ export async function sendWeeklySummary() {
 
   const indHtml = ind.length > 0 ? ind.map((i: any) => `<tr><td style="padding:4px 8px;text-transform:capitalize">${i.industry}</td><td style="padding:4px 8px;font-weight:700;color:#0e7c6b">${i.c}</td></tr>`).join("") : "<tr><td colspan='2'>No data</td></tr>";
 
-  const leadHtml = recent.length > 0 ? recent.map((l: any) => `<tr><td style="padding:4px 8px">${l.name||"—"}</td><td style="padding:4px 8px">${l.phone||"—"}</td><td style="padding:4px 8px;text-transform:capitalize">${l.industry||"—"}</td><td style="padding:4px 8px;font-size:12px;color:#94a3b8">${new Date(l.created_at).toLocaleDateString()}</td></tr>`).join("") : "<tr><td colspan='4'>No leads this week</td></tr>";
+  const leadHtml = recent.length > 0 ? recent.map((l: any) => `<tr><td style="padding:4px 8px">${l.name||"-"}</td><td style="padding:4px 8px">${l.phone||"-"}</td><td style="padding:4px 8px;text-transform:capitalize">${l.industry||"-"}</td><td style="padding:4px 8px;font-size:12px;color:#94a3b8">${new Date(l.created_at).toLocaleDateString()}</td></tr>`).join("") : "<tr><td colspan='4'>No leads this week</td></tr>";
 
   const html = `<div style="font-family:sans-serif;max-width:580px;margin:0 auto">
 <div style="background:linear-gradient(135deg,#0e7c6b,#0e7c6bdd);padding:24px;border-radius:12px 12px 0 0">
@@ -35,7 +35,7 @@ export async function sendWeeklySummary() {
 <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;font-weight:600">Leads This Week</div>
 </div>
 <div style="flex:1;background:#f8fafc;border-radius:8px;padding:16px;text-align:center">
-<div style="font-size:28px;font-weight:900;color:#1e293b">${rat > 0 ? rat + " ⭐" : "—"}</div>
+<div style="font-size:28px;font-weight:900;color:#1e293b">${rat > 0 ? rat + " ⭐" : "-"}</div>
 <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;font-weight:600">Avg Rating</div>
 </div>
 </div>
@@ -52,7 +52,7 @@ export async function sendWeeklySummary() {
   const { data, error } = await getResend().emails.send({
     from: "Latchly <notifications@latchlyai.com>",
     to,
-    subject: `📊 Latchly Weekly Summary — ${wk} lead${wk !== 1 ? "s" : ""} this week`,
+    subject: `📊 Latchly Weekly Summary: ${wk} lead${wk !== 1 ? "s" : ""} this week`,
     html,
   });
 

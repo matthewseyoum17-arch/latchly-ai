@@ -41,12 +41,12 @@ export async function sendLeadNotification(lead: LeadData) {
         <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
           <tr>
             <td style="padding:8px 0;color:#94a3b8;font-size:12px;font-weight:600;text-transform:uppercase;width:100px;">Name</td>
-            <td style="padding:8px 0;font-size:14px;font-weight:600;color:#1e293b;">${name || "—"}</td>
+            <td style="padding:8px 0;font-size:14px;font-weight:600;color:#1e293b;">${name || "-"}</td>
           </tr>
           <tr>
             <td style="padding:8px 0;color:#94a3b8;font-size:12px;font-weight:600;text-transform:uppercase;">Phone</td>
             <td style="padding:8px 0;font-size:14px;color:#1e293b;">
-              <a href="tel:${phone}" style="color:#0e7c6b;text-decoration:none;font-weight:600;">${phone || "—"}</a>
+              <a href="tel:${phone}" style="color:#0e7c6b;text-decoration:none;font-weight:600;">${phone || "-"}</a>
             </td>
           </tr>
           ${email ? `<tr>
@@ -57,7 +57,7 @@ export async function sendLeadNotification(lead: LeadData) {
           </tr>` : ""}
           <tr>
             <td style="padding:8px 0;color:#94a3b8;font-size:12px;font-weight:600;text-transform:uppercase;">Industry</td>
-            <td style="padding:8px 0;font-size:14px;color:#1e293b;">${industry || "—"}</td>
+            <td style="padding:8px 0;font-size:14px;color:#1e293b;">${industry || "-"}</td>
           </tr>
           <tr>
             <td style="padding:8px 0;color:#94a3b8;font-size:12px;font-weight:600;text-transform:uppercase;">Rating</td>
@@ -88,7 +88,7 @@ export async function sendLeadNotification(lead: LeadData) {
     const { data, error } = await getResend().emails.send({
       from: FROM_EMAIL,
       to: notifyEmail,
-      subject: `🎯 New Lead: ${name || "Unknown"} — ${phone || "No phone"}`,
+      subject: `🎯 New Lead: ${name || "Unknown"}, ${phone || "No phone"}`,
       html,
     });
 
