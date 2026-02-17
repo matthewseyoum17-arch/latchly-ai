@@ -132,11 +132,11 @@ export default function HeroSection() {
             </div>
           </div>
 
-          {/* Floating badges */}
+          {/* Floating badges - positioned inside the browser frame area */}
           <motion.div
             animate={{ y: [0, -8, 0] }}
             transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute -top-4 -right-4 bg-white rounded-xl px-4 py-2.5 shadow-lg flex items-center gap-2 border border-slate-100"
+            className="absolute top-4 -right-2 bg-white rounded-xl px-4 py-2.5 shadow-lg flex items-center gap-2 border border-slate-100 z-10"
           >
             <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center text-sm">
               📱
@@ -150,7 +150,7 @@ export default function HeroSection() {
           <motion.div
             animate={{ y: [0, -6, 0] }}
             transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
-            className="absolute -bottom-2 -left-6 bg-white rounded-xl px-4 py-2.5 shadow-lg border border-slate-100"
+            className="absolute bottom-4 -left-2 bg-white rounded-xl px-4 py-2.5 shadow-lg border border-slate-100 z-10"
           >
             <div className="text-[10px] text-slate-500 font-semibold">After-hours coverage</div>
             <div className="text-xl font-black text-brand">24/7</div>
