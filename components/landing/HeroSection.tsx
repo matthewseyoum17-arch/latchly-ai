@@ -71,7 +71,7 @@ export default function HeroSection() {
           className="relative hidden lg:block"
         >
           {/* Browser frame mockup */}
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden animate-float">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-visible animate-float">
             {/* Browser bar */}
             <div className="bg-slate-50 border-b border-slate-100 px-4 py-3 flex items-center gap-3">
               <div className="flex gap-1.5">
