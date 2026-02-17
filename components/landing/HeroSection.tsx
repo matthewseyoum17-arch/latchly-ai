@@ -85,7 +85,7 @@ export default function HeroSection() {
             </div>
 
             {/* Fake page content */}
-            <div className="p-5 bg-slate-50 min-h-[120px]">
+            <div className="p-5 bg-slate-50 min-h-[180px]">
               <div className="h-4 w-48 bg-slate-200 rounded mb-3" />
               <div className="h-3 w-full bg-slate-100 rounded mb-2" />
               <div className="h-3 w-3/4 bg-slate-100 rounded mb-4" />
