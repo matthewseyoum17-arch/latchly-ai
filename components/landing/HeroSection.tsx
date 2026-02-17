@@ -71,58 +71,58 @@ export default function HeroSection() {
           className="relative hidden lg:block"
         >
           {/* Browser frame mockup */}
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-visible animate-float">
+          <div className="bg-white rounded-xl shadow-xl border border-slate-100 overflow-visible animate-float max-w-[280px]">
             {/* Browser bar */}
-            <div className="bg-slate-50 border-b border-slate-100 px-4 py-3 flex items-center gap-3">
-              <div className="flex gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-red-400" />
-                <span className="w-3 h-3 rounded-full bg-amber-400" />
-                <span className="w-3 h-3 rounded-full bg-emerald-400" />
+            <div className="bg-slate-50 border-b border-slate-100 px-3 py-2 flex items-center gap-2">
+              <div className="flex gap-1">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-400" />
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
               </div>
-              <div className="flex-1 bg-white rounded-md px-3 py-1 text-xs text-slate-400 border border-slate-200">
+              <div className="flex-1 bg-white rounded px-2 py-0.5 text-[10px] text-slate-400 border border-slate-200">
                 demo.yourbusiness.com
               </div>
             </div>
 
             {/* Fake page content with chat widget inside */}
-            <div className="p-4 bg-slate-50 min-h-[220px] flex flex-col">
-              <div className="h-3 w-40 bg-slate-200 rounded mb-2" />
-              <div className="h-2 w-full bg-slate-100 rounded mb-1" />
-              <div className="h-2 w-3/4 bg-slate-100 rounded mb-3" />
-              <div className="h-6 w-24 bg-brand/10 rounded mb-4" />
+            <div className="p-2.5 bg-slate-50 min-h-[140px] flex flex-col">
+              <div className="h-2 w-24 bg-slate-200 rounded mb-1" />
+              <div className="h-1.5 w-full bg-slate-100 rounded mb-0.5" />
+              <div className="h-1.5 w-2/3 bg-slate-100 rounded mb-1.5" />
+              <div className="h-4 w-16 bg-brand/10 rounded mb-2" />
               
               {/* Chat widget preview - fully contained */}
-              <div className="mt-auto w-60 bg-white rounded-lg shadow-lg border border-slate-200 overflow-hidden self-end">
-                <div className="bg-gradient-to-br from-brand to-brand-dark px-4 py-3 flex items-center gap-2 text-white">
-                  <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-sm">
+              <div className="mt-auto w-44 bg-white rounded-md shadow-md border border-slate-200 overflow-hidden self-end">
+                <div className="bg-gradient-to-br from-brand to-brand-dark px-3 py-2 flex items-center gap-1.5 text-white">
+                  <div className="w-6 h-6 rounded bg-white/20 flex items-center justify-center text-xs">
                     🦷
                   </div>
                   <div>
-                    <div className="text-xs font-bold">Dental Office Demo</div>
-                    <div className="text-[10px] opacity-80 flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
-                      Online now
+                    <div className="text-[11px] font-bold">Dental Office</div>
+                    <div className="text-[9px] opacity-80 flex items-center gap-1">
+                      <span className="w-1 h-1 rounded-full bg-emerald-400 inline-block" />
+                      Online
                     </div>
                   </div>
                 </div>
-                <div className="p-3 space-y-2 bg-slate-50">
-                  <div className="bg-white rounded-xl rounded-bl-sm p-2.5 text-xs text-slate-700 shadow-sm max-w-[85%]">
-                    Hi! 👋 Welcome to our office. How can I help you today?
+                <div className="p-2 space-y-1.5 bg-slate-50">
+                  <div className="bg-white rounded-lg rounded-bl-sm p-2 text-[10px] text-slate-700 shadow-sm max-w-[90%]">
+                    Hi! 👋 How can I help you today?
                   </div>
                   <div className="flex justify-end">
-                    <div className="bg-brand text-white rounded-xl rounded-br-sm p-2.5 text-xs max-w-[85%]">
+                    <div className="bg-brand text-white rounded-lg rounded-br-sm p-2 text-[10px] max-w-[90%]">
                       Do you accept Delta Dental?
                     </div>
                   </div>
-                  <div className="bg-white rounded-xl rounded-bl-sm p-2.5 text-xs text-slate-700 shadow-sm max-w-[85%]">
-                    Yes, we accept Delta Dental! Want me to check your specific plan coverage?
+                  <div className="bg-white rounded-lg rounded-bl-sm p-2 text-[10px] text-slate-700 shadow-sm max-w-[90%]">
+                    Yes, we accept Delta Dental!
                   </div>
                 </div>
-                <div className="px-3 pb-2 flex gap-1.5 bg-slate-50">
-                  {["Book appt", "Insurance", "Hours"].map((t) => (
+                <div className="px-2 pb-1.5 flex gap-1 bg-slate-50">
+                  {["Book", "Insurance", "Hours"].map((t) => (
                     <span
                       key={t}
-                      className="px-2 py-1 rounded-full text-[10px] font-semibold border border-brand/20 text-brand bg-brand/5"
+                      className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold border border-brand/20 text-brand bg-brand/5"
                     >
                       {t}
                     </span>

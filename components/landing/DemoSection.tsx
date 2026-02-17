@@ -65,6 +65,7 @@ export default function DemoSection() {
   const [isTyping, setIsTyping] = useState(false);
   const [showQuickReplies, setShowQuickReplies] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollLockRef = useRef<number>(0);
 
   const currentPreset = DEMO_PRESETS[selectedPreset];
 
@@ -74,29 +75,42 @@ export default function DemoSection() {
     setShowQuickReplies(true);
     setTimeout(() => {
       setMessages([{ role: "bot", text: currentPreset.greeting }]);
-      if (window.scrollY !== scrollYBefore) {
-        window.scrollTo(0, scrollYBefore);
-      }
+      requestAnimationFrame(() => {
+        if (window.scrollY !== scrollYBefore) {
+          window.scrollTo(0, scrollYBefore);
+        }
+      });
     }, 400);
   }, [selectedPreset]);
 
+  // Auto-scroll within the chat container only, never the page
   useEffect(() => {
-    const scrollYBefore = window.scrollY;
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    if (window.scrollY !== scrollYBefore) {
-      window.scrollTo(0, scrollYBefore);
+    if (messagesEndRef.current) {
+      const container = messagesEndRef.current.parentElement;
+      if (container) {
+        container.scrollTop = container.scrollHeight;
+      }
     }
   }, [messages, isTyping]);
 
   const sendMessage = async (text: string) => {
     if (!text.trim() || isTyping) return;
     const scrollYBefore = window.scrollY;
+    scrollLockRef.current = scrollYBefore;
+    
     const userMsg: Message = { role: "user", text: text.trim() };
     const updated = [...messages, userMsg];
     setMessages(updated);
     setInput("");
     setIsTyping(true);
     setShowQuickReplies(false);
+
+    // Immediate scroll lock
+    requestAnimationFrame(() => {
+      if (window.scrollY !== scrollLockRef.current) {
+        window.scrollTo(0, scrollLockRef.current);
+      }
+    });
 
     try {
       const res = await fetch("/api/chat", {
@@ -126,9 +140,12 @@ export default function DemoSection() {
       ]);
     } finally {
       setIsTyping(false);
-      if (window.scrollY !== scrollYBefore) {
-        window.scrollTo(0, scrollYBefore);
-      }
+      // Restore scroll position after all state updates
+      setTimeout(() => {
+        if (window.scrollY !== scrollLockRef.current) {
+          window.scrollTo(0, scrollLockRef.current);
+        }
+      }, 0);
     }
   };
 

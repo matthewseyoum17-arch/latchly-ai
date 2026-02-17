@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 import Navbar from "@/components/landing/Navbar";
 import HeroSection from "@/components/landing/HeroSection";
 import DemoSection from "@/components/landing/DemoSection";
@@ -12,13 +14,16 @@ import FinalCTA from "@/components/landing/FinalCTA";
 import Footer from "@/components/landing/Footer";
 import ChatWidget from "@/components/chat/ChatWidget";
 
-import { useEffect } from "react";
-
 export default function LatchlyLanding() {
+  const [mounted, setMounted] = useState(false);
+
   useEffect(() => {
     if (typeof window !== "undefined") {
       history.scrollRestoration = "manual";
-      window.scrollTo(0, 0);
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      setMounted(true);
     }
   }, []);
   return (
