@@ -69,7 +69,9 @@ export async function POST(request: NextRequest) {
   } catch (error: unknown) {
     console.error("Stripe checkout error:", error);
     const message = error instanceof Error ? error.message : "Unable to start checkout.";
-    const detail = error instanceof Error ? { name: error.name, cause: String((error as NodeJS.ErrnoException).cause ?? "") } : {};
+    const detail = error instanceof Error
+      ? { name: error.name, cause: String((error as NodeJS.ErrnoException).cause ?? ""), stack: error.stack?.split("\n")[1] ?? "" }
+      : { raw: JSON.stringify(error) };
     return NextResponse.json({ error: message, ...detail }, { status: 500 });
   }
 }
