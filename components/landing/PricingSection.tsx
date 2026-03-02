@@ -6,7 +6,23 @@ import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
-const plans = [
+type BillingPlan = "solo" | "team" | "multi";
+type BillingCycle = "monthly" | "annual";
+
+interface Plan {
+  id: BillingPlan;
+  name: string;
+  monthly: number;
+  annual: number;
+  desc: string;
+  features: string[];
+  cta: string;
+  popular: boolean;
+}
+
+const CALENDLY_SETUP_URL = "https://calendly.com/latchly/setup";
+
+const plans: Plan[] = [
   {
     id: "solo",
     name: "Solo",
@@ -62,6 +78,37 @@ const plans = [
 
 export default function PricingSection() {
   const [annual, setAnnual] = useState(false);
+  const [loadingPlan, setLoadingPlan] = useState<BillingPlan | null>(null);
+
+  const handleCheckout = async (planId: BillingPlan) => {
+    if (planId === "multi") {
+      window.open(CALENDLY_SETUP_URL, "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    const billingCycle: BillingCycle = annual ? "annual" : "monthly";
+    setLoadingPlan(planId);
+
+    try {
+      const res = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: planId, billingCycle }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data?.url) {
+        throw new Error(data?.error || "Unable to start checkout.");
+      }
+
+      window.location.href = data.url;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to start checkout.";
+      window.alert(message);
+    } finally {
+      setLoadingPlan(null);
+    }
+  };
 
   return (
     <section id="pricing" className="py-10 px-5 bg-slate-50">
@@ -155,8 +202,10 @@ export default function PricingSection() {
                 <Button
                   variant={plan.popular ? "default" : "secondary"}
                   className="w-full mb-6"
+                  onClick={() => handleCheckout(plan.id)}
+                  disabled={loadingPlan === plan.id}
                 >
-                  {plan.cta}
+                  {loadingPlan === plan.id ? "Redirecting..." : plan.cta}
                 </Button>
 
                 <ul className="space-y-3">
