@@ -41,7 +41,7 @@ export function isBillingCycle(value: unknown): value is BillingCycle {
 }
 
 export function getStripe() {
-  const secretKey = process.env.STRIPE_SECRET_KEY;
+  const secretKey = process.env.STRIPE_SECRET_KEY?.trim();
   if (!secretKey) {
     throw new Error("Missing STRIPE_SECRET_KEY environment variable.");
   }
