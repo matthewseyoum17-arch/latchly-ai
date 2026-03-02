@@ -69,9 +69,6 @@ export async function POST(request: NextRequest) {
   } catch (error: unknown) {
     console.error("Stripe checkout error:", error);
     const message = error instanceof Error ? error.message : "Unable to start checkout.";
-    const key = process.env.STRIPE_SECRET_KEY ?? "";
-    const badChars = Array.from(key).map((c, i) => c.charCodeAt(0) < 32 || c.charCodeAt(0) > 126 ? `[${c.charCodeAt(0)}@${i}]` : "").filter(Boolean);
-    const keyInfo = { len: key.length, badChars };
-    return NextResponse.json({ error: message, keyInfo }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

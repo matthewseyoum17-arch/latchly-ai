@@ -41,7 +41,8 @@ export function isBillingCycle(value: unknown): value is BillingCycle {
 }
 
 export function getStripe() {
-  const secretKey = process.env.STRIPE_SECRET_KEY?.trim();
+  // Strip all non-printable/non-ASCII chars that would cause ERR_INVALID_CHAR in HTTP headers
+  const secretKey = process.env.STRIPE_SECRET_KEY?.replace(/[^\x20-\x7E]/g, "").trim();
   if (!secretKey) {
     throw new Error("Missing STRIPE_SECRET_KEY environment variable.");
   }
