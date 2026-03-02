@@ -136,6 +136,20 @@ async function handleCheckoutCompleted(
   const sessionPlan = normalizePlan(session.metadata?.plan);
   const sessionCycle = normalizeBillingCycle(session.metadata?.billingCycle);
 
+  // If this was a trial checkout, attach the setup fee as a pending invoice item
+  // so it is included on the first invoice after the trial ends.
+  if (session.metadata?.trial === "true" && session.customer) {
+    const setupFeePriceId = process.env.STRIPE_PRICE_SETUP_FEE?.replace(/[^\x20-\x7E]/g, "").trim();
+    if (setupFeePriceId) {
+      const customerId = typeof session.customer === "string" ? session.customer : session.customer.id;
+      await stripe.invoiceItems.create({
+        customer: customerId,
+        pricing: { price: setupFeePriceId },
+        subscription: subscriptionId,
+      });
+    }
+  }
+
   await upsertSubscription(sql, {
     ...snapshot,
     email: session.customer_details?.email ?? session.customer_email ?? null,
