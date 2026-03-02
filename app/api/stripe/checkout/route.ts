@@ -12,10 +12,13 @@ import {
 
 export const runtime = "nodejs";
 
+const TRIAL_DAYS = 14;
+
 interface CheckoutBody {
   plan?: unknown;
   billingCycle?: unknown;
   customerEmail?: unknown;
+  trial?: unknown;
 }
 
 export async function POST(request: NextRequest) {
@@ -23,6 +26,7 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as CheckoutBody;
     const plan = body.plan;
     const billingCycle = body.billingCycle ?? "monthly";
+    const withTrial = body.trial === true;
 
     if (!isBillingPlan(plan)) {
       return NextResponse.json({ error: "Invalid plan selected." }, { status: 400 });
@@ -43,7 +47,8 @@ export async function POST(request: NextRequest) {
       mode: "subscription",
       line_items: [
         { price: recurringPriceId, quantity: 1 },
-        { price: setupFeePriceId, quantity: 1 },
+        // For non-trial: charge setup fee immediately at checkout
+        ...(withTrial ? [] : [{ price: setupFeePriceId, quantity: 1 }]),
       ],
       allow_promotion_codes: true,
       success_url: `${appUrl}/?checkout=success`,
@@ -53,6 +58,11 @@ export async function POST(request: NextRequest) {
         billingCycle,
       },
       subscription_data: {
+        // For trial: defer setup fee to first invoice after trial ends
+        ...(withTrial ? {
+          trial_period_days: TRIAL_DAYS,
+          add_invoice_items: [{ price: setupFeePriceId, quantity: 1 }],
+        } : {}),
         metadata: {
           plan,
           billingCycle,

@@ -15,7 +15,7 @@ const faqs = [
   },
   {
     q: "Can I cancel anytime?",
-    a: "Yes. No long-term contracts. Cancel anytime with one click. We also offer a 14-day free pilot so you can see the results before committing.",
+    a: "Yes. No long-term contracts. Cancel anytime with one click. We offer a 14-day free trial — card required to start, but you won't be charged until day 15.",
   },
   {
     q: "Will this replace my sales team?",
