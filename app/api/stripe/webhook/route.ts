@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { neon } from "@neondatabase/serverless";
+import { neon, NeonQueryFunction } from "@neondatabase/serverless";
 import Stripe from "stripe";
 import { getStripe, isBillingCycle, isBillingPlan, resolvePlanFromPriceId } from "@/lib/stripe";
 
@@ -33,7 +33,7 @@ function normalizePlan(value: unknown): "solo" | "team" | "multi" | null {
   return null;
 }
 
-async function ensureBillingTable(sql: ReturnType<typeof neon>) {
+async function ensureBillingTable(sql: NeonQueryFunction<false, false>) {
   await sql`
     CREATE TABLE IF NOT EXISTS billing_subscriptions (
       id SERIAL PRIMARY KEY,
@@ -52,7 +52,7 @@ async function ensureBillingTable(sql: ReturnType<typeof neon>) {
   `;
 }
 
-async function upsertSubscription(sql: ReturnType<typeof neon>, input: UpsertSubscriptionInput) {
+async function upsertSubscription(sql: NeonQueryFunction<false, false>, input: UpsertSubscriptionInput) {
   await sql`
     INSERT INTO billing_subscriptions (
       email,
@@ -109,15 +109,15 @@ function extractSubscriptionSnapshot(subscription: Stripe.Subscription) {
     priceId,
     plan: metadataPlan ?? mapped?.plan ?? null,
     billingCycle: metadataCycle ?? mapped?.billingCycle ?? subscriptionCycleFromPrice,
-    currentPeriodEnd: subscription.current_period_end
-      ? new Date(subscription.current_period_end * 1000)
+    currentPeriodEnd: item?.current_period_end
+      ? new Date(item.current_period_end * 1000)
       : null,
     cancelAtPeriodEnd: subscription.cancel_at_period_end,
   };
 }
 
 async function handleCheckoutCompleted(
-  sql: ReturnType<typeof neon>,
+  sql: NeonQueryFunction<false, false>,
   stripe: Stripe,
   session: Stripe.Checkout.Session
 ) {
@@ -144,7 +144,7 @@ async function handleCheckoutCompleted(
   });
 }
 
-async function handleSubscriptionChanged(sql: ReturnType<typeof neon>, subscription: Stripe.Subscription) {
+async function handleSubscriptionChanged(sql: NeonQueryFunction<false, false>, subscription: Stripe.Subscription) {
   const snapshot = extractSubscriptionSnapshot(subscription);
   await upsertSubscription(sql, snapshot);
 }
