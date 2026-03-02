@@ -47,7 +47,9 @@ export function getStripe() {
   }
 
   if (!stripeClient) {
-    stripeClient = new Stripe(secretKey);
+    stripeClient = new Stripe(secretKey, {
+      httpClient: Stripe.createNodeHttpClient(),
+    });
   }
 
   return stripeClient;
