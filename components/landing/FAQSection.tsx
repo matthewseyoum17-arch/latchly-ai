@@ -15,7 +15,7 @@ const faqs = [
   },
   {
     q: "Can I cancel anytime?",
-    a: "Yes. No long-term contracts. Cancel anytime with one click. We offer a 14-day free trial — card required to start, but you won't be charged until day 15.",
+    a: "Yes. No long-term contracts. Cancel anytime with one click. We offer a 14-day free trial \u2014 card required to start, but you won\u2019t be charged until day 15.",
   },
   {
     q: "Will this replace my sales team?",
@@ -23,7 +23,7 @@ const faqs = [
   },
   {
     q: "How does appointment booking work?",
-    a: "Booking is available on the Team plan and above. Latchly connects to your Calendly account and books appointments directly inside the chat. It collects the visitor's name, contact info, and service type, then offers available time slots. Solo plan users can still capture leads and request callbacks.",
+    a: "Booking is available on the Team plan and above. Latchly connects to your Calendly account and books appointments directly inside the chat. It collects the visitor\u2019s name, contact info, and service type, then offers available time slots. Solo plan users can still capture leads and request callbacks.",
   },
   {
     q: "How is this different from a basic chatbot?",
@@ -35,15 +35,16 @@ export default function FAQSection() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
-    <section id="faq" className="py-10 px-5 bg-slate-50">
-      <div className="max-w-3xl mx-auto">
+    <section id="faq" className="py-16 px-5 relative grain">
+      <div className="absolute inset-0 bg-gradient-to-b from-surface-warm via-surface to-surface-warm" />
+      <div className="max-w-3xl mx-auto relative">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           className="text-center mb-10"
         >
-          <p className="text-sm font-bold text-brand uppercase tracking-widest mb-3">
+          <p className="text-xs font-bold text-brand uppercase tracking-[0.2em] mb-3">
             FAQ
           </p>
           <h2 className="font-display text-3xl sm:text-4xl font-black tracking-tight">
@@ -59,21 +60,28 @@ export default function FAQSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.05 }}
-              className="bg-white rounded-xl border border-slate-100 overflow-hidden shadow-sm"
+              className={`bg-white rounded-2xl border overflow-hidden transition-all duration-300 ${
+                openIndex === i
+                  ? "border-brand/20 shadow-lifted"
+                  : "border-slate-200/60 shadow-soft hover:border-slate-300"
+              }`}
             >
               <button
                 onClick={() => setOpenIndex(openIndex === i ? null : i)}
-                className="w-full px-6 py-5 flex justify-between items-center text-left cursor-pointer"
+                className="w-full px-6 py-5 flex justify-between items-center text-left cursor-pointer group"
               >
-                <span className="text-[15px] font-bold text-slate-800 pr-4">
+                <span className="text-[15px] font-bold text-slate-800 pr-4 group-hover:text-brand transition-colors">
                   {faq.q}
                 </span>
-                <ChevronDown
-                  size={18}
-                  className={`text-slate-400 shrink-0 transition-transform duration-300 ${
-                    openIndex === i ? "rotate-180" : ""
+                <div
+                  className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all duration-300 ${
+                    openIndex === i
+                      ? "bg-brand/10 text-brand rotate-180"
+                      : "bg-slate-100 text-slate-400"
                   }`}
-                />
+                >
+                  <ChevronDown size={16} />
+                </div>
               </button>
               <AnimatePresence initial={false}>
                 {openIndex === i && (
@@ -81,7 +89,7 @@ export default function FAQSection() {
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: "auto", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.25 }}
+                    transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
                     className="overflow-hidden"
                   >
                     <div className="px-6 pb-5 text-sm text-slate-500 leading-relaxed">

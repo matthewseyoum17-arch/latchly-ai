@@ -49,7 +49,7 @@ export default function LatchlyLanding() {
     };
   }, []);
   return (
-    <div className="font-sans bg-white text-slate-800 overflow-x-hidden">
+    <div className="font-sans bg-surface-warm text-slate-800 overflow-x-hidden">
       <Navbar />
       <HeroSection />
       <DemoSection />

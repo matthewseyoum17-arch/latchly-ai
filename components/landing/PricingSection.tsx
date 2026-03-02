@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Check } from "lucide-react";
+import { Check, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 
 type BillingPlan = "solo" | "team" | "multi";
 type BillingCycle = "monthly" | "annual";
@@ -111,15 +110,16 @@ export default function PricingSection() {
   };
 
   return (
-    <section id="pricing" className="py-10 px-5 bg-slate-50">
-      <div className="max-w-6xl mx-auto">
+    <section id="pricing" className="py-16 px-5 relative grain">
+      <div className="absolute inset-0 bg-gradient-to-b from-surface-warm via-surface to-surface-warm" />
+      <div className="max-w-6xl mx-auto relative">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center mb-6"
+          className="text-center mb-8"
         >
-          <p className="text-sm font-bold text-brand uppercase tracking-widest mb-3">
+          <p className="text-xs font-bold text-brand uppercase tracking-[0.2em] mb-3">
             Pricing
           </p>
           <h2 className="font-display text-3xl sm:text-4xl font-black tracking-tight mb-4">
@@ -133,61 +133,62 @@ export default function PricingSection() {
         {/* Annual toggle */}
         <div className="flex items-center justify-center gap-4 mb-12">
           <span
-            className={`text-sm font-semibold ${!annual ? "text-slate-800" : "text-slate-400"}`}
+            className={`text-sm font-semibold transition-colors ${!annual ? "text-slate-800" : "text-slate-400"}`}
           >
             Monthly
           </span>
           <button
             onClick={() => setAnnual(!annual)}
-            className={`relative w-12 h-6 rounded-full transition-colors ${
-              annual ? "bg-brand" : "bg-slate-300"
+            className={`relative w-14 h-7 rounded-full transition-all cursor-pointer ${
+              annual ? "bg-brand shadow-glow-brand" : "bg-slate-300"
             }`}
           >
             <span
-              className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
-                annual ? "translate-x-6" : "translate-x-0"
+              className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow-md transition-transform ${
+                annual ? "translate-x-7" : "translate-x-0"
               }`}
             />
           </button>
           <span
-            className={`text-sm font-semibold ${annual ? "text-slate-800" : "text-slate-400"}`}
+            className={`text-sm font-semibold transition-colors ${annual ? "text-slate-800" : "text-slate-400"}`}
           >
             Annual{" "}
-            <Badge variant="success" className="ml-1">
+            <span className="ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700">
               Save 20%
-            </Badge>
+            </span>
           </span>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6 items-start mb-8">
+        <div className="grid md:grid-cols-3 gap-6 items-start mb-10">
           {plans.map((plan, i) => (
             <motion.div
               key={plan.id}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              className={`relative rounded-2xl ${
+              className={`relative rounded-2xl transition-all duration-300 ${
                 plan.popular
-                  ? "bg-gradient-to-br from-brand to-brand-dark p-[3px]"
-                  : "border border-slate-100"
+                  ? "bg-gradient-to-b from-brand via-brand to-brand-dark p-[2px] shadow-glow-brand-lg hover:shadow-glow-brand-lg scale-[1.02]"
+                  : "border border-slate-200/60 hover:border-slate-300 hover:shadow-lifted"
               }`}
             >
               {plan.popular && (
                 <div className="absolute -top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-                  <Badge variant="warning" className="px-4 py-1 text-xs font-bold">
+                  <div className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-amber-400 to-amber-500 text-white shadow-lg">
+                    <Sparkles size={12} />
                     Most Popular
-                  </Badge>
+                  </div>
                 </div>
               )}
               <div
                 className={`bg-white rounded-2xl p-7 h-full ${
-                  plan.popular ? "border-0" : ""
+                  plan.popular ? "" : ""
                 }`}
               >
                 <div className="text-sm font-bold text-brand mb-1">{plan.name}</div>
                 <div className="flex items-baseline gap-1 mb-1">
-                  <span className="text-4xl font-black tracking-tight">
+                  <span className="text-5xl font-black tracking-tight tabular-nums text-slate-900">
                     ${annual ? Math.round(plan.annual / 12) : plan.monthly}
                   </span>
                   <span className="text-sm text-slate-400 font-semibold">/mo</span>
@@ -214,7 +215,9 @@ export default function PricingSection() {
                       key={f}
                       className="flex items-start gap-2.5 text-sm text-slate-600"
                     >
-                      <Check size={14} className="text-brand shrink-0 mt-0.5" />
+                      <div className="w-5 h-5 rounded-md bg-brand-50 flex items-center justify-center shrink-0 mt-0.5">
+                        <Check size={12} className="text-brand" />
+                      </div>
                       {f}
                     </li>
                   ))}

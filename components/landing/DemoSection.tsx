@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Send, X } from "lucide-react";
+import { Send } from "lucide-react";
 
 const DEMO_PRESETS = {
   dental: {
@@ -83,7 +83,6 @@ export default function DemoSection() {
     }, 400);
   }, [selectedPreset]);
 
-  // Auto-scroll within the chat container only, never the page
   useEffect(() => {
     if (messagesEndRef.current) {
       const container = messagesEndRef.current.parentElement;
@@ -97,7 +96,7 @@ export default function DemoSection() {
     if (!text.trim() || isTyping) return;
     const scrollYBefore = window.scrollY;
     scrollLockRef.current = scrollYBefore;
-    
+
     const userMsg: Message = { role: "user", text: text.trim() };
     const updated = [...messages, userMsg];
     setMessages(updated);
@@ -105,7 +104,6 @@ export default function DemoSection() {
     setIsTyping(true);
     setShowQuickReplies(false);
 
-    // Immediate scroll lock
     requestAnimationFrame(() => {
       if (window.scrollY !== scrollLockRef.current) {
         window.scrollTo(0, scrollLockRef.current);
@@ -140,7 +138,6 @@ export default function DemoSection() {
       ]);
     } finally {
       setIsTyping(false);
-      // Restore scroll position after all state updates
       setTimeout(() => {
         if (window.scrollY !== scrollLockRef.current) {
           window.scrollTo(0, scrollLockRef.current);
@@ -150,15 +147,16 @@ export default function DemoSection() {
   };
 
   return (
-    <section id="demo" className="py-10 px-5 bg-slate-50">
-      <div className="max-w-4xl mx-auto">
+    <section id="demo" className="py-16 px-5 relative grain">
+      <div className="absolute inset-0 bg-gradient-to-b from-surface-warm via-surface to-surface-warm" />
+      <div className="max-w-4xl mx-auto relative">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center mb-5"
+          className="text-center mb-8"
         >
-          <p className="text-sm font-bold text-brand uppercase tracking-widest mb-3">
+          <p className="text-xs font-bold text-brand uppercase tracking-[0.2em] mb-3">
             Live Demo
           </p>
           <h2 className="font-display text-3xl sm:text-4xl font-black tracking-tight mb-4">
@@ -170,16 +168,16 @@ export default function DemoSection() {
         </motion.div>
 
         {/* Demo preset toggle */}
-        <div className="flex justify-center gap-2 mb-4">
+        <div className="flex justify-center gap-2 mb-6 flex-wrap">
           {(Object.keys(DEMO_PRESETS) as DemoPreset[]).map((preset) => (
             <button
               key={preset}
               type="button"
               onClick={() => setSelectedPreset(preset)}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${
+              className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
                 selectedPreset === preset
-                  ? "bg-brand text-white"
-                  : "bg-white text-slate-600 border border-slate-200 hover:border-brand/50"
+                  ? "bg-brand text-white shadow-glow-brand"
+                  : "bg-white text-slate-600 border border-slate-200/80 hover:border-brand/40 hover:shadow-soft"
               }`}
             >
               {DEMO_PRESETS[preset].emoji} {DEMO_PRESETS[preset].name.replace(" Demo", "")}
@@ -193,36 +191,36 @@ export default function DemoSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ delay: 0.1 }}
-          className="bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden max-w-2xl mx-auto"
+          className="bg-white rounded-2xl shadow-dramatic border border-slate-200/60 overflow-hidden max-w-2xl mx-auto"
         >
           {/* Browser bar */}
-          <div className="bg-slate-100 border-b border-slate-200 px-4 py-2.5 flex items-center gap-3">
+          <div className="bg-slate-50/80 border-b border-slate-200/60 px-4 py-2.5 flex items-center gap-3">
             <div className="flex gap-1.5">
-              <span className="w-3 h-3 rounded-full bg-red-400" />
-              <span className="w-3 h-3 rounded-full bg-amber-400" />
-              <span className="w-3 h-3 rounded-full bg-emerald-400" />
+              <span className="w-2.5 h-2.5 rounded-full bg-red-400/80" />
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-400/80" />
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400/80" />
             </div>
-            <div className="flex-1 bg-white rounded-md px-3 py-1 text-xs text-slate-400 border border-slate-200 font-mono">
+            <div className="flex-1 bg-white rounded-lg px-3 py-1 text-xs text-slate-400 border border-slate-200/60 font-mono">
               demo.yourbusiness.com
             </div>
           </div>
 
           {/* Chat widget header */}
-          <div className="bg-gradient-to-br from-brand to-brand-dark px-5 py-3.5 flex items-center gap-3 text-white">
-            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-lg">
+          <div className="bg-gradient-to-r from-brand via-brand to-brand-dark px-5 py-4 flex items-center gap-3 text-white">
+            <div className="w-10 h-10 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center text-lg">
               {currentPreset.emoji}
             </div>
             <div className="flex-1">
               <div className="font-bold text-sm">{currentPreset.name}</div>
               <div className="text-xs opacity-80 flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
-                Online now · Replies instantly
+                Online now
               </div>
             </div>
           </div>
 
           {/* Messages area */}
-          <div className="h-80 overflow-y-auto p-4 bg-slate-50 space-y-3">
+          <div className="h-80 overflow-y-auto p-4 bg-gradient-to-b from-slate-50 to-white space-y-3">
             {messages.map((msg, i) => (
               <motion.div
                 key={i}
@@ -232,10 +230,10 @@ export default function DemoSection() {
                 className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`max-w-[82%] px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-line ${
+                  className={`max-w-[82%] px-4 py-3 text-sm leading-relaxed whitespace-pre-line ${
                     msg.role === "user"
                       ? "bg-brand text-white rounded-2xl rounded-br-sm"
-                      : "bg-white text-slate-700 rounded-2xl rounded-bl-sm shadow-sm"
+                      : "bg-white text-slate-700 rounded-2xl rounded-bl-sm shadow-soft border border-slate-100"
                   }`}
                 >
                   {msg.text}
@@ -243,10 +241,9 @@ export default function DemoSection() {
               </motion.div>
             ))}
 
-            {/* Typing indicator */}
             {isTyping && (
               <div className="flex justify-start">
-                <div className="bg-white rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm flex gap-1.5">
+                <div className="bg-white rounded-2xl rounded-bl-sm px-4 py-3 shadow-soft border border-slate-100 flex gap-1.5">
                   {[0, 1, 2].map((i) => (
                     <span
                       key={i}
@@ -264,13 +261,13 @@ export default function DemoSection() {
 
           {/* Quick replies */}
           {showQuickReplies && messages.length > 0 && (
-            <div className="px-4 pb-2 flex flex-wrap gap-2 bg-slate-50">
+            <div className="px-4 pb-3 flex flex-wrap gap-2 bg-white border-t border-slate-100/60">
               {currentPreset.quickReplies.map((q) => (
                 <button
                   key={q}
                   type="button"
                   onClick={() => sendMessage(q)}
-                  className="px-3 py-1.5 rounded-full text-xs font-semibold border border-brand/25 text-brand bg-brand/5 hover:bg-brand/10 transition-colors cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-full text-xs font-semibold border border-brand/20 text-brand bg-brand/5 hover:bg-brand/10 hover:border-brand/30 transition-all cursor-pointer"
                 >
                   {q}
                 </button>
@@ -279,7 +276,7 @@ export default function DemoSection() {
           )}
 
           {/* Input area */}
-          <div className="px-4 py-3 border-t border-slate-100 bg-white flex gap-2 items-center">
+          <div className="px-4 py-3 border-t border-slate-200/60 bg-white flex gap-2 items-center">
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -290,19 +287,19 @@ export default function DemoSection() {
                 }
               }}
               placeholder="Type your message..."
-              className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:border-brand/50 transition-colors"
+              className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:border-brand/50 focus:ring-2 focus:ring-brand/10 transition-all"
             />
             <button
               onClick={() => sendMessage(input)}
               disabled={isTyping || !input.trim()}
-              className="w-10 h-10 rounded-xl bg-brand text-white flex items-center justify-center shrink-0 disabled:opacity-50 hover:bg-brand-dark transition-colors cursor-pointer"
+              className="w-10 h-10 rounded-xl bg-brand text-white flex items-center justify-center shrink-0 disabled:opacity-40 hover:bg-brand-dark transition-all hover:shadow-glow-brand cursor-pointer"
             >
               <Send size={16} />
             </button>
           </div>
         </motion.div>
 
-        <p className="text-center text-xs text-slate-400 mt-4">
+        <p className="text-center text-xs text-slate-400 mt-5">
           Sample demo experience. Not a real customer.
         </p>
       </div>
