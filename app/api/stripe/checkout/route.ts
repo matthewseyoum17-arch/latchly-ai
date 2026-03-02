@@ -47,7 +47,8 @@ export async function POST(request: NextRequest) {
       mode: "subscription",
       line_items: [
         { price: recurringPriceId, quantity: 1 },
-        // For non-trial: charge setup fee immediately at checkout
+        // Non-trial: charge setup fee immediately at checkout
+        // Trial: setup fee is added as an invoice item via webhook after checkout completes
         ...(withTrial ? [] : [{ price: setupFeePriceId, quantity: 1 }]),
       ],
       allow_promotion_codes: true,
@@ -56,16 +57,14 @@ export async function POST(request: NextRequest) {
       metadata: {
         plan,
         billingCycle,
+        ...(withTrial ? { trial: "true" } : {}),
       },
       subscription_data: {
-        // For trial: defer setup fee to first invoice after trial ends
-        ...(withTrial ? {
-          trial_period_days: TRIAL_DAYS,
-          add_invoice_items: [{ price: setupFeePriceId, quantity: 1 }],
-        } : {}),
+        ...(withTrial ? { trial_period_days: TRIAL_DAYS } : {}),
         metadata: {
           plan,
           billingCycle,
+          ...(withTrial ? { trial: "true" } : {}),
         },
       },
       ...(customerEmail ? { customer_email: customerEmail } : {}),
