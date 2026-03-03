@@ -10,20 +10,20 @@ export default function HeroSection() {
   };
 
   return (
-    <section className="relative flex items-center pt-28 pb-20 px-5 overflow-hidden grain">
+    <section className="relative flex items-center pt-24 pb-16 px-5 overflow-hidden grain">
       {/* Rich layered background */}
       <div className="absolute inset-0 bg-gradient-to-b from-brand-50/60 via-transparent to-transparent" />
       <div className="absolute -top-48 -right-48 w-[700px] h-[700px] rounded-full bg-brand/[0.04] blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -left-48 w-[500px] h-[500px] rounded-full bg-brand-200/10 blur-3xl pointer-events-none" />
       <div className="absolute top-1/3 right-1/4 w-[300px] h-[300px] rounded-full bg-emerald-200/10 blur-3xl pointer-events-none" />
 
-      <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-12 lg:gap-16 items-center w-full relative lg:-translate-x-6">
+      <div className="max-w-[1080px] mx-auto flex flex-col lg:flex-row gap-12 lg:gap-16 items-center justify-between w-full relative">
         {/* Left - Copy */}
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-          className="max-w-[560px]"
+          className="flex-1 max-w-[540px]"
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
@@ -86,7 +86,7 @@ export default function HeroSection() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
-          className="relative hidden lg:block w-[340px] xl:w-[360px]"
+          className="relative hidden lg:block w-full"
         >
           {/* Decorative glow behind card */}
           <div className="absolute inset-0 -m-8 bg-gradient-to-br from-brand/8 to-emerald-200/10 rounded-3xl blur-2xl" />
