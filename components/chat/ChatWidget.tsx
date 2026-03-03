@@ -128,7 +128,7 @@ function ProactiveNudge({
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 10, scale: 0.95 }}
       transition={{ duration: 0.3 }}
-      className="absolute bottom-16 right-0 w-64 bg-white rounded-xl shadow-xl border border-slate-200 p-3.5 cursor-pointer"
+      className="absolute bottom-[72px] right-0 w-64 bg-white rounded-2xl shadow-xl border border-slate-200/80 p-4 cursor-pointer"
       onClick={onClick}
     >
       <button
@@ -144,6 +144,8 @@ function ProactiveNudge({
         Hi! Need help? I can answer questions about{" "}
         <span className="font-bold text-slate-900">{businessName}</span> 24/7
       </p>
+      {/* Tail arrow */}
+      <div className="absolute -bottom-2 right-6 w-4 h-4 bg-white border-r border-b border-slate-200/80 rotate-45" />
     </motion.div>
   );
 }

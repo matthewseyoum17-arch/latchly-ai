@@ -65,7 +65,7 @@ export default function LatchlyLanding() {
       <ChatWidget
         config={{
           brandColor: "#0e7c6b",
-          businessName: "Dental Office Demo",
+          businessName: "Latchly",
           businessType: "dental",
           plan: "team",
           calendlyUrl: "https://calendly.com/latchly/setup",

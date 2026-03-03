@@ -304,6 +304,14 @@ function SettingsTab() {
             { key: "DATABASE_URL", desc: "Neon Postgres connection string" },
             { key: "DASHBOARD_PASSWORD", desc: "Dashboard login password" },
             { key: "NOTIFY_EMAIL", desc: "Email address for lead notifications" },
+            { key: "STRIPE_SECRET_KEY", desc: "Stripe secret key for checkout + webhooks" },
+            { key: "STRIPE_WEBHOOK_SECRET", desc: "Stripe webhook signing secret" },
+            { key: "STRIPE_PRICE_SOLO_MONTHLY", desc: "Stripe price ID for Solo monthly plan" },
+            { key: "STRIPE_PRICE_SOLO_ANNUAL", desc: "Stripe price ID for Solo annual plan" },
+            { key: "STRIPE_PRICE_TEAM_MONTHLY", desc: "Stripe price ID for Team monthly plan" },
+            { key: "STRIPE_PRICE_TEAM_ANNUAL", desc: "Stripe price ID for Team annual plan" },
+            { key: "STRIPE_PRICE_SETUP_FEE", desc: "Stripe price ID for one-time setup fee" },
+            { key: "APP_URL", desc: "Public app URL used for Stripe success/cancel redirects" },
           ].map((v) => (
             <div key={v.key} className="flex items-start gap-3 py-2 border-b border-slate-50 last:border-0">
               <code className="text-xs bg-slate-100 px-2 py-1 rounded font-bold text-slate-700 shrink-0">{v.key}</code>

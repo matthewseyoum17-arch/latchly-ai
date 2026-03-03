@@ -10,25 +10,26 @@ export default function HeroSection() {
   };
 
   return (
-    <section className="relative flex items-center pt-24 pb-16 px-5 overflow-hidden grain">
+    <section className="relative flex items-center pt-24 pb-16 px-5 overflow-hidden grain min-h-[85vh]">
       {/* Rich layered background */}
       <div className="absolute inset-0 bg-gradient-to-b from-brand-50/60 via-transparent to-transparent" />
       <div className="absolute -top-48 -right-48 w-[700px] h-[700px] rounded-full bg-brand/[0.04] blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -left-48 w-[500px] h-[500px] rounded-full bg-brand-200/10 blur-3xl pointer-events-none" />
       <div className="absolute top-1/3 right-1/4 w-[300px] h-[300px] rounded-full bg-emerald-200/10 blur-3xl pointer-events-none" />
 
-      <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-12 lg:gap-20 items-center w-full relative">
-        {/* Left - Copy */}
+      <div className="max-w-7xl mx-auto w-full relative">
+        {/* Centered Copy */}
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+          className="text-center max-w-3xl mx-auto"
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.15, duration: 0.5 }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 backdrop-blur border border-brand/15 text-xs font-bold text-brand mb-6 shadow-soft"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 backdrop-blur border border-brand/15 text-xs font-bold text-brand mb-6 shadow-soft mx-auto"
           >
             <Sparkles size={13} className="text-brand" />
             Your AI sales agent is live
@@ -44,12 +45,12 @@ export default function HeroSection() {
             </span>
           </h1>
 
-          <p className="text-lg sm:text-xl text-slate-500 leading-relaxed mb-8 max-w-lg">
+          <p className="text-lg sm:text-xl text-slate-500 leading-relaxed mb-8 max-w-lg mx-auto">
             Latchly qualifies leads, captures contact info, and books appointments on your website{" "}
             <span className="font-semibold text-slate-700">24/7</span>. No missed calls, no lost revenue.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-3 mb-8">
+          <div className="flex flex-col sm:flex-row gap-3 mb-8 justify-center">
             <Button size="lg" onClick={() => scrollTo("demo")} className="gap-2 group">
               See It In Action{" "}
               <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
@@ -65,7 +66,7 @@ export default function HeroSection() {
           </div>
 
           {/* Trust bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-center">
             <span className="text-xs text-slate-400 tracking-wide uppercase">Built&nbsp;on</span>
             <div className="flex items-center gap-5">
               {["Anthropic AI", "Vercel", "Calendly"].map((name) => (
@@ -80,12 +81,12 @@ export default function HeroSection() {
           </div>
         </motion.div>
 
-        {/* Right - Chat widget mockup */}
+        {/* Right - Chat widget mockup (decorative, floating) */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
-          className="relative hidden lg:block"
+          className="hidden lg:block lg:absolute lg:right-0 lg:top-1/2 lg:-translate-y-1/2 w-[340px] xl:w-[380px]"
         >
           {/* Decorative glow behind card */}
           <div className="absolute inset-0 -m-8 bg-gradient-to-br from-brand/8 to-emerald-200/10 rounded-3xl blur-2xl" />
