@@ -17,12 +17,13 @@ export default function HeroSection() {
       <div className="absolute -bottom-32 -left-48 w-[500px] h-[500px] rounded-full bg-brand-200/10 blur-3xl pointer-events-none" />
       <div className="absolute top-1/3 right-1/4 w-[300px] h-[300px] rounded-full bg-emerald-200/10 blur-3xl pointer-events-none" />
 
-      <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-12 lg:gap-20 items-center w-full relative">
+      <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-12 lg:gap-16 items-center w-full relative lg:-translate-x-6">
         {/* Left - Copy */}
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+          className="max-w-[560px]"
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
@@ -85,7 +86,7 @@ export default function HeroSection() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
-          className="relative hidden lg:block"
+          className="relative hidden lg:block w-[340px] xl:w-[360px]"
         >
           {/* Decorative glow behind card */}
           <div className="absolute inset-0 -m-8 bg-gradient-to-br from-brand/8 to-emerald-200/10 rounded-3xl blur-2xl" />
