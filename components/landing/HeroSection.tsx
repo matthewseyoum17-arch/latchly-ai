@@ -10,7 +10,7 @@ export default function HeroSection() {
   };
 
   return (
-    <section className="relative flex items-center pt-24 pb-16 px-5 overflow-hidden grain">
+    <section className="relative flex items-center min-h-screen pt-24 pb-16 px-5 overflow-hidden grain">
       {/* Rich layered background */}
       <div className="absolute inset-0 bg-gradient-to-b from-brand-50/60 via-transparent to-transparent" />
       <div className="absolute -top-48 -right-48 w-[700px] h-[700px] rounded-full bg-brand/[0.04] blur-3xl pointer-events-none" />
@@ -23,7 +23,7 @@ export default function HeroSection() {
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-          className="w-full lg:pr-12 xl:pr-20"
+          className="w-full"
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
@@ -86,7 +86,7 @@ export default function HeroSection() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
-          className="relative hidden lg:block w-full max-w-[480px] ml-auto"
+          className="relative hidden lg:block w-full max-w-[480px] mx-auto"
         >
           {/* Decorative glow behind card */}
           <div className="absolute inset-0 -m-8 bg-gradient-to-br from-brand/8 to-emerald-200/10 rounded-3xl blur-2xl" />
