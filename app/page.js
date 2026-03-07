@@ -224,7 +224,7 @@ function ChatWidget({ isOpen, onClose, industryKey = "dental", brandColor = "#0e
       {chatPhase === "complete" && (
         <div style={{ flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:32,textAlign:"center",background:"#f8f9fb" }}>
           <div style={{ width:64,height:64,borderRadius:"50%",background:`${brandColor}15`,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:16,color:brandColor }}><Icons.Check /></div>
-          <h3 style={{ fontSize:18,fontWeight:700,color:"#1e293b",margin:"0 0 8px" }}>Thank you! 🎉</h3>
+          <h3 style={{ fontSize:18,fontWeight:700,color:"#1e293b",margin:"0 0 8px" }}>Thank you!</h3>
           <p style={{ fontSize:13,color:"#64748b",margin:"0 0 24px" }}>Our team will reach out shortly.</p>
           <button onClick={onClose} style={{ padding:"12px 32px",borderRadius:12,background:brandColor,color:"#fff",border:"none",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"inherit" }}>Close</button>
         </div>
@@ -305,201 +305,342 @@ export default function LeadPilotLanding() {
   const ind = INDUSTRIES[selectedIndustry];
 
   return (
-    <div style={{ fontFamily:"'DM Sans',sans-serif",background:"#fafbfc",color:"#1e293b",overflowX:"hidden" }}>
+    <div style={{ fontFamily:"'DM Sans',sans-serif",background:"#f7f9f8",color:"#1a2421",overflowX:"hidden" }}>
       <style>{`
-        body { font-family: 'DM Sans', sans-serif; }
+        body { font-family: 'DM Sans', sans-serif; margin: 0; }
+        * { box-sizing: border-box; }
+
+        .nav-link {
+          text-decoration: none;
+          font-size: 14px;
+          font-weight: 600;
+          color: rgba(255,255,255,0.6);
+          transition: color 0.2s;
+        }
+        .nav-link:hover { color: rgba(255,255,255,0.95); }
+
+        .card-hover {
+          transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease !important;
+        }
+        .card-hover:hover {
+          transform: translateY(-4px) !important;
+          box-shadow: 0 24px 48px rgba(14,124,107,0.1) !important;
+          border-color: rgba(14,124,107,0.22) !important;
+        }
+
+        .btn-glow { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .btn-glow:hover { transform: translateY(-1px); box-shadow: 0 14px 40px rgba(14,124,107,0.55) !important; }
+
+        .industry-btn { transition: all 0.2s ease; }
+        .industry-btn:hover { border-color: rgba(14,124,107,0.5) !important; }
+
+        .reveal { opacity:0; animation: slideUp 0.65s cubic-bezier(0.16,1,0.3,1) forwards; }
+        .reveal-1 { animation-delay: 0.05s; }
+        .reveal-2 { animation-delay: 0.18s; }
+        .reveal-3 { animation-delay: 0.3s; }
+        .reveal-4 { animation-delay: 0.42s; }
+        .reveal-5 { animation-delay: 0.54s; }
+
+        @keyframes slideUp {
+          from { opacity:0; transform:translateY(24px); }
+          to { opacity:1; transform:translateY(0); }
+        }
+        @keyframes fadeIn {
+          from { opacity:0; } to { opacity:1; }
+        }
+        @keyframes float {
+          0%,100% { transform:translateY(0); } 50% { transform:translateY(-12px); }
+        }
+        @keyframes pulse {
+          0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.7; transform:scale(1.15); }
+        }
+        @keyframes bounce {
+          0%,80%,100% { transform:translateY(0); } 40% { transform:translateY(-5px); }
+        }
+        @keyframes dotPulse {
+          0%,100% { box-shadow: 0 0 0 0 rgba(74,222,128,0.4); }
+          50% { box-shadow: 0 0 0 5px rgba(74,222,128,0); }
+        }
       `}</style>
 
       {/* NAV */}
-      <nav style={{ position:"fixed",top:0,left:0,right:0,zIndex:1000,background:"rgba(250,251,252,0.85)",backdropFilter:"blur(20px)",borderBottom:"1px solid rgba(0,0,0,0.05)",padding:"0 40px" }}>
+      <nav style={{ position:"fixed",top:0,left:0,right:0,zIndex:1000,background:"rgba(7,12,11,0.82)",backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",borderBottom:"1px solid rgba(255,255,255,0.06)",padding:"0 40px" }}>
         <div style={{ maxWidth:1200,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center",height:64 }}>
-          <div style={{ display:"flex",alignItems:"center",gap:8 }}>
-            <div style={{ width:32,height:32,borderRadius:10,background:"linear-gradient(135deg,#0e7c6b,#0ea5e9)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff" }}><Icons.Zap /></div>
-            <span style={{ fontWeight:800,fontSize:18,letterSpacing:-0.5 }}>LeadPilot<span style={{ color:"#0e7c6b" }}>AI</span></span>
+          <div style={{ display:"flex",alignItems:"center",gap:9 }}>
+            <div style={{ width:32,height:32,borderRadius:10,background:"linear-gradient(135deg,#0e7c6b,#14b89e)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff" }}><Icons.Zap /></div>
+            <span style={{ fontWeight:800,fontSize:18,letterSpacing:-0.5,color:"#fff" }}>LeadPilot<span style={{ color:"#14d9b8" }}>AI</span></span>
           </div>
           <div style={{ display:"flex",gap:32,alignItems:"center" }}>
-            {["Features","Demo","Pricing","FAQ"].map(item=><a key={item} href={`#${item.toLowerCase()}`} onClick={e=>{e.preventDefault();document.getElementById(item.toLowerCase())?.scrollIntoView({behavior:"smooth",block:"start"});}} style={{ textDecoration:"none",color:"#475569",fontSize:14,fontWeight:600,cursor:"pointer" }}>{item}</a>)}
-            <button onClick={()=>setChatOpen(true)} style={{ padding:"9px 20px",borderRadius:10,background:"linear-gradient(135deg,#0e7c6b,#0a6b5c)",color:"#fff",border:"none",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit" }}>Try Live Demo</button>
+            {["Features","Demo","Pricing","FAQ"].map(item=>(
+              <a key={item} href={`#${item.toLowerCase()}`} className="nav-link" onClick={e=>{e.preventDefault();document.getElementById(item.toLowerCase())?.scrollIntoView({behavior:"smooth",block:"start"});}}>{item}</a>
+            ))}
+            <button onClick={()=>setChatOpen(true)} style={{ padding:"9px 22px",borderRadius:10,background:"#0e7c6b",color:"#fff",border:"1px solid rgba(14,124,107,0.5)",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit" }}>Try Live Demo</button>
           </div>
         </div>
       </nav>
 
       {/* HERO */}
-      <section style={{ minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:"120px 40px 80px",position:"relative",overflow:"hidden" }}>
-        <div style={{ position:"absolute",top:-200,right:-200,width:600,height:600,borderRadius:"50%",background:"radial-gradient(circle,#0e7c6b08 0%,transparent 70%)",pointerEvents:"none" }} />
-        <div style={{ maxWidth:1200,margin:"0 auto",display:"grid",gridTemplateColumns:"1fr 1fr",gap:80,alignItems:"center" }}>
+      <section style={{ minHeight:"100vh",display:"flex",alignItems:"center",padding:"120px 40px 80px",background:"linear-gradient(160deg,#070c0b 0%,#0c1812 60%,#0a1510 100%)",position:"relative",overflow:"hidden" }}>
+        {/* Dot grid */}
+        <div style={{ position:"absolute",inset:0,backgroundImage:"radial-gradient(rgba(255,255,255,0.055) 1px,transparent 1px)",backgroundSize:"28px 28px",pointerEvents:"none" }} />
+        {/* Left glow */}
+        <div style={{ position:"absolute",top:"15%",left:"-5%",width:700,height:700,borderRadius:"50%",background:"radial-gradient(circle,rgba(14,124,107,0.16) 0%,transparent 65%)",pointerEvents:"none" }} />
+        {/* Right glow */}
+        <div style={{ position:"absolute",bottom:"10%",right:"5%",width:400,height:400,borderRadius:"50%",background:"radial-gradient(circle,rgba(20,184,158,0.07) 0%,transparent 70%)",pointerEvents:"none" }} />
+
+        <div style={{ maxWidth:1200,margin:"0 auto",display:"grid",gridTemplateColumns:"1fr 1fr",gap:80,alignItems:"center",position:"relative" }}>
           <div>
-            <div style={{ display:"inline-flex",alignItems:"center",gap:6,padding:"6px 14px",borderRadius:50,background:"#0e7c6b10",border:"1px solid #0e7c6b20",fontSize:12.5,fontWeight:700,color:"#0e7c6b",marginBottom:24 }}>
-              <span style={{ width:6,height:6,borderRadius:"50%",background:"#4ade80",animation:"pulse 2s infinite" }}></span>AI-Powered Lead Capture
+            <div className="reveal reveal-1" style={{ display:"inline-flex",alignItems:"center",gap:7,padding:"6px 14px",borderRadius:50,background:"rgba(14,124,107,0.15)",border:"1px solid rgba(14,124,107,0.3)",fontSize:12.5,fontWeight:700,color:"#14d9b8",marginBottom:28 }}>
+              <span style={{ width:7,height:7,borderRadius:"50%",background:"#4ade80",display:"inline-block",animation:"dotPulse 2s infinite" }}></span>
+              AI-Powered Lead Capture
             </div>
-            <h1 style={{ fontFamily:"'Playfair Display',serif",fontSize:56,fontWeight:900,lineHeight:1.08,letterSpacing:-2,marginBottom:20,color:"#0f172a" }}>
-              Your website's<br/><span style={{ background:"linear-gradient(135deg,#0e7c6b,#0ea5e9)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent" }}>best employee</span><br/>never sleeps.
+
+            <h1 className="reveal reveal-2" style={{ fontFamily:"'Syne','DM Sans',sans-serif",fontSize:"clamp(42px,5.5vw,70px)",fontWeight:800,lineHeight:1.02,letterSpacing:"-2.5px",color:"#ffffff",marginBottom:24 }}>
+              Your website's<br/>
+              <span style={{ color:"#0e7c6b",textShadow:"0 0 60px rgba(14,124,107,0.35)" }}>best employee</span><br/>
+              never sleeps.
             </h1>
-            <p style={{ fontSize:18,lineHeight:1.65,color:"#64748b",marginBottom:36,maxWidth:480 }}>A 24/7 AI assistant that answers questions, captures leads, and sends real customers to your phone — even when you're closed.</p>
-            <div style={{ display:"flex",gap:14,alignItems:"center",marginBottom:32 }}>
-              <button onClick={()=>setChatOpen(true)} style={{ padding:"16px 32px",borderRadius:14,background:"linear-gradient(135deg,#0e7c6b,#0a6b5c)",color:"#fff",border:"none",fontWeight:800,fontSize:15,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:8,boxShadow:"0 8px 30px #0e7c6b40" }}>See it in action <Icons.ArrowRight /></button>
-              <a href="#pricing" onClick={e=>{e.preventDefault();document.getElementById("pricing")?.scrollIntoView({behavior:"smooth",block:"start"});}} style={{ padding:"16px 32px",borderRadius:14,border:"2px solid #e2e8f0",color:"#475569",textDecoration:"none",fontWeight:700,fontSize:15,fontFamily:"'DM Sans',sans-serif" }}>View Pricing</a>
+
+            <p className="reveal reveal-3" style={{ fontSize:18,lineHeight:1.7,color:"rgba(255,255,255,0.52)",marginBottom:36,maxWidth:460 }}>
+              A 24/7 AI assistant that answers questions, captures leads, and sends real customers to your phone — even when you're closed.
+            </p>
+
+            <div className="reveal reveal-4" style={{ display:"flex",gap:14,alignItems:"center",marginBottom:32 }}>
+              <button onClick={()=>setChatOpen(true)} className="btn-glow" style={{ padding:"15px 32px",borderRadius:12,background:"#0e7c6b",color:"#fff",border:"none",fontWeight:800,fontSize:15,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:8,boxShadow:"0 8px 32px rgba(14,124,107,0.4)" }}>
+                See it in action <Icons.ArrowRight />
+              </button>
+              <a href="#pricing" onClick={e=>{e.preventDefault();document.getElementById("pricing")?.scrollIntoView({behavior:"smooth",block:"start"});}} style={{ padding:"15px 32px",borderRadius:12,border:"1px solid rgba(255,255,255,0.13)",color:"rgba(255,255,255,0.65)",textDecoration:"none",fontWeight:700,fontSize:15,fontFamily:"'DM Sans',sans-serif",transition:"border-color 0.2s,color 0.2s" }}>
+                View Pricing
+              </a>
             </div>
-            <div style={{ display:"flex",gap:24,fontSize:13,color:"#94a3b8" }}>{["No credit card required","2-min setup","Cancel anytime"].map(t=><span key={t} style={{ display:"flex",alignItems:"center",gap:5 }}><span style={{ color:"#0e7c6b" }}><Icons.Check /></span> {t}</span>)}</div>
+
+            <div className="reveal reveal-5" style={{ display:"flex",gap:24,fontSize:13,color:"rgba(255,255,255,0.38)" }}>
+              {["No credit card required","2-min setup","Cancel anytime"].map(t=>(
+                <span key={t} style={{ display:"flex",alignItems:"center",gap:5 }}>
+                  <span style={{ color:"#0e7c6b" }}><Icons.Check /></span> {t}
+                </span>
+              ))}
+            </div>
           </div>
+
           <div style={{ position:"relative" }}>
-            <div style={{ background:"#fff",borderRadius:24,overflow:"hidden",boxShadow:"0 40px 80px rgba(0,0,0,0.08)",border:"1px solid rgba(0,0,0,0.06)",animation:"float 6s ease-in-out infinite" }}>
-              <div style={{ background:"linear-gradient(135deg,#0e7c6b,#0e7c6bdd)",padding:"14px 20px",display:"flex",alignItems:"center",gap:10,color:"#fff" }}>
-                <div style={{ width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18 }}>{ind.emoji}</div>
-                <div><div style={{ fontWeight:700,fontSize:14 }}>{ind.name}</div><div style={{ fontSize:11,opacity:0.8 }}>● Online now</div></div>
+            <div style={{ background:"rgba(12,24,18,0.85)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderRadius:22,overflow:"hidden",boxShadow:"0 40px 80px rgba(0,0,0,0.55),0 0 0 1px rgba(14,124,107,0.18)",animation:"float 6s ease-in-out infinite" }}>
+              <div style={{ background:"linear-gradient(135deg,#0e7c6b,#0b6a5a)",padding:"14px 20px",display:"flex",alignItems:"center",gap:10,color:"#fff" }}>
+                <div style={{ width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18 }}>{ind.emoji}</div>
+                <div>
+                  <div style={{ fontWeight:700,fontSize:14 }}>{ind.name}</div>
+                  <div style={{ fontSize:11,opacity:0.8,display:"flex",alignItems:"center",gap:4 }}><span style={{ width:5,height:5,borderRadius:"50%",background:"#4ade80",display:"inline-block" }}></span> Online now</div>
+                </div>
               </div>
               <div style={{ padding:20 }}>
                 {[{role:"bot",text:"Hi there! 👋 How can I help you today?"},{role:"user",text:ind.heroQ},{role:"bot",text:ind.heroA}].map((m,i)=>(
                   <div key={i} style={{ display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start",marginBottom:10 }}>
-                    <div style={{ padding:"9px 14px",borderRadius:14,maxWidth:"80%",fontSize:13,lineHeight:1.5,background:m.role==="user"?"#0e7c6b":"#f1f5f9",color:m.role==="user"?"#fff":"#1e293b",borderBottomRightRadius:m.role==="user"?4:14,borderBottomLeftRadius:m.role==="bot"?4:14 }}>{m.text}</div>
+                    <div style={{ padding:"9px 14px",borderRadius:14,maxWidth:"80%",fontSize:13,lineHeight:1.5,background:m.role==="user"?"#0e7c6b":"rgba(255,255,255,0.07)",color:"#fff",borderBottomRightRadius:m.role==="user"?4:14,borderBottomLeftRadius:m.role==="bot"?4:14 }}>{m.text}</div>
                   </div>
                 ))}
-                <div style={{ display:"flex",gap:6,marginTop:6 }}>{ind.quickReplies.slice(0,3).map(b=><span key={b} style={{ padding:"5px 12px",borderRadius:20,fontSize:11,fontWeight:600,border:"1px solid #0e7c6b30",color:"#0e7c6b",background:"#0e7c6b08" }}>{b}</span>)}</div>
+                <div style={{ display:"flex",gap:6,marginTop:8,flexWrap:"wrap" }}>
+                  {ind.quickReplies.slice(0,3).map(b=>(
+                    <span key={b} style={{ padding:"5px 11px",borderRadius:20,fontSize:11,fontWeight:600,border:"1px solid rgba(14,124,107,0.4)",color:"#14d9b8",background:"rgba(14,124,107,0.1)" }}>{b}</span>
+                  ))}
+                </div>
               </div>
             </div>
-            <div style={{ position:"absolute",top:-16,right:-16,background:"#fff",borderRadius:14,padding:"10px 16px",boxShadow:"0 8px 30px rgba(0,0,0,0.1)",display:"flex",alignItems:"center",gap:8,animation:"float 5s ease-in-out 1s infinite" }}>
-              <div style={{ width:32,height:32,borderRadius:8,background:"#fef3c7",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16 }}>📱</div>
-              <div><div style={{ fontSize:11,fontWeight:700,color:"#1e293b" }}>New lead captured!</div><div style={{ fontSize:10,color:"#64748b" }}>Just now</div></div>
+
+            <div style={{ position:"absolute",top:-16,right:-16,background:"rgba(10,20,16,0.95)",backdropFilter:"blur(12px)",border:"1px solid rgba(14,124,107,0.2)",borderRadius:14,padding:"10px 16px",boxShadow:"0 8px 30px rgba(0,0,0,0.4)",display:"flex",alignItems:"center",gap:8,animation:"float 5s ease-in-out 1s infinite" }}>
+              <div style={{ width:32,height:32,borderRadius:8,background:"rgba(14,124,107,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16 }}>📱</div>
+              <div>
+                <div style={{ fontSize:11,fontWeight:700,color:"#fff" }}>New lead captured!</div>
+                <div style={{ fontSize:10,color:"rgba(255,255,255,0.38)" }}>Just now</div>
+              </div>
             </div>
-            <div style={{ position:"absolute",bottom:-10,left:-20,background:"#fff",borderRadius:14,padding:"10px 16px",boxShadow:"0 8px 30px rgba(0,0,0,0.1)",animation:"float 5s ease-in-out 2s infinite" }}>
-              <div style={{ fontSize:10,color:"#64748b",fontWeight:600 }}>After-hours coverage</div><div style={{ fontSize:22,fontWeight:800,color:"#0e7c6b" }}>24/7</div>
+
+            <div style={{ position:"absolute",bottom:-10,left:-20,background:"rgba(10,20,16,0.95)",backdropFilter:"blur(12px)",border:"1px solid rgba(14,124,107,0.2)",borderRadius:14,padding:"10px 16px",boxShadow:"0 8px 30px rgba(0,0,0,0.4)",animation:"float 5s ease-in-out 2s infinite" }}>
+              <div style={{ fontSize:10,color:"rgba(255,255,255,0.38)",fontWeight:600 }}>After-hours coverage</div>
+              <div style={{ fontSize:22,fontWeight:800,color:"#0e7c6b" }}>24/7</div>
             </div>
           </div>
         </div>
       </section>
 
       {/* INDUSTRY SELECTOR */}
-      <section style={{ padding:"40px 40px",borderTop:"1px solid #f1f5f9",borderBottom:"1px solid #f1f5f9" }}>
+      <section style={{ padding:"40px 40px",background:"#0f1a14",borderBottom:"1px solid rgba(255,255,255,0.06)" }}>
         <div style={{ maxWidth:1200,margin:"0 auto",textAlign:"center" }}>
-          <p style={{ fontSize:13,color:"#94a3b8",fontWeight:600,textTransform:"uppercase",letterSpacing:2,marginBottom:20 }}>Select an industry to try the demo</p>
-          <div style={{ display:"flex",justifyContent:"center",gap:12,flexWrap:"wrap" }}>
-            {industryKeys.map(key=>{const i=INDUSTRIES[key];const active=selectedIndustry===key;return(
-              <button key={key} onClick={()=>setSelectedIndustry(key)} style={{ padding:"10px 20px",borderRadius:12,fontSize:14,fontWeight:700,color:active?"#fff":"#1e293b",whiteSpace:"nowrap",background:active?"linear-gradient(135deg,#0e7c6b,#0a6b5c)":"#fff",border:active?"2px solid #0e7c6b":"2px solid #e2e8f0",cursor:"pointer",fontFamily:"inherit",transition:"all 0.25s",boxShadow:active?"0 4px 16px #0e7c6b30":"0 1px 3px rgba(0,0,0,0.04)",display:"flex",alignItems:"center",gap:6 }}><span style={{ fontSize:16 }}>{i.emoji}</span> {i.label}</button>
-            );})}
+          <p style={{ fontSize:12,color:"rgba(255,255,255,0.35)",fontWeight:700,textTransform:"uppercase",letterSpacing:2,marginBottom:20 }}>Select an industry to try the demo</p>
+          <div style={{ display:"flex",justifyContent:"center",gap:10,flexWrap:"wrap" }}>
+            {industryKeys.map(key=>{
+              const i=INDUSTRIES[key];
+              const active=selectedIndustry===key;
+              return (
+                <button key={key} onClick={()=>setSelectedIndustry(key)} className="industry-btn" style={{ padding:"9px 18px",borderRadius:10,fontSize:13.5,fontWeight:700,color:active?"#fff":"rgba(255,255,255,0.5)",whiteSpace:"nowrap",background:active?"#0e7c6b":"rgba(255,255,255,0.04)",border:active?"1px solid rgba(14,124,107,0.6)":"1px solid rgba(255,255,255,0.08)",cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:6 }}>
+                  <span style={{ fontSize:15 }}>{i.emoji}</span> {i.label}
+                </button>
+              );
+            })}
           </div>
         </div>
       </section>
 
       {/* FEATURES */}
-      <section id="features" style={{ padding:"100px 40px" }}>
+      <section id="features" style={{ padding:"100px 40px",background:"#f7f9f8" }}>
         <div style={{ maxWidth:1200,margin:"0 auto" }}>
           <div style={{ textAlign:"center",marginBottom:64 }}>
-            <div style={{ fontSize:12,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>Features</div>
-            <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5,marginBottom:16 }}>Everything you need to<br/>convert more visitors</h2>
-            <p style={{ fontSize:16,color:"#64748b",maxWidth:520,margin:"0 auto" }}>From AI conversations to lead capture to analytics — one platform handles it all.</p>
+            <div style={{ fontSize:11,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2.5,marginBottom:14 }}>Features</div>
+            <h2 style={{ fontFamily:"'Syne','DM Sans',sans-serif",fontSize:"clamp(30px,3.5vw,42px)",fontWeight:800,letterSpacing:-1.5,marginBottom:16,color:"#0a1510" }}>Everything you need to<br/>convert more visitors</h2>
+            <p style={{ fontSize:16,color:"#617a74",maxWidth:500,margin:"0 auto",lineHeight:1.7 }}>From AI conversations to lead capture to analytics — one platform handles it all.</p>
           </div>
-          <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:20 }}>
-            {features.map((f,i)=><div key={i} className="hover-lift" style={{ background:"#fff",borderRadius:18,padding:32,border:"1px solid #f1f5f9" }}>
-              <div style={{ width:48,height:48,borderRadius:14,marginBottom:20,background:"linear-gradient(135deg,#0e7c6b12,#0ea5e912)",display:"flex",alignItems:"center",justifyContent:"center",color:"#0e7c6b" }}>{f.icon}</div>
-              <h3 style={{ fontSize:17,fontWeight:800,marginBottom:10 }}>{f.title}</h3>
-              <p style={{ fontSize:14,lineHeight:1.65,color:"#64748b" }}>{f.desc}</p>
-            </div>)}
+          <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:18 }}>
+            {features.map((f,i)=>(
+              <div key={i} className="card-hover" style={{ background:"#fff",borderRadius:18,padding:32,border:"1px solid #e8eeec" }}>
+                <div style={{ width:46,height:46,borderRadius:12,marginBottom:20,background:"linear-gradient(135deg,rgba(14,124,107,0.1),rgba(14,124,107,0.04))",display:"flex",alignItems:"center",justifyContent:"center",color:"#0e7c6b" }}>{f.icon}</div>
+                <h3 style={{ fontSize:16,fontWeight:800,marginBottom:10,color:"#0a1510" }}>{f.title}</h3>
+                <p style={{ fontSize:14,lineHeight:1.7,color:"#617a74" }}>{f.desc}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* DEMO */}
-      <section id="demo" style={{ padding:"100px 40px",background:"#f1f5f9" }}>
+      <section id="demo" style={{ padding:"100px 40px",background:"#eef2f0" }}>
         <div style={{ maxWidth:1200,margin:"0 auto" }}>
           <div style={{ textAlign:"center",marginBottom:48 }}>
-            <div style={{ fontSize:12,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>Live Demo</div>
-            <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5,marginBottom:16 }}>See it in action</h2>
-            <p style={{ fontSize:16,color:"#64748b",maxWidth:580,margin:"0 auto" }}>Select an industry above, then open the chat to experience a fully tailored AI assistant.</p>
+            <div style={{ fontSize:11,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2.5,marginBottom:14 }}>Live Demo</div>
+            <h2 style={{ fontFamily:"'Syne','DM Sans',sans-serif",fontSize:"clamp(30px,3.5vw,42px)",fontWeight:800,letterSpacing:-1.5,marginBottom:16,color:"#0a1510" }}>See it in action</h2>
+            <p style={{ fontSize:16,color:"#617a74",maxWidth:560,margin:"0 auto" }}>Select an industry above, then open the chat to experience a fully tailored AI assistant.</p>
           </div>
-          <div style={{ display:"flex",justifyContent:"center",gap:16,marginBottom:40 }}>
-            {["landing","dashboard"].map(tab=><button key={tab} onClick={()=>setActiveTab(tab)} style={{ padding:"10px 24px",borderRadius:10,border:"none",fontFamily:"inherit",fontWeight:700,fontSize:14,cursor:"pointer",background:activeTab===tab?"#0e7c6b":"#fff",color:activeTab===tab?"#fff":"#64748b",boxShadow:activeTab===tab?"0 4px 12px #0e7c6b30":"0 1px 3px rgba(0,0,0,0.05)" }}>{tab==="landing"?"Chat Widget":"Owner Dashboard"}</button>)}
+          <div style={{ display:"flex",justifyContent:"center",gap:10,marginBottom:40 }}>
+            {["landing","dashboard"].map(tab=>(
+              <button key={tab} onClick={()=>setActiveTab(tab)} style={{ padding:"10px 26px",borderRadius:10,border:"none",fontFamily:"inherit",fontWeight:700,fontSize:14,cursor:"pointer",background:activeTab===tab?"#0e7c6b":"#fff",color:activeTab===tab?"#fff":"#617a74",boxShadow:activeTab===tab?"0 4px 14px rgba(14,124,107,0.3)":"0 1px 3px rgba(0,0,0,0.05)" }}>
+                {tab==="landing"?"Chat Widget":"Owner Dashboard"}
+              </button>
+            ))}
           </div>
           {activeTab==="dashboard"?<DashboardPreview />:(
             <div style={{ textAlign:"center" }}>
-              <div style={{ display:"inline-flex",alignItems:"center",gap:8,padding:"8px 20px",borderRadius:50,background:"#fff",marginBottom:24,fontSize:14,fontWeight:700,color:"#0e7c6b",boxShadow:"0 2px 8px rgba(0,0,0,0.06)" }}><span style={{ fontSize:18 }}>{ind.emoji}</span>Currently demoing: {ind.name}</div><br/>
-              <button onClick={()=>setChatOpen(true)} style={{ padding:"20px 48px",borderRadius:16,background:"linear-gradient(135deg,#0e7c6b,#0a6b5c)",color:"#fff",border:"none",fontWeight:800,fontSize:18,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 12px 40px #0e7c6b30",display:"inline-flex",alignItems:"center",gap:12 }}><Icons.MessageSquare /> Open Live Chat Demo</button>
-              <p style={{ fontSize:13,color:"#94a3b8",marginTop:16 }}>Industry-tailored responses, quick replies, lead capture, and rating system</p>
+              <div style={{ display:"inline-flex",alignItems:"center",gap:8,padding:"8px 20px",borderRadius:50,background:"#fff",marginBottom:28,fontSize:14,fontWeight:700,color:"#0e7c6b",boxShadow:"0 2px 8px rgba(0,0,0,0.07)" }}>
+                <span style={{ fontSize:18 }}>{ind.emoji}</span>Currently demoing: {ind.name}
+              </div>
+              <br/>
+              <button onClick={()=>setChatOpen(true)} className="btn-glow" style={{ padding:"20px 52px",borderRadius:14,background:"#0e7c6b",color:"#fff",border:"none",fontWeight:800,fontSize:17,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 12px 40px rgba(14,124,107,0.35)",display:"inline-flex",alignItems:"center",gap:12 }}>
+                <Icons.MessageSquare /> Open Live Chat Demo
+              </button>
+              <p style={{ fontSize:13,color:"#8fa89f",marginTop:16 }}>Industry-tailored responses, quick replies, lead capture, and rating system</p>
             </div>
           )}
         </div>
       </section>
 
       {/* HOW IT WORKS */}
-      <section style={{ padding:"100px 40px" }}>
+      <section style={{ padding:"100px 40px",background:"#f7f9f8" }}>
         <div style={{ maxWidth:1000,margin:"0 auto" }}>
           <div style={{ textAlign:"center",marginBottom:64 }}>
-            <div style={{ fontSize:12,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>Setup</div>
-            <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5 }}>Up and running in minutes</h2>
+            <div style={{ fontSize:11,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2.5,marginBottom:14 }}>Setup</div>
+            <h2 style={{ fontFamily:"'Syne','DM Sans',sans-serif",fontSize:"clamp(30px,3.5vw,42px)",fontWeight:800,letterSpacing:-1.5,color:"#0a1510" }}>Up and running in minutes</h2>
           </div>
-          <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:40 }}>
-            {[{step:"01",title:"Tell us about your business",desc:"Enter your services, hours, pricing, and FAQs. Or pick an industry template."},{step:"02",title:"Copy one line of code",desc:"We generate a tiny embed snippet. Paste it on your website — any platform."},{step:"03",title:"Start capturing leads",desc:"Your AI assistant is live. Watch leads flow into your dashboard and phone."}].map(s=>(
+          <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:48 }}>
+            {[
+              {step:"01",title:"Tell us about your business",desc:"Enter your services, hours, pricing, and FAQs. Or pick an industry template."},
+              {step:"02",title:"Copy one line of code",desc:"We generate a tiny embed snippet. Paste it on your website — any platform."},
+              {step:"03",title:"Start capturing leads",desc:"Your AI assistant is live. Watch leads flow into your dashboard and phone."}
+            ].map(s=>(
               <div key={s.step} style={{ textAlign:"center" }}>
-                <div style={{ width:56,height:56,borderRadius:"50%",margin:"0 auto 20px",background:"linear-gradient(135deg,#0e7c6b,#0ea5e9)",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:18,fontFamily:"'Playfair Display',serif" }}>{s.step}</div>
-                <h3 style={{ fontSize:17,fontWeight:800,marginBottom:10 }}>{s.title}</h3>
-                <p style={{ fontSize:14,lineHeight:1.65,color:"#64748b" }}>{s.desc}</p>
+                <div style={{ width:52,height:52,borderRadius:"50%",margin:"0 auto 20px",background:"#0e7c6b",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:17,fontFamily:"'Syne','DM Sans',sans-serif",boxShadow:"0 8px 24px rgba(14,124,107,0.3)" }}>{s.step}</div>
+                <h3 style={{ fontSize:16,fontWeight:800,marginBottom:10,color:"#0a1510" }}>{s.title}</h3>
+                <p style={{ fontSize:14,lineHeight:1.7,color:"#617a74" }}>{s.desc}</p>
               </div>
             ))}
           </div>
           <div style={{ marginTop:48,background:"#0f172a",borderRadius:16,padding:24 }}>
             <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16 }}>
-              <div style={{ display:"flex",gap:6 }}><span style={{ width:10,height:10,borderRadius:"50%",background:"#ef4444" }}></span><span style={{ width:10,height:10,borderRadius:"50%",background:"#f59e0b" }}></span><span style={{ width:10,height:10,borderRadius:"50%",background:"#22c55e" }}></span></div>
-              <button onClick={()=>{setEmbedCopied(true);setTimeout(()=>setEmbedCopied(false),2000);}} style={{ display:"flex",alignItems:"center",gap:6,padding:"5px 12px",borderRadius:6,background:"#1e293b",border:"1px solid #334155",color:embedCopied?"#4ade80":"#94a3b8",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit" }}><Icons.Copy /> {embedCopied?"Copied!":"Copy"}</button>
+              <div style={{ display:"flex",gap:6 }}>
+                <span style={{ width:10,height:10,borderRadius:"50%",background:"#ef4444",display:"inline-block" }}></span>
+                <span style={{ width:10,height:10,borderRadius:"50%",background:"#f59e0b",display:"inline-block" }}></span>
+                <span style={{ width:10,height:10,borderRadius:"50%",background:"#22c55e",display:"inline-block" }}></span>
+              </div>
+              <button onClick={()=>{setEmbedCopied(true);setTimeout(()=>setEmbedCopied(false),2000);}} style={{ display:"flex",alignItems:"center",gap:6,padding:"5px 12px",borderRadius:6,background:"#1e293b",border:"1px solid #334155",color:embedCopied?"#4ade80":"#94a3b8",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit" }}>
+                <Icons.Copy /> {embedCopied?"Copied!":"Copy"}
+              </button>
             </div>
-            <pre style={{ color:"#e2e8f0",fontSize:13,lineHeight:1.7,fontFamily:"'Fira Code','SF Mono',monospace",overflow:"auto" }}><code>{embedCode}</code></pre>
+            <pre style={{ color:"#e2e8f0",fontSize:13,lineHeight:1.7,fontFamily:"'Fira Code','SF Mono',monospace",overflow:"auto",margin:0 }}><code>{embedCode}</code></pre>
           </div>
         </div>
       </section>
 
       {/* ROI SECTION */}
-      <section style={{ padding:"100px 40px",background:"#f8fafc" }}>
+      <section style={{ padding:"100px 40px",background:"#eef2f0" }}>
         <div style={{ maxWidth:1200,margin:"0 auto" }}>
           <div style={{ textAlign:"center",marginBottom:64 }}>
-            <div style={{ fontSize:12,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>ROI Comparison</div>
-            <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5,marginBottom:16 }}>AI assistant vs. traditional staffing</h2>
-            <p style={{ fontSize:16,color:"#64748b",maxWidth:600,margin:"0 auto" }}>See the real numbers. LeadPilot AI doesn't just save money — it captures revenue you're currently leaving on the table.</p>
+            <div style={{ fontSize:11,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2.5,marginBottom:14 }}>ROI Comparison</div>
+            <h2 style={{ fontFamily:"'Syne','DM Sans',sans-serif",fontSize:"clamp(30px,3.5vw,42px)",fontWeight:800,letterSpacing:-1.5,marginBottom:16,color:"#0a1510" }}>AI assistant vs. traditional staffing</h2>
+            <p style={{ fontSize:16,color:"#617a74",maxWidth:580,margin:"0 auto" }}>See the real numbers. LeadPilot AI doesn't just save money — it captures revenue you're currently leaving on the table.</p>
           </div>
-          <div style={{ display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:20,marginBottom:48 }}>
+          <div style={{ display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:18,marginBottom:48 }}>
             {roiComparisons.map((item,i)=>(
-              <div key={i} className="hover-lift" style={{ background:"#fff",borderRadius:18,padding:28,border:"1px solid #f1f5f9" }}>
-                <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:16 }}>
-                  <div style={{ width:44,height:44,borderRadius:12,background:"linear-gradient(135deg,#0e7c6b12,#0ea5e912)",display:"flex",alignItems:"center",justifyContent:"center",color:"#0e7c6b" }}>{item.icon}</div>
-                  <h3 style={{ fontSize:17,fontWeight:800 }}>{item.title}</h3>
+              <div key={i} className="card-hover" style={{ background:"#fff",borderRadius:18,padding:28,border:"1px solid #e8eeec" }}>
+                <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:18 }}>
+                  <div style={{ width:44,height:44,borderRadius:12,background:"rgba(14,124,107,0.1)",display:"flex",alignItems:"center",justifyContent:"center",color:"#0e7c6b" }}>{item.icon}</div>
+                  <h3 style={{ fontSize:16,fontWeight:800,color:"#0a1510" }}>{item.title}</h3>
                 </div>
                 <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16 }}>
-                  <div style={{ background:"#0e7c6b08",borderRadius:12,padding:"14px 16px",border:"1px solid #0e7c6b15" }}>
-                    <div style={{ fontSize:10,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:1,marginBottom:4 }}>⚡ LeadPilot AI</div>
-                    <div style={{ fontSize:16,fontWeight:800,color:"#0e7c6b" }}>{item.ai}</div>
+                  <div style={{ background:"rgba(14,124,107,0.07)",borderRadius:12,padding:"14px 16px",border:"1px solid rgba(14,124,107,0.14)" }}>
+                    <div style={{ fontSize:10,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:1,marginBottom:4 }}>LeadPilot AI</div>
+                    <div style={{ fontSize:15,fontWeight:800,color:"#0e7c6b" }}>{item.ai}</div>
                   </div>
                   <div style={{ background:"#fef2f2",borderRadius:12,padding:"14px 16px",border:"1px solid #fecaca" }}>
-                    <div style={{ fontSize:10,fontWeight:700,color:"#dc2626",textTransform:"uppercase",letterSpacing:1,marginBottom:4 }}>👤 Traditional</div>
-                    <div style={{ fontSize:16,fontWeight:800,color:"#dc2626" }}>{item.trad}</div>
+                    <div style={{ fontSize:10,fontWeight:700,color:"#dc2626",textTransform:"uppercase",letterSpacing:1,marginBottom:4 }}>Traditional</div>
+                    <div style={{ fontSize:15,fontWeight:800,color:"#dc2626" }}>{item.trad}</div>
                   </div>
                 </div>
-                <p style={{ fontSize:13.5,lineHeight:1.6,color:"#64748b" }}>{item.detail}</p>
+                <p style={{ fontSize:13.5,lineHeight:1.65,color:"#617a74",margin:0 }}>{item.detail}</p>
               </div>
             ))}
           </div>
-          <div style={{ background:"linear-gradient(135deg,#0f172a,#1e293b)",borderRadius:20,padding:"36px 40px",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:20,textAlign:"center" }}>
-            {[{label:"Avg. cost per lead",value:"$0.50–$2",sub:"vs. $15–$50 traditional"},{label:"Hours covered",value:"168/week",sub:"vs. 40–50 hrs staffed"},{label:"Avg. response time",value:"< 2 sec",sub:"vs. 4–24 hrs by email"},{label:"Missed-lead reduction",value:"Up to 90%",sub:"capture after-hours visitors"}].map((s,i)=>(
-              <div key={i}><div style={{ fontSize:11,color:"#64748b",fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:6 }}>{s.label}</div><div style={{ fontSize:24,fontWeight:900,color:"#fff" }}>{s.value}</div><div style={{ fontSize:11,color:"#4ade80",fontWeight:600,marginTop:4 }}>{s.sub}</div></div>
+          <div style={{ background:"#0f172a",borderRadius:20,padding:"36px 40px",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:20,textAlign:"center" }}>
+            {[
+              {label:"Avg. cost per lead",value:"$0.50–$2",sub:"vs. $15–$50 traditional"},
+              {label:"Hours covered",value:"168/week",sub:"vs. 40–50 hrs staffed"},
+              {label:"Avg. response time",value:"< 2 sec",sub:"vs. 4–24 hrs by email"},
+              {label:"Missed-lead reduction",value:"Up to 90%",sub:"capture after-hours visitors"}
+            ].map((s,i)=>(
+              <div key={i}>
+                <div style={{ fontSize:10,color:"#64748b",fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:8 }}>{s.label}</div>
+                <div style={{ fontSize:26,fontWeight:900,color:"#fff",letterSpacing:-1 }}>{s.value}</div>
+                <div style={{ fontSize:11,color:"#4ade80",fontWeight:600,marginTop:6 }}>{s.sub}</div>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
       {/* PRICING */}
-      <section id="pricing" style={{ padding:"100px 40px" }}>
+      <section id="pricing" style={{ padding:"100px 40px",background:"#f7f9f8" }}>
         <div style={{ maxWidth:1100,margin:"0 auto" }}>
           <div style={{ textAlign:"center",marginBottom:64 }}>
-            <div style={{ fontSize:12,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>Pricing</div>
-            <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5,marginBottom:16 }}>Simple, transparent pricing</h2>
-            <p style={{ fontSize:16,color:"#64748b" }}>Start with a 14-day free trial. No credit card required.</p>
+            <div style={{ fontSize:11,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2.5,marginBottom:14 }}>Pricing</div>
+            <h2 style={{ fontFamily:"'Syne','DM Sans',sans-serif",fontSize:"clamp(30px,3.5vw,42px)",fontWeight:800,letterSpacing:-1.5,marginBottom:16,color:"#0a1510" }}>Simple, transparent pricing</h2>
+            <p style={{ fontSize:16,color:"#617a74" }}>Start with a 14-day free trial. No credit card required.</p>
           </div>
           <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:20,alignItems:"start" }}>
             {plans.map(plan=>(
-              <div key={plan.id} className="hover-lift" style={{ background:plan.popular?"linear-gradient(135deg,#0e7c6b,#0a6b5c)":"#fff",borderRadius:22,padding:plan.popular?3:0,position:"relative",cursor:"pointer" }} onClick={()=>setSelectedPlan(plan.id)}>
-                {plan.popular&&<div style={{ position:"absolute",top:-12,left:"50%",transform:"translateX(-50%)",padding:"4px 16px",borderRadius:50,background:"#f59e0b",color:"#fff",fontSize:11,fontWeight:800,textTransform:"uppercase",letterSpacing:1 }}>Most Popular</div>}
-                <div style={{ background:"#fff",borderRadius:plan.popular?20:22,padding:32,border:plan.popular?"none":`2px solid ${selectedPlan===plan.id?"#0e7c6b":"#f1f5f9"}` }}>
-                  <div style={{ fontSize:13,fontWeight:700,color:"#0e7c6b",marginBottom:4 }}>{plan.name}</div>
-                  <div style={{ display:"flex",alignItems:"baseline",gap:4,marginBottom:4 }}><span style={{ fontSize:44,fontWeight:900,letterSpacing:-2 }}>${plan.price}</span><span style={{ fontSize:15,color:"#94a3b8",fontWeight:600 }}>{plan.period}</span></div>
-                  <p style={{ fontSize:13,color:"#64748b",marginBottom:24 }}>{plan.desc}</p>
-                  <button style={{ width:"100%",padding:"13px",borderRadius:12,border:"none",background:plan.popular?"linear-gradient(135deg,#0e7c6b,#0a6b5c)":"#f1f5f9",color:plan.popular?"#fff":"#1e293b",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"inherit",marginBottom:24 }}>{plan.cta}</button>
-                  <div style={{ display:"flex",flexDirection:"column",gap:10 }}>{plan.features.map(f=><div key={f} style={{ display:"flex",alignItems:"center",gap:10,fontSize:13.5,color:"#475569" }}><span style={{ color:"#0e7c6b",flexShrink:0 }}><Icons.Check /></span>{f}</div>)}</div>
+              <div key={plan.id} style={{ position:"relative",cursor:"pointer" }} onClick={()=>setSelectedPlan(plan.id)}>
+                {plan.popular && (
+                  <div style={{ position:"absolute",top:-12,left:"50%",transform:"translateX(-50%)",padding:"4px 16px",borderRadius:50,background:"#f59e0b",color:"#fff",fontSize:11,fontWeight:800,textTransform:"uppercase",letterSpacing:1,zIndex:1,whiteSpace:"nowrap" }}>Most Popular</div>
+                )}
+                <div className="card-hover" style={{ background:"#fff",borderRadius:20,padding:32,border:plan.popular?`2px solid #0e7c6b`:`2px solid ${selectedPlan===plan.id?"#0e7c6b":"#e8eeec"}`,boxShadow:plan.popular?"0 16px 48px rgba(14,124,107,0.14)":"none" }}>
+                  <div style={{ fontSize:13,fontWeight:700,color:"#0e7c6b",marginBottom:6 }}>{plan.name}</div>
+                  <div style={{ display:"flex",alignItems:"baseline",gap:4,marginBottom:4 }}>
+                    <span style={{ fontSize:46,fontWeight:900,letterSpacing:-2,color:"#0a1510" }}>${plan.price}</span>
+                    <span style={{ fontSize:15,color:"#8fa89f",fontWeight:600 }}>{plan.period}</span>
+                  </div>
+                  <p style={{ fontSize:13,color:"#617a74",marginBottom:24 }}>{plan.desc}</p>
+                  <button style={{ width:"100%",padding:"13px",borderRadius:12,border:"none",background:plan.popular?"#0e7c6b":"#eef2f0",color:plan.popular?"#fff":"#0a1510",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"inherit",marginBottom:24 }}>{plan.cta}</button>
+                  <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+                    {plan.features.map(f=>(
+                      <div key={f} style={{ display:"flex",alignItems:"center",gap:10,fontSize:13.5,color:"#475569" }}>
+                        <span style={{ color:"#0e7c6b",flexShrink:0 }}><Icons.Check /></span>{f}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             ))}
@@ -508,21 +649,21 @@ export default function LeadPilotLanding() {
       </section>
 
       {/* FAQ */}
-      <section id="faq" style={{ padding:"100px 40px",background:"#f8fafc" }}>
-        <div style={{ maxWidth:780,margin:"0 auto" }}>
+      <section id="faq" style={{ padding:"100px 40px",background:"#eef2f0" }}>
+        <div style={{ maxWidth:760,margin:"0 auto" }}>
           <div style={{ textAlign:"center",marginBottom:64 }}>
-            <div style={{ fontSize:12,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2,marginBottom:12 }}>FAQ</div>
-            <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:900,letterSpacing:-1.5 }}>Common questions</h2>
+            <div style={{ fontSize:11,fontWeight:700,color:"#0e7c6b",textTransform:"uppercase",letterSpacing:2.5,marginBottom:14 }}>FAQ</div>
+            <h2 style={{ fontFamily:"'Syne','DM Sans',sans-serif",fontSize:"clamp(30px,3.5vw,42px)",fontWeight:800,letterSpacing:-1.5,color:"#0a1510" }}>Common questions</h2>
           </div>
           <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
             {faqs.map((faq,i)=>(
-              <div key={i} style={{ background:"#fff",borderRadius:14,border:"1px solid #f1f5f9",overflow:"hidden",boxShadow:openFaq===i?"0 4px 12px rgba(0,0,0,0.05)":"none" }}>
+              <div key={i} style={{ background:"#fff",borderRadius:14,border:"1px solid #e8eeec",overflow:"hidden" }}>
                 <button onClick={()=>setOpenFaq(openFaq===i?null:i)} style={{ width:"100%",padding:"18px 22px",display:"flex",justifyContent:"space-between",alignItems:"center",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",textAlign:"left" }}>
-                  <span style={{ fontSize:15,fontWeight:700,color:"#1e293b" }}>{faq.q}</span>
-                  <span style={{ color:"#94a3b8",transition:"transform 0.3s",flexShrink:0,marginLeft:12,transform:openFaq===i?"rotate(180deg)":"rotate(0)" }}><Icons.ChevronDown /></span>
+                  <span style={{ fontSize:15,fontWeight:700,color:"#0a1510" }}>{faq.q}</span>
+                  <span style={{ color:"#8fa89f",transition:"transform 0.3s",flexShrink:0,marginLeft:12,transform:openFaq===i?"rotate(180deg)":"rotate(0)" }}><Icons.ChevronDown /></span>
                 </button>
                 <div style={{ maxHeight:openFaq===i?300:0,overflow:"hidden",transition:"max-height 0.3s ease" }}>
-                  <div style={{ padding:"0 22px 18px",fontSize:14,lineHeight:1.7,color:"#64748b" }}>{faq.a}</div>
+                  <div style={{ padding:"0 22px 18px",fontSize:14,lineHeight:1.75,color:"#617a74" }}>{faq.a}</div>
                 </div>
               </div>
             ))}
@@ -531,33 +672,41 @@ export default function LeadPilotLanding() {
       </section>
 
       {/* CTA */}
-      <section style={{ padding:"100px 40px" }}>
-        <div style={{ maxWidth:800,margin:"0 auto",textAlign:"center",background:"linear-gradient(135deg,#0e7c6b,#0ea5e9)",borderRadius:28,padding:"64px 48px",position:"relative",overflow:"hidden" }}>
-          <div style={{ position:"absolute",top:-50,right:-50,width:200,height:200,borderRadius:"50%",background:"rgba(255,255,255,0.05)" }} />
-          <h2 style={{ fontFamily:"'Playfair Display',serif",fontSize:36,fontWeight:900,color:"#fff",marginBottom:12,position:"relative" }}>Ready to never miss a lead again?</h2>
-          <p style={{ fontSize:16,color:"rgba(255,255,255,0.8)",marginBottom:32,position:"relative" }}>Start your 14-day free trial. Set up in 2 minutes. No credit card required.</p>
-          {!emailSubmitted?(
+      <section style={{ padding:"100px 40px",background:"#f7f9f8" }}>
+        <div style={{ maxWidth:800,margin:"0 auto",textAlign:"center",background:"linear-gradient(145deg,#070c0b,#0e1f18)",borderRadius:28,padding:"64px 48px",position:"relative",overflow:"hidden",border:"1px solid rgba(14,124,107,0.2)" }}>
+          <div style={{ position:"absolute",top:-60,right:-60,width:240,height:240,borderRadius:"50%",background:"radial-gradient(circle,rgba(14,124,107,0.2) 0%,transparent 70%)",pointerEvents:"none" }} />
+          <div style={{ position:"absolute",bottom:-40,left:-40,width:180,height:180,borderRadius:"50%",background:"radial-gradient(circle,rgba(14,124,107,0.12) 0%,transparent 70%)",pointerEvents:"none" }} />
+          <h2 style={{ fontFamily:"'Syne','DM Sans',sans-serif",fontSize:"clamp(26px,3vw,38px)",fontWeight:800,color:"#fff",marginBottom:14,position:"relative",letterSpacing:-1 }}>Ready to never miss a lead again?</h2>
+          <p style={{ fontSize:16,color:"rgba(255,255,255,0.5)",marginBottom:36,position:"relative" }}>Start your 14-day free trial. Set up in 2 minutes. No credit card required.</p>
+          {!emailSubmitted ? (
             <div style={{ display:"flex",gap:10,maxWidth:440,margin:"0 auto",position:"relative" }}>
-              <input type="email" placeholder="Enter your email" value={emailInput} onChange={e=>setEmailInput(e.target.value)} style={{ flex:1,padding:"14px 18px",borderRadius:12,border:"2px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.15)",color:"#fff",fontSize:14,fontFamily:"inherit" }} />
-              <button onClick={()=>emailInput&&setEmailSubmitted(true)} style={{ padding:"14px 28px",borderRadius:12,background:"#fff",color:"#0e7c6b",border:"none",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap" }}>Get Started</button>
+              <input type="email" placeholder="Enter your email" value={emailInput} onChange={e=>setEmailInput(e.target.value)} style={{ flex:1,padding:"14px 18px",borderRadius:12,border:"1px solid rgba(255,255,255,0.12)",background:"rgba(255,255,255,0.07)",color:"#fff",fontSize:14,fontFamily:"inherit",outline:"none" }} />
+              <button onClick={()=>emailInput&&setEmailSubmitted(true)} style={{ padding:"14px 28px",borderRadius:12,background:"#0e7c6b",color:"#fff",border:"none",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap" }}>Get Started</button>
             </div>
-          ):<div style={{ color:"#fff",fontSize:16,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",gap:8,position:"relative" }}><Icons.Check /> Check your inbox! We've sent you a setup link.</div>}
+          ) : (
+            <div style={{ color:"#4ade80",fontSize:16,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",gap:8,position:"relative" }}><Icons.Check /> Check your inbox! We've sent you a setup link.</div>
+          )}
         </div>
       </section>
 
       {/* FOOTER */}
-      <footer style={{ padding:"48px 40px",borderTop:"1px solid #f1f5f9" }}>
+      <footer style={{ padding:"40px 40px",background:"#0f1a14",borderTop:"1px solid rgba(255,255,255,0.05)" }}>
         <div style={{ maxWidth:1200,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center" }}>
           <div style={{ display:"flex",alignItems:"center",gap:8 }}>
-            <div style={{ width:28,height:28,borderRadius:8,background:"linear-gradient(135deg,#0e7c6b,#0ea5e9)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff" }}><Icons.Zap /></div>
-            <span style={{ fontWeight:800,fontSize:15 }}>LeadPilot<span style={{ color:"#0e7c6b" }}>AI</span></span>
+            <div style={{ width:28,height:28,borderRadius:8,background:"linear-gradient(135deg,#0e7c6b,#14b89e)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff" }}><Icons.Zap /></div>
+            <span style={{ fontWeight:800,fontSize:15,color:"#fff" }}>LeadPilot<span style={{ color:"#14d9b8" }}>AI</span></span>
           </div>
-          <div style={{ fontSize:13,color:"#94a3b8" }}>© 2026 LeadPilot AI. All rights reserved.</div>
+          <div style={{ fontSize:13,color:"rgba(255,255,255,0.28)" }}>© 2026 LeadPilot AI. All rights reserved.</div>
         </div>
       </footer>
 
       {/* FAB */}
-      {!chatOpen&&<button onClick={()=>setChatOpen(true)} style={{ position:"fixed",bottom:24,right:24,width:60,height:60,borderRadius:18,background:"linear-gradient(135deg,#0e7c6b,#0a6b5c)",color:"#fff",border:"none",cursor:"pointer",zIndex:9999,boxShadow:"0 8px 30px #0e7c6b50",display:"flex",alignItems:"center",justifyContent:"center",animation:"pulse 3s infinite" }}><Icons.MessageSquare /><span style={{ position:"absolute",top:-4,right:-4,width:18,height:18,borderRadius:"50%",background:"#ef4444",fontSize:10,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center" }}>1</span></button>}
+      {!chatOpen && (
+        <button onClick={()=>setChatOpen(true)} style={{ position:"fixed",bottom:24,right:24,width:60,height:60,borderRadius:18,background:"#0e7c6b",color:"#fff",border:"none",cursor:"pointer",zIndex:9999,boxShadow:"0 8px 32px rgba(14,124,107,0.55)",display:"flex",alignItems:"center",justifyContent:"center",animation:"pulse 3s infinite" }}>
+          <Icons.MessageSquare />
+          <span style={{ position:"absolute",top:-4,right:-4,width:18,height:18,borderRadius:"50%",background:"#ef4444",fontSize:10,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center" }}>1</span>
+        </button>
+      )}
 
       <ChatWidget isOpen={chatOpen} onClose={()=>setChatOpen(false)} industryKey={selectedIndustry} />
     </div>
