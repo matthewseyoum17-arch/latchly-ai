@@ -23,7 +23,7 @@ export default function HeroSection() {
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-          className="w-full"
+          className="w-full text-center lg:text-left"
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
@@ -45,12 +45,12 @@ export default function HeroSection() {
             </span>
           </h1>
 
-          <p className="text-lg sm:text-xl text-slate-500 leading-relaxed mb-8 max-w-lg">
+          <p className="text-lg sm:text-xl text-slate-500 leading-relaxed mb-8 max-w-lg mx-auto lg:mx-0">
             Latchly qualifies leads, captures contact info, and books appointments on your website{" "}
             <span className="font-semibold text-slate-700">24/7</span>. No missed calls, no lost revenue.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-3 mb-8">
+          <div className="flex flex-col sm:flex-row gap-3 mb-8 justify-center lg:justify-start">
             <Button size="lg" onClick={() => scrollTo("demo")} className="gap-2 group">
               See It In Action{" "}
               <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
@@ -66,7 +66,7 @@ export default function HeroSection() {
           </div>
 
           {/* Trust bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-center lg:justify-start">
             <span className="text-xs text-slate-400 tracking-wide uppercase">Built&nbsp;on</span>
             <div className="flex items-center gap-5">
               {["Anthropic AI", "Vercel", "Calendly"].map((name) => (
