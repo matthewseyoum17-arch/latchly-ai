@@ -1,14 +1,14 @@
 #!/usr/bin/env node
-// Takes a raw Apollo CSV, visits each website, checks for chatbot,
-// finds marketing signals, scores, and outputs qualified leads.
+// Fetch-first lead qualification for Apollo/public candidate CSVs.
+// Keeps strong companies even when Apollo contact names are noisy.
 
-const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
 
-const INPUT = process.env.APOLLO_INPUT || path.join(__dirname, '..', 'leads', 'apollo-leads.csv');
-const OUTPUT = path.join(__dirname, '..', 'leads', 'qualified-leads.json');
-const OUTPUT_CSV = path.join(__dirname, '..', 'leads', 'qualified-leads.csv');
+const ROOT = path.join(__dirname, '..');
+const INPUT = process.env.APOLLO_INPUT || path.join(ROOT, 'leads', 'apollo-leads.csv');
+const OUTPUT = path.join(ROOT, 'leads', 'qualified-leads.json');
+const OUTPUT_CSV = path.join(ROOT, 'leads', 'qualified-leads.csv');
 
 const CHATBOT_SIGNATURES = [
   'intercom.io', 'intercom.com', 'widget.intercom',
@@ -23,30 +23,21 @@ const CHATBOT_SIGNATURES = [
   'olark.com', 'smartsupp.com', 'userlike.com', 'chaport.com',
   'botpress', 'landbot.io', 'manychat.com', 'chatbot.com',
   'ada.cx', 'ada.support', 'qualified.com',
-  'podium.com', 'podium', 'birdeye.com', 'birdeye',
-  'webchat.so', 'servicewidget', 'liveperson.com', 'comm100.com',
+  'podium.com', 'birdeye.com', 'webchat.so', 'liveperson.com', 'comm100.com',
   'helpcrunch.com', 'customerly.io', 'chatra.com', 'kommunicate.io', 'gorgias.com',
-  'joinchat', 'latchly', 'latchlyai', 'smith.ai', 'chatfuel.com',
-  'activecampaign.com/conversations', 'servicebot', 'leadbot', 'hellobar',
-];
-
-const CHAT_WIDGET_SELECTORS = [
-  'iframe[src*="chat"]', 'iframe[src*="widget"]', 'iframe[src*="messenger"]',
-  '[class*="chat-widget"]', '[class*="chatWidget"]', '[class*="chat-bubble"]',
-  '[class*="chatBubble"]', '[class*="live-chat"]', '[class*="liveChat"]',
-  '[id*="chat-widget"]', '[id*="chatWidget"]', '[id*="tidio"]', '[id*="drift"]',
-  '[id*="intercom"]', '[id*="tawk"]', '[id*="crisp"]', '[id*="hubspot-messages"]',
-  '[id*="podium"]', '[id*="birdeye"]',
+  'smith.ai', 'chatfuel.com', 'latchly', 'latchlyai',
 ];
 
 const MARKETING_SIGNALS = {
   googleAds: [/gads|google.*ads|adwords|gclid|google_ads/i, /googletagmanager/i, /gtag.*conversion/i],
-  localServiceAds: [/google.*local.*service|lsa|google.*guarantee/i],
-  seo: [/service.*area|serving|we.*serve|locations.*served/i],
+  localServiceAds: [/google.*local.*service|google.*guarantee|local service ads/i],
+  seo: [/service.*area|serving|we.*serve|locations.*served|areas we serve/i],
   reviews: [/reviews?|testimonials?|rating|stars?|customer.*feedback/i],
-  quoteCTA: [/free.*quote|free.*estimate|get.*quote|request.*quote|book.*now|schedule.*now|call.*now|get.*started/i],
-  phoneProminent: [/tel:|href="tel:/i],
-  formPresent: [/<form/i],
+  quoteCTA: [/free.*quote|free.*estimate|get.*quote|request.*quote|book.*now|schedule.*now|call.*now|get.*started|consultation/i],
+  phoneProminent: [/tel:/i],
+  formPresent: [/<form\b/i],
+  coupons: [/coupon|special offer|financing|save \$|discount/i],
+  scheduling: [/service titan|servicetitan|online scheduling|book online|schedule service|request service/i],
 };
 
 function splitCSV(line) {
@@ -94,6 +85,14 @@ function csvEscape(val) {
   return s.includes(',') || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
+function get(row, keys) {
+  for (const key of keys) {
+    const value = row[key];
+    if (value !== undefined && value !== null && String(value).trim()) return String(value).trim();
+  }
+  return '';
+}
+
 function normalizeWebsite(url) {
   let s = String(url || '').trim();
   if (!s) return '';
@@ -101,169 +100,65 @@ function normalizeWebsite(url) {
   return s.replace(/\/$/, '');
 }
 
-async function safeGoto(page, url, timeoutMs = 20000) {
-  const candidates = [normalizeWebsite(url)];
-  if (/^https:\/\//i.test(candidates[0])) candidates.push(candidates[0].replace(/^https:/i, 'http:'));
-  for (const candidate of candidates) {
-    if (!candidate) continue;
-    try {
-      const response = await page.goto(candidate, { timeout: timeoutMs, waitUntil: 'domcontentloaded' });
-      if (response && response.status() < 400) return { ok: true, url: candidate };
-    } catch {}
+function candidateUrls(url) {
+  const normalized = normalizeWebsite(url);
+  if (!normalized) return [];
+  const out = [];
+  const push = (v) => { if (v && !out.includes(v)) out.push(v); };
+  push(normalized);
+  if (/^https:\/\//i.test(normalized)) push(normalized.replace(/^https:/i, 'http:'));
+  if (/^http:\/\//i.test(normalized)) push(normalized.replace(/^http:/i, 'https:'));
+  const noProto = normalized.replace(/^https?:\/\//i, '');
+  if (!/^www\./i.test(noProto)) {
+    push(`https://www.${noProto}`);
+    push(`http://www.${noProto}`);
   }
-  return { ok: false, url: candidates[0] || url };
+  return out;
 }
 
-async function checkWebsite(page, url, timeoutMs = 20000) {
-  const result = {
-    accessible: false,
-    resolvedUrl: normalizeWebsite(url),
-    hasChatbot: false,
-    chatbotName: null,
-    marketingSignals: [],
-    hasQuoteCTA: false,
-    hasPhoneProminent: false,
-    hasForm: false,
-    hasReviews: false,
-    hasGoogleAds: false,
-    hasSEOPages: false,
-    ownerNameFromSite: null,
-    phoneFromSite: null,
-    missedLeadOpportunity: '',
-  };
+function normalizePhone(raw) {
+  const digits = String(raw || '').replace(/\D/g, '');
+  const ten = digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits;
+  if (ten.length !== 10) return '';
+  return `(${ten.slice(0, 3)}) ${ten.slice(3, 6)}-${ten.slice(6)}`;
+}
 
-  const navigation = await safeGoto(page, url, timeoutMs);
-  if (!navigation.ok) return result;
-  result.accessible = true;
-  result.resolvedUrl = navigation.url;
-
+function absoluteUrl(base, href) {
   try {
-    await page.waitForTimeout(2500);
-    const html = await page.content();
-    const lower = html.toLowerCase();
-
-    for (const sig of CHATBOT_SIGNATURES) {
-      if (lower.includes(sig.toLowerCase())) {
-        result.hasChatbot = true;
-        result.chatbotName = sig;
-        return result;
-      }
-    }
-
-    for (const sel of CHAT_WIDGET_SELECTORS) {
-      try {
-        const el = await page.$(sel);
-        if (el) {
-          const visible = await el.isVisible().catch(() => false);
-          if (visible) {
-            result.hasChatbot = true;
-            result.chatbotName = sel;
-            return result;
-          }
-        }
-      } catch {}
-    }
-
-    if (MARKETING_SIGNALS.googleAds.some(p => p.test(html))) {
-      result.hasGoogleAds = true;
-      result.marketingSignals.push('Google Ads/GTM detected');
-    }
-    if (MARKETING_SIGNALS.localServiceAds.some(p => p.test(html))) result.marketingSignals.push('Local Service Ads');
-    if (MARKETING_SIGNALS.seo.some(p => p.test(html))) {
-      result.hasSEOPages = true;
-      result.marketingSignals.push('Service area / SEO pages');
-    }
-    if (MARKETING_SIGNALS.reviews.some(p => p.test(html))) {
-      result.hasReviews = true;
-      result.marketingSignals.push('Reviews/testimonials on site');
-    }
-    if (MARKETING_SIGNALS.quoteCTA.some(p => p.test(html))) {
-      result.hasQuoteCTA = true;
-      result.marketingSignals.push('Quote/estimate CTA');
-    }
-    if (MARKETING_SIGNALS.phoneProminent.some(p => p.test(html))) {
-      result.hasPhoneProminent = true;
-      result.marketingSignals.push('Prominent phone number');
-    }
-    if (MARKETING_SIGNALS.formPresent.some(p => p.test(html))) {
-      result.hasForm = true;
-      result.marketingSignals.push('Contact form present');
-    }
-
-    try {
-      const navLinks = await page.$$eval('nav a, .menu a, .nav a, header a', links =>
-        links.map(a => (a.textContent || '').trim()).filter(Boolean)
-      );
-      if (navLinks.length > 5) result.marketingSignals.push(`${navLinks.length} nav links (multi-page site)`);
-    } catch {}
-
-    const telHrefMatch = html.match(/href=["']tel:([^"']+)["']/i);
-    const rawPhone = telHrefMatch ? telHrefMatch[1] : (html.match(/\(?\d{3}\)?[-.\s]\d{3}[-.\s]\d{4}/) || [])[0] || '';
-    const digits = String(rawPhone).replace(/\D/g, '');
-    if (digits.length >= 10) {
-      const ten = digits.slice(-10);
-      result.phoneFromSite = `(${ten.slice(0,3)}) ${ten.slice(3,6)}-${ten.slice(6)}`;
-    }
-
-    const aboutLinks = await page.$$eval('a', links => links
-      .map(a => a.href)
-      .filter(href => /about|team|staff|our-team/i.test(href))
-      .slice(0, 2)
-    ).catch(() => []);
-
-    for (const aboutUrl of aboutLinks) {
-      try {
-        await page.goto(aboutUrl, { timeout: 10000, waitUntil: 'domcontentloaded' });
-        await page.waitForTimeout(1000);
-        const aboutHtml = await page.content();
-        const ownerPatterns = [
-          /(?:owner|founder|president|ceo|proprietor)[^<\w]{1,30}([A-Z][a-z]{1,20}\s[A-Z][a-z]{1,20})/gi,
-          /([A-Z][a-z]{1,20}\s[A-Z][a-z]{1,20})[^<\w]{1,30}(?:owner|founder|president|ceo|proprietor)/gi,
-        ];
-        for (const pattern of ownerPatterns) {
-          pattern.lastIndex = 0;
-          const match = pattern.exec(aboutHtml);
-          if (match) {
-            result.ownerNameFromSite = match[1].trim();
-            break;
-          }
-        }
-        if (result.ownerNameFromSite) break;
-      } catch {}
-    }
-
-    const opportunities = [];
-    if (!result.hasForm && !result.hasQuoteCTA) opportunities.push('No lead capture form or CTA');
-    else if (result.hasForm && !result.hasQuoteCTA) opportunities.push('Form exists but no strong CTA to drive action');
-    if (!result.hasPhoneProminent) opportunities.push('Phone not prominently displayed');
-    if (result.hasGoogleAds) opportunities.push('Paying for traffic but weak conversion path');
-    if (!result.hasChatbot) opportunities.push('No instant engagement — visitors must wait for callback');
-    opportunities.push('No after-hours lead capture');
-    result.missedLeadOpportunity = opportunities.slice(0, 3).join('; ');
-  } catch {}
-
-  return result;
+    return new URL(href, base).toString();
+  } catch {
+    return '';
+  }
 }
 
-function scoreLead(lead, siteData) {
-  let score = 0;
-  const reasons = [];
-  score++; reasons.push('Good niche');
-  if (siteData.accessible) { score++; reasons.push('Active website'); }
-  const hasOwnerName = lead.Name && lead.Name.length > 3 && !lead.Name.includes('@');
-  if (hasOwnerName) { score++; reasons.push('Decision maker identified'); }
-  const hasPhone = (lead.Phone && lead.Phone.length > 5) || siteData.phoneFromSite;
-  if (hasPhone) { score++; reasons.push('Phone number available'); }
-  if (!siteData.hasChatbot) { score++; reasons.push('No chatbot/AI chat'); }
-  if (siteData.marketingSignals.length >= 2) { score++; reasons.push(`${siteData.marketingSignals.length} marketing signals`); }
-  const highTicket = /hvac|plumb|roof|foundation|water damage|restoration|electri|remodel|solar|garage door|tree|pest/i;
-  if (highTicket.test(lead.Company) || highTicket.test(lead.Industry)) { score++; reasons.push('High-ticket service'); }
-  const franchise = /one hour|mr\. rooter|roto-rooter|service experts|ars rescue|comfort systems|lennox|carrier|trane|home depot|lowe/i;
-  if (!franchise.test(lead.Company)) { score++; reasons.push('Independent operator'); }
-  if (siteData.missedLeadOpportunity && siteData.missedLeadOpportunity.length > 10) { score++; reasons.push('Clear missed-lead opportunity'); }
-  const emp = parseInt(lead.Employees) || 0;
-  if (emp === 0 || (emp >= 5 && emp <= 50)) { score++; reasons.push('Right company size'); }
-  return { score, reasons };
+function stripTags(html) {
+  return String(html || '')
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function looksLikeBadName(name) {
+  const s = String(name || '').trim();
+  if (!s) return true;
+  if (s.length < 4) return true;
+  if (/[@\d]/.test(s)) return true;
+  if (/^[A-Z]\s?[A-Z]?$/.test(s)) return true;
+  if (/^(admin|owner|contact|team|office|front desk|reception)$/i.test(s)) return true;
+  if (/^(from the|is on|can do|of this|should invest|and owner|local business)$/i.test(s)) return true;
+  const words = s.split(/\s+/).filter(Boolean);
+  if (!words.length || words.length > 5) return true;
+  const badWords = ['the','and','for','with','from','this','that','your','local','business','owner'];
+  const lowered = words.map(w => w.toLowerCase());
+  if (lowered.every(w => badWords.includes(w))) return true;
+  return false;
+}
+
+function normalizeTitle(title) {
+  return String(title || '').trim();
 }
 
 function inferNiche(company) {
@@ -287,64 +182,318 @@ function inferNiche(company) {
   return 'Home Services';
 }
 
+function normalizeInputLead(row) {
+  const businessName = get(row, ['Business Name', 'Company', 'company', 'businessName']);
+  const website = normalizeWebsite(get(row, ['Website', 'website', 'Company Website']));
+  const decisionMaker = get(row, ['Decision Maker', 'decisionMaker', 'Name', 'person_name']);
+  const title = normalizeTitle(get(row, ['Title', 'title']));
+  const directPhone = normalizePhone(get(row, ['Direct Phone', 'Phone', 'directPhone']));
+  const businessPhone = normalizePhone(get(row, ['Business Phone', 'Main Business Phone', 'businessPhone', 'main_business_phone', 'Phone']));
+  const niche = get(row, ['Niche', 'niche', 'Industry']) || inferNiche(businessName);
+  const city = get(row, ['City', 'city']);
+  const state = get(row, ['State', 'state']);
+  const email = get(row, ['Email', 'email']).includes('not_unlocked') ? '' : get(row, ['Email', 'email']);
+  const linkedin = get(row, ['LinkedIn', 'linkedin']);
+  const employees = parseInt(get(row, ['Employees', 'employees']) || '0', 10) || 0;
+  const chatFlag = get(row, ['Chatbot?', 'Chatbot Present', 'chatbot', 'Site has chatbot/live chat']);
+  const source = get(row, ['Source', 'source']) || path.basename(INPUT);
+  return { businessName, website, decisionMaker, title, directPhone, businessPhone, niche, city, state, email, linkedin, employees, chatFlag, source };
+}
+
+async function fetchText(url, timeoutMs = 20000, redirectCount = 0) {
+  if (redirectCount > 5) throw new Error('Too many redirects');
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      redirect: 'manual',
+      signal: controller.signal,
+      headers: {
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'accept-language': 'en-US,en;q=0.9',
+        'cache-control': 'no-cache',
+      },
+    });
+
+    if ([301, 302, 303, 307, 308].includes(res.status)) {
+      const location = res.headers.get('location');
+      if (!location) throw new Error(`Redirect ${res.status} without location`);
+      return fetchText(absoluteUrl(url, location), timeoutMs, redirectCount + 1);
+    }
+
+    const text = await res.text();
+    return {
+      ok: res.ok || [401,403,405,406,409,429].includes(res.status),
+      status: res.status,
+      url: res.url || url,
+      text,
+      headers: Object.fromEntries(res.headers.entries()),
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function fetchSite(url, timeoutMs = 20000) {
+  let lastError = '';
+  for (const candidate of candidateUrls(url)) {
+    try {
+      const result = await fetchText(candidate, timeoutMs);
+      if (result.ok && String(result.text || '').length > 200) return result;
+      lastError = `HTTP ${result.status}`;
+    } catch (err) {
+      lastError = err && err.message ? err.message : String(err);
+    }
+  }
+  return { ok: false, url: normalizeWebsite(url), text: '', status: 0, error: lastError };
+}
+
+function extractLinks(html, baseUrl) {
+  const links = [];
+  const re = /<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+  let match;
+  while ((match = re.exec(html))) {
+    const href = absoluteUrl(baseUrl, match[1]);
+    const text = stripTags(match[2]);
+    if (href) links.push({ href, text });
+  }
+  return links;
+}
+
+function detectChatbot(html) {
+  const lower = String(html || '').toLowerCase();
+  for (const sig of CHATBOT_SIGNATURES) {
+    if (lower.includes(sig.toLowerCase())) return sig;
+  }
+  const generic = [
+    /class=["'][^"']*(chat-widget|chat-bubble|live-chat)[^"']*["']/i,
+    /id=["'][^"']*(chat-widget|chatbubble|livechat)[^"']*["']/i,
+    /aria-label=["'][^"']*(chat|message us)[^"']*["']/i,
+  ];
+  for (const re of generic) {
+    if (re.test(html)) return re.source;
+  }
+  return '';
+}
+
+function analyzeMarketing(html, links) {
+  const text = String(html || '');
+  const marketingSignals = [];
+  const push = (label) => { if (!marketingSignals.includes(label)) marketingSignals.push(label); };
+
+  if (MARKETING_SIGNALS.googleAds.some(p => p.test(text))) push('Google Ads/GTM detected');
+  if (MARKETING_SIGNALS.localServiceAds.some(p => p.test(text))) push('Local Service Ads');
+  if (MARKETING_SIGNALS.seo.some(p => p.test(text))) push('Service area / SEO pages');
+  if (MARKETING_SIGNALS.reviews.some(p => p.test(text))) push('Reviews/testimonials on site');
+  if (MARKETING_SIGNALS.quoteCTA.some(p => p.test(text))) push('Quote/estimate CTA');
+  if (MARKETING_SIGNALS.phoneProminent.some(p => p.test(text))) push('Prominent phone number');
+  if (MARKETING_SIGNALS.formPresent.some(p => p.test(text))) push('Contact form present');
+  if (MARKETING_SIGNALS.coupons.some(p => p.test(text))) push('Coupons/financing offers');
+  if (MARKETING_SIGNALS.scheduling.some(p => p.test(text))) push('Scheduling / booking flow');
+
+  const navishLinks = links.filter(l => l.href && new URL(l.href).hostname === new URL(links[0]?.href || 'https://example.com').hostname);
+  if (navishLinks.length >= 8) push(`${navishLinks.length} internal links (active multi-page site)`);
+
+  return {
+    marketingSignals,
+    hasQuoteCTA: marketingSignals.includes('Quote/estimate CTA') || marketingSignals.includes('Scheduling / booking flow'),
+    hasPhoneProminent: marketingSignals.includes('Prominent phone number'),
+    hasForm: marketingSignals.includes('Contact form present'),
+    hasReviews: marketingSignals.includes('Reviews/testimonials on site'),
+    hasGoogleAds: marketingSignals.includes('Google Ads/GTM detected'),
+    hasSEOPages: marketingSignals.includes('Service area / SEO pages'),
+  };
+}
+
+function extractPhone(html) {
+  const telMatch = String(html || '').match(/href=["']tel:([^"']+)["']/i);
+  if (telMatch) return normalizePhone(telMatch[1]);
+  const textMatch = String(html || '').match(/(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]\d{3}[-.\s]\d{4}/);
+  return normalizePhone(textMatch ? textMatch[0] : '');
+}
+
+function extractSiteDecisionMaker(html, links, homepageUrl) {
+  const plain = stripTags(html);
+  const ownerPatterns = [
+    /(?:owner|founder|president|ceo|co-owner|managing partner)\W{0,30}([A-Z][a-z]+(?:\s+[A-Z][a-z.'-]+){1,3})/g,
+    /([A-Z][a-z]+(?:\s+[A-Z][a-z.'-]+){1,3})\W{0,30}(?:owner|founder|president|ceo|co-owner|managing partner)/g,
+  ];
+  for (const pattern of ownerPatterns) {
+    pattern.lastIndex = 0;
+    const match = pattern.exec(plain);
+    if (match && !looksLikeBadName(match[1])) return match[1].trim();
+  }
+
+  const aboutLinks = links
+    .filter(link => /about|team|staff|our team|company/i.test(`${link.text} ${link.href}`))
+    .map(link => link.href)
+    .filter((href, index, arr) => href && arr.indexOf(href) === index)
+    .slice(0, 2);
+
+  return { candidatePages: aboutLinks, homepageUrl };
+}
+
+async function checkWebsite(url) {
+  const result = {
+    accessible: false,
+    resolvedUrl: normalizeWebsite(url),
+    hasChatbot: false,
+    chatbotName: '',
+    marketingSignals: [],
+    hasQuoteCTA: false,
+    hasPhoneProminent: false,
+    hasForm: false,
+    hasReviews: false,
+    hasGoogleAds: false,
+    hasSEOPages: false,
+    ownerNameFromSite: '',
+    phoneFromSite: '',
+    missedLeadOpportunity: '',
+    accessStatus: 'unreachable',
+    accessError: '',
+  };
+
+  const fetchResult = await fetchSite(url);
+  if (!fetchResult.ok) {
+    result.accessError = fetchResult.error || '';
+    return result;
+  }
+
+  result.accessible = true;
+  result.resolvedUrl = fetchResult.url || normalizeWebsite(url);
+  result.accessStatus = fetchResult.status ? `http_${fetchResult.status}` : 'ok';
+
+  const html = fetchResult.text || '';
+  if (html.length < 200) {
+    result.accessible = false;
+    result.accessStatus = 'thin_page';
+    return result;
+  }
+
+  const chatbot = detectChatbot(html);
+  if (chatbot) {
+    result.hasChatbot = true;
+    result.chatbotName = chatbot;
+    return result;
+  }
+
+  const links = extractLinks(html, result.resolvedUrl);
+  const marketing = analyzeMarketing(html, links);
+  Object.assign(result, marketing);
+  result.phoneFromSite = extractPhone(html);
+
+  const ownerCandidate = extractSiteDecisionMaker(html, links, result.resolvedUrl);
+  if (typeof ownerCandidate === 'string') {
+    result.ownerNameFromSite = ownerCandidate;
+  } else if (ownerCandidate && ownerCandidate.candidatePages) {
+    for (const aboutUrl of ownerCandidate.candidatePages) {
+      try {
+        const about = await fetchText(aboutUrl, 15000);
+        const text = stripTags(about.text || '');
+        const patterns = [
+          /(?:owner|founder|president|ceo|co-owner|managing partner)\W{0,30}([A-Z][a-z]+(?:\s+[A-Z][a-z.'-]+){1,3})/g,
+          /([A-Z][a-z]+(?:\s+[A-Z][a-z.'-]+){1,3})\W{0,30}(?:owner|founder|president|ceo|co-owner|managing partner)/g,
+        ];
+        for (const pattern of patterns) {
+          pattern.lastIndex = 0;
+          const match = pattern.exec(text);
+          if (match && !looksLikeBadName(match[1])) {
+            result.ownerNameFromSite = match[1].trim();
+            break;
+          }
+        }
+        if (result.ownerNameFromSite) break;
+      } catch {}
+    }
+  }
+
+  const opportunities = [];
+  if (!result.hasForm && !result.hasQuoteCTA) opportunities.push('No lead capture form or CTA');
+  else if (result.hasForm && !result.hasQuoteCTA) opportunities.push('Form exists but no strong CTA to drive action');
+  if (!result.hasPhoneProminent) opportunities.push('Phone not prominently displayed');
+  if (result.hasGoogleAds) opportunities.push('Paying for traffic but weak conversion path');
+  opportunities.push('No instant engagement — visitors must wait for callback');
+  opportunities.push('No after-hours lead capture');
+  result.missedLeadOpportunity = opportunities.slice(0, 3).join('; ');
+
+  return result;
+}
+
+function chooseDecisionMaker(lead, siteData) {
+  if (!looksLikeBadName(siteData.ownerNameFromSite)) return siteData.ownerNameFromSite;
+  if (!looksLikeBadName(lead.decisionMaker)) return lead.decisionMaker;
+  return '';
+}
+
+function scoreLead(lead, siteData, decisionMaker) {
+  let score = 0;
+  const reasons = [];
+  score++; reasons.push('Good niche');
+  if (siteData.accessible) { score++; reasons.push('Active website'); }
+  if (decisionMaker) { score++; reasons.push('Decision maker identified or recovered'); }
+  else if (/owner|founder|president|ceo|operator|partner/i.test(lead.title || '')) { score++; reasons.push('Owner-level title present'); }
+  const hasPhone = lead.businessPhone || lead.directPhone || siteData.phoneFromSite;
+  if (hasPhone) { score++; reasons.push('Phone number available'); }
+  if (!siteData.hasChatbot) { score++; reasons.push('No chatbot/AI chat'); }
+  if (siteData.marketingSignals.length >= 2) { score++; reasons.push(`${siteData.marketingSignals.length} marketing signals`); }
+  const highTicket = /hvac|plumb|roof|foundation|water damage|restoration|electri|remodel|solar|garage door|tree|pest/i;
+  if (highTicket.test(lead.businessName) || highTicket.test(lead.niche)) { score++; reasons.push('High-ticket service'); }
+  const franchise = /one hour|mr\. rooter|roto-rooter|service experts|ars rescue|comfort systems|lennox|carrier|trane|home depot|lowe/i;
+  if (!franchise.test(lead.businessName)) { score++; reasons.push('Independent operator'); }
+  if (siteData.missedLeadOpportunity && siteData.missedLeadOpportunity.length > 10) { score++; reasons.push('Clear missed-lead opportunity'); }
+  if (lead.employees === 0 || (lead.employees >= 5 && lead.employees <= 75)) { score++; reasons.push('Right company size'); }
+  return { score, reasons };
+}
+
 async function main() {
   if (!fs.existsSync(INPUT)) {
-    console.error(`Missing Apollo input: ${INPUT}`);
+    console.error(`Missing input: ${INPUT}`);
     process.exit(1);
   }
 
   const raw = fs.readFileSync(INPUT, 'utf-8');
-  const leads = parseCSV(raw);
-  console.log(`\n📊 Loaded ${leads.length} raw leads from ${path.relative(path.join(__dirname, '..'), INPUT)}\n`);
+  const rows = parseCSV(raw).map(normalizeInputLead);
+  console.log(`\n📊 Loaded ${rows.length} raw leads from ${path.relative(ROOT, INPUT)}\n`);
 
-  const withWebsite = leads.filter(l => normalizeWebsite(l['Company Website']));
+  const withWebsite = rows.filter(l => l.website);
   console.log(`🌐 ${withWebsite.length} have websites\n`);
 
   const seen = new Set();
   const unique = [];
-  for (const l of withWebsite) {
-    const domain = normalizeWebsite(l['Company Website']).replace(/^https?:\/\//, '').replace(/\/$/, '').toLowerCase();
+  for (const lead of withWebsite) {
+    const domain = lead.website.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '').toLowerCase();
+    if (!domain) continue;
     if (seen.has(domain)) continue;
     seen.add(domain);
-    unique.push(l);
+    unique.push(lead);
   }
   console.log(`🔄 ${unique.length} unique companies after dedupe\n`);
 
-  const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext({
-    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-    viewport: { width: 1280, height: 800 },
-  });
-  const page = await context.newPage();
-
   const qualified = [];
+  const rejected = { chatbot: 0, lowScore: 0, noSite: 0, franchise: 0 };
   let checked = 0;
-  const rejected = { chatbot: 0, lowScore: 0, noSite: 0, noName: 0, franchise: 0 };
 
   for (const lead of unique) {
     checked++;
-    const name = lead.Name || '';
-    const company = lead.Company || '';
-    const website = normalizeWebsite(lead['Company Website']);
+    process.stdout.write(`[${checked}/${unique.length}] ${lead.businessName}... `);
 
-    process.stdout.write(`[${checked}/${unique.length}] ${company}... `);
-
-    const franchisePattern = /one hour|mr\. rooter|roto-rooter|service experts|ars rescue|comfort systems|home depot|lowe's/i;
-    if (franchisePattern.test(company)) {
+    if (/one hour|mr\. rooter|roto-rooter|service experts|ars rescue|home depot|lowe's/i.test(lead.businessName || '')) {
       console.log('❌ franchise');
       rejected.franchise++;
       continue;
     }
 
-    if (!name || name.length <= 3 || name.includes('@') || name === company) {
-      console.log('❌ no decision maker name');
-      rejected.noName++;
+    if (lead.chatFlag && !/^no$/i.test(lead.chatFlag) && !/^no obvious chatbot/i.test(lead.chatFlag)) {
+      console.log(`❌ source says chatbot (${lead.chatFlag})`);
+      rejected.chatbot++;
       continue;
     }
 
-    const siteData = await checkWebsite(page, website);
+    const siteData = await checkWebsite(lead.website);
     if (!siteData.accessible) {
-      console.log('❌ site not accessible');
+      console.log(`❌ site not accessible${siteData.accessError ? ` (${siteData.accessError})` : ''}`);
       rejected.noSite++;
       continue;
     }
@@ -355,7 +504,8 @@ async function main() {
       continue;
     }
 
-    const { score, reasons } = scoreLead(lead, siteData);
+    const decisionMaker = chooseDecisionMaker(lead, siteData);
+    const { score, reasons } = scoreLead(lead, siteData, decisionMaker);
     if (score < 8) {
       console.log(`⚠️ score ${score}/10`);
       rejected.lowScore++;
@@ -363,38 +513,38 @@ async function main() {
     }
 
     const qualifiedLead = {
-      businessName: company,
-      website: siteData.resolvedUrl || website,
-      city: lead.City || '',
-      state: lead.State || '',
-      niche: lead.Industry || inferNiche(company),
-      decisionMaker: siteData.ownerNameFromSite || name,
-      title: lead.Title || '',
-      directPhone: lead.Phone || '',
-      businessPhone: siteData.phoneFromSite || lead.Phone || '',
-      email: lead.Email && !lead.Email.includes('not_unlocked') ? lead.Email : '',
-      linkedin: lead.LinkedIn || '',
+      businessName: lead.businessName,
+      website: siteData.resolvedUrl || lead.website,
+      city: lead.city,
+      state: lead.state,
+      niche: lead.niche,
+      decisionMaker,
+      title: lead.title,
+      directPhone: lead.directPhone,
+      businessPhone: siteData.phoneFromSite || lead.businessPhone || lead.directPhone,
+      email: lead.email,
+      linkedin: lead.linkedin,
       hasChatbot: 'No',
       marketingSignals: siteData.marketingSignals.join('; '),
       missedLeadOpportunity: siteData.missedLeadOpportunity,
       fitScore: score,
       whyItFits: reasons.join('; '),
+      source: lead.source,
     };
 
     qualified.push(qualifiedLead);
-    console.log(`✅ ${score}/10 — ${qualifiedLead.decisionMaker} | ${siteData.marketingSignals.length} signals`);
+    console.log(`✅ ${score}/10 — ${decisionMaker || lead.title || 'company-level fit'} | ${siteData.marketingSignals.length} signals`);
   }
 
-  await browser.close();
   qualified.sort((a, b) => b.fitScore - a.fitScore || a.businessName.localeCompare(b.businessName));
 
   fs.writeFileSync(OUTPUT, JSON.stringify(qualified, null, 2));
-  const csvHeaders = 'Business Name,Niche,City,State,Website,Decision Maker,Title,Direct Phone,Business Phone,Email,LinkedIn,Chatbot?,Marketing Signals,Missed-Lead Opportunity,Fit Score,Why It Fits';
+  const csvHeaders = 'Business Name,Niche,City,State,Website,Decision Maker,Title,Direct Phone,Business Phone,Email,LinkedIn,Chatbot?,Marketing Signals,Missed-Lead Opportunity,Fit Score,Why It Fits,Source';
   const csvRows = qualified.map(l => [
     l.businessName, l.niche, l.city, l.state, l.website,
     l.decisionMaker, l.title, l.directPhone, l.businessPhone,
     l.email, l.linkedin, l.hasChatbot, l.marketingSignals,
-    l.missedLeadOpportunity, l.fitScore, l.whyItFits,
+    l.missedLeadOpportunity, l.fitScore, l.whyItFits, l.source,
   ].map(csvEscape).join(','));
   fs.writeFileSync(OUTPUT_CSV, csvHeaders + '\n' + csvRows.join('\n') + '\n');
 
@@ -404,7 +554,6 @@ async function main() {
   console.log(`Total checked:       ${checked}`);
   console.log(`Rejected chatbot:    ${rejected.chatbot}`);
   console.log(`Rejected franchise:  ${rejected.franchise}`);
-  console.log(`Rejected no name:    ${rejected.noName}`);
   console.log(`Rejected no site:    ${rejected.noSite}`);
   console.log(`Rejected low score:  ${rejected.lowScore}`);
   console.log(`✅ QUALIFIED:         ${qualified.length}`);
