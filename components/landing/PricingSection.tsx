@@ -25,8 +25,8 @@ const plans: Plan[] = [
   {
     id: "solo",
     name: "Solo",
-    monthly: 110,
-    annual: 1056,
+    monthly: 149,
+    annual: 1524,
     desc: "For single-location businesses",
     features: [
       "Up to 500 conversations/month",
@@ -41,8 +41,8 @@ const plans: Plan[] = [
   {
     id: "team",
     name: "Team",
-    monthly: 250,
-    annual: 2400,
+    monthly: 249,
+    annual: 2544,
     desc: "For growing practices and shops",
     features: [
       "Unlimited conversations",
@@ -60,7 +60,7 @@ const plans: Plan[] = [
     id: "multi",
     name: "Multi-Location",
     monthly: 449,
-    annual: 4308,
+    annual: 4584,
     desc: "For businesses with 2+ locations",
     features: [
       "Everything in Team",
@@ -126,7 +126,7 @@ export default function PricingSection() {
             Simple, Transparent Pricing
           </h2>
           <p className="text-slate-500 max-w-xl mx-auto">
-            Missed leads cost more than software. Latchly starts at $3.67/day.
+            Missed leads cost more than software. Latchly starts at $4.97/day.
           </p>
         </motion.div>
 
@@ -154,7 +154,7 @@ export default function PricingSection() {
           >
             Annual{" "}
             <span className="ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700">
-              Save 20%
+              Save 15%
             </span>
           </span>
         </div>
