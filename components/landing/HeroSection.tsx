@@ -24,7 +24,7 @@ export default function HeroSection() {
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-          className="w-full text-center lg:text-left"
+          className="w-full max-w-xl mx-auto lg:mx-0 text-center lg:text-left"
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
