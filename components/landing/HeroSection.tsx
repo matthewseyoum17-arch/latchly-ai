@@ -17,7 +17,8 @@ export default function HeroSection() {
       <div className="absolute -bottom-32 -left-48 w-[500px] h-[500px] rounded-full bg-brand-200/10 blur-3xl pointer-events-none" />
       <div className="absolute top-1/3 right-1/4 w-[300px] h-[300px] rounded-full bg-emerald-200/10 blur-3xl pointer-events-none" />
 
-      <div className="grid lg:grid-cols-2 gap-12 lg:gap-8 items-center w-full relative">
+      <div className="w-full max-w-7xl mx-auto relative">
+        <div className="grid lg:grid-cols-2 gap-12 lg:gap-10 items-center w-full">
         {/* Left - Copy */}
         <motion.div
           initial={{ opacity: 0, y: 24 }}
@@ -191,6 +192,7 @@ export default function HeroSection() {
             <div className="text-2xl font-black text-brand tracking-tight">24/7</div>
           </motion.div>
         </motion.div>
+        </div>
       </div>
     </section>
   );
