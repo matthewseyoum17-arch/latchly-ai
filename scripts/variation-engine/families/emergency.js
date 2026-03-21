@@ -1,0 +1,533 @@
+/**
+ * EMERGENCY CONVERSION MACHINE
+ * Dark, high-contrast, urgent conversion-optimized design family.
+ * Barlow Condensed + Roboto | Near-black bg | Red/orange accents
+ */
+
+const { escHtml } = require('../shared/utils');
+const { getCopy } = require('../shared/copy');
+const { generateWidget } = require('../shared/widget');
+
+const name = 'emergency';
+const label = 'Emergency Conversion Machine';
+
+function generate(lead, niche) {
+  const c = getCopy(name, niche, lead);
+  const biz = escHtml(lead.business_name);
+  const phone = escHtml(lead.phone || '(555) 000-0000');
+  const phoneHref = (lead.phone || '5550000000').replace(/[^0-9+]/g, '');
+  const city = escHtml(lead.city || 'Your City');
+  const state = escHtml(lead.state || '');
+
+  const widgetHtml = generateWidget(lead, {
+    emoji: c.emoji,
+    headBg: 'linear-gradient(135deg,#1A1A1A,#2D1A1A)',
+    avatarBg: 'linear-gradient(135deg,#E53E3E,#DD6B20)',
+    fabBg: '#E53E3E',
+    fabRadius: '4px',
+    fabSize: '56px',
+    panelRadius: '4px',
+    bodyFont: "'Roboto',sans-serif",
+    headingFont: "'Barlow Condensed',sans-serif",
+    userMsgBg: '#E53E3E',
+    sendBg: '#E53E3E',
+    sendHoverBg: '#C53030',
+    linkColor: '#E53E3E',
+    inputFocusBorder: '#E53E3E',
+    inputFocusRing: 'rgba(229,62,62,.15)',
+    qrBorder: 'rgba(229,62,62,.3)',
+    qrColor: '#E53E3E',
+    qrBg: 'rgba(229,62,62,.08)',
+    qrHoverBg: '#E53E3E',
+    qrRadius: '4px',
+    inputRadius: '4px',
+    msgBotRadius: '2px 12px 12px 12px',
+    msgUserRadius: '12px 12px 2px 12px',
+    chatBg: '#0D0D0D',
+    fabShadow: '0 4px 20px rgba(229,62,62,.4)',
+    sendRadius: '4px',
+  }, c.quickReplies, c.serviceOptions);
+
+  // Build service grid HTML
+  const servicesHtml = c.services.map(s => `
+    <div class="bg-[#1A1A1A] border border-[#333] p-5 rounded-[4px] hover:border-[#E53E3E] transition-colors group">
+      <div class="w-10 h-10 rounded-[4px] bg-[#E53E3E]/10 flex items-center justify-center mb-3 group-hover:bg-[#E53E3E]/20 transition-colors">
+        <span class="text-[#E53E3E] text-lg">${escHtml(c.emoji)}</span>
+      </div>
+      <h3 class="font-barlow text-white font-bold text-base uppercase tracking-wide mb-1">${escHtml(s.title)}</h3>
+      <p class="text-gray-500 text-sm leading-relaxed">${escHtml(s.desc)}</p>
+    </div>`).join('\n');
+
+  // Build testimonial strip
+  const testimonialsHtml = c.testimonials.map(t => `
+    <div class="flex-shrink-0 bg-[#1A1A1A] border border-[#333] rounded-[4px] p-4 min-w-[300px] max-w-[340px]">
+      <div class="flex items-center gap-1 mb-2">
+        ${Array(t.rating).fill('<svg class="w-4 h-4 text-[#DD6B20]" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>').join('')}
+      </div>
+      <p class="text-gray-400 text-sm leading-relaxed mb-3">"${escHtml(t.text)}"</p>
+      <p class="text-white text-xs font-bold uppercase tracking-wider">${escHtml(t.name)}</p>
+    </div>`).join('\n');
+
+  // Build FAQ accordion
+  const faqsHtml = c.faqs.map((f, i) => `
+    <div class="border-b border-[#333] faq-item">
+      <button class="w-full flex items-center justify-between py-4 text-left group" onclick="toggleFaq(${i})">
+        <span class="font-barlow text-white font-bold text-sm uppercase tracking-wide pr-4">${escHtml(f.q)}</span>
+        <svg class="w-5 h-5 text-[#E53E3E] flex-shrink-0 faq-icon-${i} transition-transform" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+      </button>
+      <div class="faq-answer-${i} hidden pb-4">
+        <p class="text-gray-400 text-sm leading-relaxed">${escHtml(f.a)}</p>
+      </div>
+    </div>`).join('\n');
+
+  // Build why us
+  const whyUsHtml = c.whyUs.map(w => `
+    <div class="flex items-start gap-3">
+      <div class="w-8 h-8 rounded-[4px] bg-[#E53E3E] flex items-center justify-center flex-shrink-0 mt-0.5">
+        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+      </div>
+      <div>
+        <h4 class="text-white font-barlow font-bold text-sm uppercase tracking-wide">${escHtml(w.title)}</h4>
+        <p class="text-gray-500 text-sm mt-0.5">${escHtml(w.desc)}</p>
+      </div>
+    </div>`).join('\n');
+
+  // Service options for form
+  const serviceOptionsHtml = c.serviceOptions.map(o =>
+    `<option value="${escHtml(o)}">${escHtml(o)}</option>`
+  ).join('\n');
+
+  return `<!DOCTYPE html>
+<!-- DEMO: ${biz} | Family: emergency | Generated by Variation Engine -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>${biz} | ${escHtml(c.nicheLabel)} in ${city}${state ? ', ' + state : ''}</title>
+<script src="https://cdn.tailwindcss.com"><\/script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: {
+        barlow: ["'Barlow Condensed'", "sans-serif"],
+        roboto: ["'Roboto'", "sans-serif"],
+      },
+      colors: {
+        dark: { 900: '#111111', 800: '#1A1A1A', 700: '#222222', 600: '#333333' },
+        red: { accent: '#E53E3E' },
+        orange: { accent: '#DD6B20' },
+      }
+    }
+  }
+}
+<\/script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  html { scroll-behavior: smooth; }
+  body { font-family: 'Roboto', sans-serif; background: #111111; color: #fff; margin: 0; }
+  .font-barlow { font-family: 'Barlow Condensed', sans-serif; }
+  /* Diagonal stripe pattern for hero */
+  .hero-stripes {
+    background-image: repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 40px,
+      rgba(229,62,62,0.03) 40px,
+      rgba(229,62,62,0.03) 80px
+    );
+  }
+  /* Pulsing dot */
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(1.4); }
+  }
+  .pulse-dot { animation: pulse-dot 1.5s ease-in-out infinite; }
+  /* Emergency banner scroll */
+  @keyframes scroll-banner {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+  .banner-scroll { animation: scroll-banner 20s linear infinite; }
+  /* Reveal animation */
+  .reveal { opacity: 0; transform: translateY(20px); transition: opacity 0.5s ease, transform 0.5s ease; }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+  /* Notification popup */
+  @keyframes slide-in-popup {
+    0% { opacity: 0; transform: translateX(100%); }
+    100% { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes slide-out-popup {
+    0% { opacity: 1; transform: translateX(0); }
+    100% { opacity: 0; transform: translateX(100%); }
+  }
+  .popup-in { animation: slide-in-popup 0.4s ease forwards; }
+  .popup-out { animation: slide-out-popup 0.4s ease forwards; }
+  /* Sticky bottom bar */
+  .bottom-cta-bar { transform: translateY(100%); transition: transform 0.3s ease; }
+  .bottom-cta-bar.show { transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- ===== STICKY NAV ===== -->
+<nav id="nav" class="fixed top-0 left-0 right-0 z-50 bg-[#111111] border-b border-[#333]">
+  <div class="max-w-7xl mx-auto px-4 flex items-center justify-between h-14">
+    <a href="#" class="font-barlow font-bold text-lg uppercase tracking-wider text-white">${biz}</a>
+    <a href="tel:${phoneHref}" class="hidden sm:flex items-center gap-2 text-[#E53E3E] font-barlow font-bold text-lg uppercase tracking-wide">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"/></svg>
+      ${phone}
+    </a>
+    <div class="hidden md:flex items-center gap-6">
+      <a href="#services" class="text-gray-400 hover:text-white text-sm font-medium transition-colors">Services</a>
+      <a href="#reviews" class="text-gray-400 hover:text-white text-sm font-medium transition-colors">Reviews</a>
+      <a href="#faq" class="text-gray-400 hover:text-white text-sm font-medium transition-colors">FAQ</a>
+    </div>
+    <a href="tel:${phoneHref}" class="sm:hidden bg-[#E53E3E] text-white font-barlow font-bold text-xs uppercase tracking-wider px-4 py-2 rounded-[4px]">CALL NOW</a>
+  </div>
+</nav>
+
+<!-- ===== EMERGENCY BANNER ===== -->
+<div class="fixed top-14 left-0 right-0 z-40 bg-[#E53E3E] overflow-hidden h-8 flex items-center">
+  <div class="banner-scroll flex whitespace-nowrap">
+    <span class="inline-flex items-center gap-3 px-8 font-barlow font-bold text-sm uppercase tracking-widest text-white">
+      <span class="w-2 h-2 bg-white rounded-full pulse-dot"></span> EMERGENCY SERVICE AVAILABLE
+      <span class="text-white/50">|</span>
+      24/7 RAPID RESPONSE
+      <span class="text-white/50">|</span>
+      NO OVERTIME CHARGES
+      <span class="text-white/50">|</span>
+      LICENSED &amp; INSURED
+      <span class="text-white/50">|</span>
+      SAME-DAY SERVICE
+      <span class="text-white/50">|</span>
+    </span>
+    <span class="inline-flex items-center gap-3 px-8 font-barlow font-bold text-sm uppercase tracking-widest text-white">
+      <span class="w-2 h-2 bg-white rounded-full pulse-dot"></span> EMERGENCY SERVICE AVAILABLE
+      <span class="text-white/50">|</span>
+      24/7 RAPID RESPONSE
+      <span class="text-white/50">|</span>
+      NO OVERTIME CHARGES
+      <span class="text-white/50">|</span>
+      LICENSED &amp; INSURED
+      <span class="text-white/50">|</span>
+      SAME-DAY SERVICE
+      <span class="text-white/50">|</span>
+    </span>
+  </div>
+</div>
+
+<!-- ===== HERO ===== -->
+<section class="pt-[86px] bg-[#111111] hero-stripes">
+  <div class="max-w-7xl mx-auto px-4 py-12 md:py-16 grid md:grid-cols-2 gap-8 items-center">
+    <!-- Left: headline -->
+    <div>
+      <div class="inline-flex items-center gap-2 bg-[#E53E3E]/10 border border-[#E53E3E]/30 rounded-[4px] px-3 py-1.5 mb-5">
+        <span class="w-2 h-2 bg-[#E53E3E] rounded-full pulse-dot"></span>
+        <span class="font-barlow font-bold text-xs uppercase tracking-widest text-[#E53E3E]">Emergency Service Available</span>
+      </div>
+      <h1 class="font-barlow font-black text-5xl md:text-6xl lg:text-7xl uppercase leading-[0.95] tracking-tight text-white mb-3">
+        ${escHtml(c.headline)}
+      </h1>
+      <p class="font-barlow font-semibold text-xl md:text-2xl uppercase tracking-wide text-[#DD6B20] mb-4">
+        ${escHtml(c.headlineSub)}
+      </p>
+      <p class="text-gray-400 text-base md:text-lg leading-relaxed mb-6 max-w-md">
+        ${escHtml(c.subline)}
+      </p>
+      <div class="flex flex-col sm:flex-row items-start gap-3 mb-6">
+        <a href="tel:${phoneHref}" class="inline-flex items-center gap-2 bg-[#E53E3E] hover:bg-[#C53030] text-white font-barlow font-bold text-base uppercase tracking-wider px-8 py-4 rounded-[4px] transition-colors w-full sm:w-auto justify-center">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"/></svg>
+          CALL ${phone}
+        </a>
+        <a href="#quote-form" class="inline-flex items-center gap-2 border-2 border-[#DD6B20] text-[#DD6B20] hover:bg-[#DD6B20] hover:text-white font-barlow font-bold text-base uppercase tracking-wider px-8 py-4 rounded-[4px] transition-colors w-full sm:w-auto justify-center">
+          ${escHtml(c.cta1)}
+        </a>
+      </div>
+      <div class="flex items-center gap-4 text-sm text-gray-500">
+        <div class="flex items-center gap-1">
+          ${Array(5).fill('<svg class="w-4 h-4 text-[#DD6B20]" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>').join('')}
+        </div>
+        <span class="text-gray-400">${escHtml(c.stats.rating)} Stars &middot; ${escHtml(c.stats.jobs)}+ Jobs</span>
+      </div>
+    </div>
+    <!-- Right: inline quote form -->
+    <div id="quote-form" class="bg-[#1A1A1A] border border-[#333] rounded-[4px] p-6 md:p-8">
+      <h2 class="font-barlow font-bold text-2xl uppercase tracking-wide text-white mb-1">Get Help Fast</h2>
+      <p class="text-gray-500 text-sm mb-5">Fill out the form. We'll call you back ASAP.</p>
+      <form id="hero-form" class="space-y-3" onsubmit="return false;">
+        <div>
+          <input type="text" name="name" placeholder="Your Name" required class="w-full bg-[#222222] border border-[#444] rounded-[4px] px-4 py-3 text-white text-sm placeholder-gray-600 focus:border-[#E53E3E] focus:outline-none focus:ring-1 focus:ring-[#E53E3E]/30 transition-colors">
+        </div>
+        <div>
+          <input type="tel" name="phone" placeholder="Phone Number" required class="w-full bg-[#222222] border border-[#444] rounded-[4px] px-4 py-3 text-white text-sm placeholder-gray-600 focus:border-[#E53E3E] focus:outline-none focus:ring-1 focus:ring-[#E53E3E]/30 transition-colors">
+        </div>
+        <div>
+          <select name="service" class="w-full bg-[#222222] border border-[#444] rounded-[4px] px-4 py-3 text-white text-sm focus:border-[#E53E3E] focus:outline-none focus:ring-1 focus:ring-[#E53E3E]/30 transition-colors appearance-none" style="background-image:url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2216%22 height=%2216%22 fill=%22%23666%22 viewBox=%220 0 16 16%22><path d=%22M8 11L3 6h10z%22/></svg>');background-repeat:no-repeat;background-position:right 12px center;">
+            <option value="" disabled selected>Select Service Needed</option>
+            ${serviceOptionsHtml}
+          </select>
+        </div>
+        <button type="submit" id="hero-submit" class="w-full bg-[#E53E3E] hover:bg-[#C53030] text-white font-barlow font-bold text-base uppercase tracking-wider py-4 rounded-[4px] transition-colors flex items-center justify-center gap-2">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          GET HELP NOW
+        </button>
+      </form>
+      <p class="text-gray-600 text-xs mt-3 text-center">Average response time: ${escHtml(c.stats.avgResponse)} minutes</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== TRUST BADGES ===== -->
+<section class="bg-[#1A1A1A] border-y border-[#333] py-8">
+  <div class="max-w-7xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div class="flex items-center gap-3 justify-center">
+      <div class="w-10 h-10 rounded-[4px] bg-[#E53E3E]/10 flex items-center justify-center flex-shrink-0">
+        <svg class="w-5 h-5 text-[#E53E3E]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      </div>
+      <div>
+        <p class="font-barlow font-bold text-white text-sm uppercase tracking-wide">Same Day</p>
+        <p class="text-gray-500 text-xs">Service Available</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-3 justify-center">
+      <div class="w-10 h-10 rounded-[4px] bg-[#DD6B20]/10 flex items-center justify-center flex-shrink-0">
+        <svg class="w-5 h-5 text-[#DD6B20]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z"/></svg>
+      </div>
+      <div>
+        <p class="font-barlow font-bold text-white text-sm uppercase tracking-wide">0% Financing</p>
+        <p class="text-gray-500 text-xs">Available OAC</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-3 justify-center">
+      <div class="w-10 h-10 rounded-[4px] bg-[#E53E3E]/10 flex items-center justify-center flex-shrink-0">
+        <svg class="w-5 h-5 text-[#E53E3E]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg>
+      </div>
+      <div>
+        <p class="font-barlow font-bold text-white text-sm uppercase tracking-wide">Guaranteed</p>
+        <p class="text-gray-500 text-xs">100% Satisfaction</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-3 justify-center">
+      <div class="w-10 h-10 rounded-[4px] bg-[#DD6B20]/10 flex items-center justify-center flex-shrink-0">
+        <svg class="w-5 h-5 text-[#DD6B20]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/></svg>
+      </div>
+      <div>
+        <p class="font-barlow font-bold text-white text-sm uppercase tracking-wide">Licensed</p>
+        <p class="text-gray-500 text-xs">Bonded &amp; Insured</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== STATS BAR ===== -->
+<section class="bg-[#111111] py-10 reveal">
+  <div class="max-w-7xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+    <div>
+      <p class="font-barlow font-black text-4xl md:text-5xl text-[#E53E3E] leading-none">${escHtml(c.stats.avgResponse)}</p>
+      <p class="font-barlow font-semibold text-xs uppercase tracking-widest text-gray-500 mt-1">Min Avg Response</p>
+    </div>
+    <div>
+      <p class="font-barlow font-black text-4xl md:text-5xl text-[#DD6B20] leading-none">${escHtml(c.stats.jobs)}+</p>
+      <p class="font-barlow font-semibold text-xs uppercase tracking-widest text-gray-500 mt-1">Jobs Completed</p>
+    </div>
+    <div>
+      <p class="font-barlow font-black text-4xl md:text-5xl text-[#E53E3E] leading-none">${escHtml(c.stats.rating)}</p>
+      <p class="font-barlow font-semibold text-xs uppercase tracking-widest text-gray-500 mt-1">Star Rating</p>
+    </div>
+    <div>
+      <p class="font-barlow font-black text-4xl md:text-5xl text-[#DD6B20] leading-none">${escHtml(c.stats.years)}</p>
+      <p class="font-barlow font-semibold text-xs uppercase tracking-widest text-gray-500 mt-1">Years in Business</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== SERVICES ===== -->
+<section id="services" class="bg-[#111111] py-10 reveal">
+  <div class="max-w-7xl mx-auto px-4">
+    <div class="text-center mb-8">
+      <h2 class="font-barlow font-black text-3xl md:text-4xl uppercase tracking-tight text-white">${escHtml(c.whyTitle)}</h2>
+      <p class="text-gray-500 text-sm mt-2 max-w-lg mx-auto">${escHtml(c.whySub)}</p>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      ${servicesHtml}
+    </div>
+  </div>
+</section>
+
+<!-- ===== FINANCING BANNER ===== -->
+<section class="bg-gradient-to-r from-[#DD6B20] to-[#E53E3E] py-6 reveal">
+  <div class="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-3">
+    <div class="flex items-center gap-3">
+      <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z"/></svg>
+      <div>
+        <p class="font-barlow font-bold text-xl uppercase tracking-wide text-white">0% Financing Available</p>
+        <p class="text-white/80 text-sm">No money down. Affordable monthly payments. Apply in minutes.</p>
+      </div>
+    </div>
+    <a href="tel:${phoneHref}" class="bg-white text-[#E53E3E] font-barlow font-bold text-sm uppercase tracking-wider px-6 py-3 rounded-[4px] hover:bg-gray-100 transition-colors flex-shrink-0">ASK ABOUT FINANCING</a>
+  </div>
+</section>
+
+<!-- ===== WHY US ===== -->
+<section class="bg-[#111111] py-10 reveal">
+  <div class="max-w-7xl mx-auto px-4">
+    <div class="grid md:grid-cols-2 gap-6">
+      ${whyUsHtml}
+    </div>
+  </div>
+</section>
+
+<!-- ===== REVIEWS ===== -->
+<section id="reviews" class="bg-[#1A1A1A] py-10 reveal">
+  <div class="max-w-7xl mx-auto px-4">
+    <h2 class="font-barlow font-black text-2xl uppercase tracking-tight text-white mb-6 text-center">What Our Customers Say</h2>
+    <div class="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide" style="-webkit-overflow-scrolling:touch;scrollbar-width:none;">
+      ${testimonialsHtml}
+    </div>
+  </div>
+</section>
+
+<!-- ===== FAQ ===== -->
+<section id="faq" class="bg-[#111111] py-10 reveal">
+  <div class="max-w-3xl mx-auto px-4">
+    <h2 class="font-barlow font-black text-2xl uppercase tracking-tight text-white mb-6 text-center">Frequently Asked Questions</h2>
+    <div>
+      ${faqsHtml}
+    </div>
+  </div>
+</section>
+
+<!-- ===== BOTTOM CTA ===== -->
+<section class="bg-[#1A1A1A] border-t border-[#333] py-10">
+  <div class="max-w-3xl mx-auto px-4 text-center">
+    <h2 class="font-barlow font-black text-3xl md:text-4xl uppercase tracking-tight text-white mb-3">Ready to Get Started?</h2>
+    <p class="text-gray-400 text-sm mb-6">Call now for same-day service. No overtime charges.</p>
+    <a href="tel:${phoneHref}" class="inline-flex items-center gap-2 bg-[#E53E3E] hover:bg-[#C53030] text-white font-barlow font-bold text-lg uppercase tracking-wider px-10 py-4 rounded-[4px] transition-colors">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"/></svg>
+      CALL ${phone}
+    </a>
+  </div>
+</section>
+
+<!-- ===== FOOTER ===== -->
+<footer class="bg-[#0D0D0D] border-t border-[#222] py-6">
+  <div class="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-3 text-gray-600 text-xs">
+    <p>&copy; ${new Date().getFullYear()} ${biz}. All rights reserved.</p>
+    <p>${city}${state ? ', ' + state : ''} &middot; ${escHtml(c.nicheLabel)}</p>
+  </div>
+</footer>
+
+<!-- ===== MOBILE STICKY BOTTOM BAR ===== -->
+<div id="mobile-cta" class="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#111111] border-t border-[#333] px-4 py-3 flex items-center gap-3 bottom-cta-bar">
+  <a href="tel:${phoneHref}" class="flex-1 bg-[#E53E3E] text-white font-barlow font-bold text-sm uppercase tracking-wider py-3 rounded-[4px] text-center flex items-center justify-center gap-2">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"/></svg>
+    CALL NOW
+  </a>
+  <a href="#quote-form" class="flex-1 bg-[#DD6B20] text-white font-barlow font-bold text-sm uppercase tracking-wider py-3 rounded-[4px] text-center">GET HELP NOW</a>
+</div>
+
+<!-- ===== BOOKING NOTIFICATION POPUP ===== -->
+<div id="booking-popup" class="fixed top-28 right-4 z-50 bg-[#1A1A1A] border border-[#E53E3E]/30 rounded-[4px] p-4 max-w-[300px] shadow-2xl hidden">
+  <button onclick="document.getElementById('booking-popup').classList.add('hidden')" class="absolute top-2 right-2 text-gray-600 hover:text-white text-sm">&times;</button>
+  <div class="flex items-start gap-3">
+    <div class="w-8 h-8 rounded-full bg-[#E53E3E]/20 flex items-center justify-center flex-shrink-0">
+      <svg class="w-4 h-4 text-[#E53E3E]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/></svg>
+    </div>
+    <div>
+      <p class="text-white text-sm font-bold">New Booking</p>
+      <p class="text-gray-400 text-xs mt-0.5">Someone in ${city} just requested service.</p>
+      <p class="text-[#E53E3E] text-xs font-bold mt-1">2 minutes ago</p>
+    </div>
+  </div>
+</div>
+
+${widgetHtml}
+
+<script>
+(function(){
+  // FAQ accordion
+  window.toggleFaq = function(i) {
+    var answer = document.querySelector('.faq-answer-' + i);
+    var icon = document.querySelector('.faq-icon-' + i);
+    if (!answer) return;
+    var isHidden = answer.classList.contains('hidden');
+    // Close all
+    document.querySelectorAll('[class*="faq-answer-"]').forEach(function(el) { el.classList.add('hidden'); });
+    document.querySelectorAll('[class*="faq-icon-"]').forEach(function(el) { el.style.transform = 'rotate(0deg)'; });
+    if (isHidden) {
+      answer.classList.remove('hidden');
+      icon.style.transform = 'rotate(180deg)';
+    }
+  };
+
+  // Smooth scroll
+  document.querySelectorAll('a[href^="#"]').forEach(function(a) {
+    a.addEventListener('click', function(e) {
+      var target = document.querySelector(this.getAttribute('href'));
+      if (target) {
+        e.preventDefault();
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
+
+  // Reveal on scroll
+  var reveals = document.querySelectorAll('.reveal');
+  var observer = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1 });
+  reveals.forEach(function(el) { observer.observe(el); });
+
+  // Mobile sticky bar - show on scroll
+  var mobileCta = document.getElementById('mobile-cta');
+  var lastScroll = 0;
+  window.addEventListener('scroll', function() {
+    var st = window.scrollY;
+    if (st > 400) {
+      mobileCta.classList.add('show');
+    } else {
+      mobileCta.classList.remove('show');
+    }
+    lastScroll = st;
+  });
+
+  // Booking notification popup
+  setTimeout(function() {
+    var popup = document.getElementById('booking-popup');
+    popup.classList.remove('hidden');
+    popup.classList.add('popup-in');
+    setTimeout(function() {
+      popup.classList.add('popup-out');
+      setTimeout(function() { popup.classList.add('hidden'); }, 400);
+    }, 6000);
+  }, 8000);
+
+  // Hero form handling
+  document.getElementById('hero-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var btn = document.getElementById('hero-submit');
+    btn.textContent = 'SUBMITTING...';
+    btn.disabled = true;
+    setTimeout(function() {
+      btn.innerHTML = '<svg class="w-5 h-5 inline" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> WE\\'LL CALL YOU BACK';
+      btn.classList.remove('bg-[#E53E3E]', 'hover:bg-[#C53030]');
+      btn.classList.add('bg-green-600');
+    }, 1200);
+  });
+})();
+<\/script>
+
+</body>
+</html>`;
+}
+
+module.exports = { name, label, generate };

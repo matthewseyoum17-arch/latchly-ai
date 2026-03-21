@@ -1,0 +1,55 @@
+{
+  "niche": "roofing",
+  "nicheLabel": "Roofing",
+  "heroImage": "https://images.unsplash.com/photo-1632759145351-1d592919f522?w=1920&q=80",
+  "heroAlt": "Professional roofing contractor at work",
+  "headlineService": "Roofing",
+  "subline": "Free inspections. Honest estimates. Licensed, insured roofers on-site fast — protecting your home from the top down.",
+  "emoji": "🏠",
+  "services": [
+    { "title": "Roof Repair", "desc": "Leaks, missing shingles, storm damage — we handle it all fast with lasting repairs backed by warranty." },
+    { "title": "Roof Replacement", "desc": "Full tear-off and replacement with premium materials. Expert installation for maximum lifespan." },
+    { "title": "Storm Damage & Insurance", "desc": "We work directly with your insurance company. Free storm damage inspections and help with claims." },
+    { "title": "Roof Inspection", "desc": "Comprehensive inspections that catch problems early. Detailed reports with photos and recommendations." },
+    { "title": "Gutter Services", "desc": "Gutter installation, repair, and cleaning. Protect your roof and foundation from water damage." },
+    { "title": "Commercial Roofing", "desc": "Flat roofs, TPO, EPDM, and metal roofing for commercial properties. Licensed and experienced." }
+  ],
+  "serviceOptions": [
+    "Roof Repair",
+    "Roof Replacement",
+    "Storm Damage / Insurance",
+    "Roof Inspection",
+    "Gutter Services",
+    "Commercial Roofing",
+    "Other"
+  ],
+  "stats": {
+    "avgResponse": "45",
+    "jobsCompleted": "890",
+    "googleRating": "4.8",
+    "yearsInBusiness": "15"
+  },
+  "whyUs": [
+    { "title": "Free Inspections", "desc": "Every project starts with a thorough, no-obligation roof inspection and honest assessment." },
+    { "title": "Insurance Experts", "desc": "We work directly with your insurance company to maximize your storm damage claim." },
+    { "title": "Licensed & Insured", "desc": "Fully licensed, bonded, and insured. Every crew member is background-checked." },
+    { "title": "Warranty Backed", "desc": "Manufacturer warranties plus our own workmanship guarantee. Your roof is protected." }
+  ],
+  "faqs": [
+    { "q": "How do I know if I need a new roof?", "a": "Common signs include missing or curling shingles, granules in gutters, daylight through the attic, sagging areas, and a roof over 20 years old. We offer free inspections to assess your roof's condition." },
+    { "q": "Do you help with insurance claims?", "a": "Absolutely! We work directly with all major insurance companies. We'll do a free storm damage inspection, document everything with photos, and help you through the entire claims process." },
+    { "q": "How long does a roof replacement take?", "a": "Most residential roof replacements are completed in 1-3 days, depending on the size and complexity. We'll give you a clear timeline before starting." },
+    { "q": "Are your roofers licensed and insured?", "a": "Yes, every member of our team is fully licensed, bonded, and insured. We carry both general liability and workers' compensation. Your property is fully protected." },
+    { "q": "What roofing materials do you offer?", "a": "We install asphalt shingles (GAF, Owens Corning, CertainTeed), metal roofing, tile, flat roofing (TPO, EPDM), and more. We'll recommend the best option for your home and budget." },
+    { "q": "Do you offer financing?", "a": "Yes! We offer flexible financing options with approved credit. Get the roof you need now and pay over time with low monthly payments." }
+  ],
+  "bookings": [
+    { "name": "Jennifer M.", "action": "booked Roof Inspection", "time": "just now" },
+    { "name": "Carlos R.", "action": "requested Storm Damage Estimate", "time": "3 min ago" },
+    { "name": "Sarah T.", "action": "booked Roof Repair", "time": "7 min ago" },
+    { "name": "Mike D.", "action": "requested a Free Quote", "time": "12 min ago" },
+    { "name": "Lisa K.", "action": "booked Gutter Cleaning", "time": "18 min ago" },
+    { "name": "James W.", "action": "booked Roof Replacement Consult", "time": "24 min ago" }
+  ],
+  "quickReplies": ["Get a free quote", "Storm damage help", "Roof inspection", "Insurance claims"]
+}

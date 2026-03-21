@@ -1,0 +1,55 @@
+{
+  "niche": "hvac",
+  "nicheLabel": "HVAC",
+  "heroImage": "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=1920&q=80",
+  "heroAlt": "Professional HVAC service technician",
+  "headlineService": "Heating & Cooling",
+  "subline": "Same-day repairs. No overtime fees. Every tech is licensed, background-checked, and on-site in under 60 minutes.",
+  "emoji": "❄️",
+  "services": [
+    { "title": "AC Repair & Installation", "desc": "Fast diagnosis and repair for all AC brands. New system installs with full warranty coverage." },
+    { "title": "Furnace Repair & Tune-Up", "desc": "Keep your home warm all winter. Expert furnace repairs, tune-ups, and full replacements." },
+    { "title": "Heat Pump Services", "desc": "Installation, repair, and maintenance for all heat pump systems — maximizing your energy efficiency." },
+    { "title": "Ductwork & Air Quality", "desc": "Duct cleaning, sealing, and indoor air quality solutions for a healthier, more comfortable home." },
+    { "title": "Preventive Maintenance", "desc": "Seasonal tune-ups that catch problems early. Keep your system running at peak performance year-round." },
+    { "title": "Emergency HVAC Service", "desc": "24/7 emergency response for heating and cooling failures. On-site within 60 minutes, guaranteed." }
+  ],
+  "serviceOptions": [
+    "AC Repair / Installation",
+    "Furnace Repair / Tune-Up",
+    "Heat Pump Services",
+    "Ductwork / Air Quality",
+    "Preventive Maintenance",
+    "Emergency HVAC",
+    "Other"
+  ],
+  "stats": {
+    "avgResponse": "42",
+    "jobsCompleted": "1,247",
+    "googleRating": "4.9",
+    "yearsInBusiness": "12"
+  },
+  "whyUs": [
+    { "title": "Same-Day Response", "desc": "On-site in 30–60 minutes for emergencies. Scheduled visits within 2-hour windows." },
+    { "title": "Upfront Pricing", "desc": "You'll know the exact cost before any work begins. No surprises, no hidden fees." },
+    { "title": "Licensed Experts", "desc": "Every technician is fully certified, background-checked, and insured." },
+    { "title": "Satisfaction Guaranteed", "desc": "Not happy? We'll make it right — that's our promise to every customer." }
+  ],
+  "faqs": [
+    { "q": "How often should I service my HVAC system?", "a": "We recommend a professional tune-up twice a year — once in spring for your AC and once in fall for your furnace. Regular maintenance extends your system's life and catches small problems before they become expensive repairs." },
+    { "q": "What are signs my AC needs repair?", "a": "Watch for weak airflow, warm air from vents, unusual noises, frequent cycling, high energy bills, or excess humidity. If you notice any of these, call us for a diagnostic — we'll get it sorted quickly." },
+    { "q": "Are your technicians licensed and insured?", "a": "Yes, every technician on our team is fully licensed, bonded, and insured. We also conduct thorough background checks. Your family's safety and peace of mind are our top priority." },
+    { "q": "Do you provide free estimates?", "a": "We provide upfront pricing before any work begins. Our $89 service call fee covers a full diagnostic, and that fee is waived if you proceed with the repair. You'll always know the total cost before we start." },
+    { "q": "What brands do you service?", "a": "We service all major brands including Carrier, Trane, Lennox, Rheem, Goodman, Daikin, Amana, and many more. If you have a brand not listed, just give us a call — chances are we work on it." },
+    { "q": "How quickly can someone arrive?", "a": "For emergencies, we typically have a technician at your door within 30 to 60 minutes. For scheduled appointments, we offer 2-hour arrival windows so you're not waiting around all day." }
+  ],
+  "bookings": [
+    { "name": "Jennifer M.", "action": "booked AC Repair", "time": "just now" },
+    { "name": "Carlos R.", "action": "booked Furnace Tune-Up", "time": "3 min ago" },
+    { "name": "Sarah T.", "action": "requested a Free Quote", "time": "7 min ago" },
+    { "name": "Mike D.", "action": "booked Heat Pump Install", "time": "12 min ago" },
+    { "name": "Lisa K.", "action": "booked AC Maintenance", "time": "18 min ago" },
+    { "name": "James W.", "action": "booked Emergency HVAC", "time": "24 min ago" }
+  ],
+  "quickReplies": ["Get a quote", "Emergency HVAC", "Hours & service area", "AC repair"]
+}

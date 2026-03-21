@@ -1,0 +1,254 @@
+{
+  "colorSchemes": [
+    {
+      "name": "ocean",
+      "primary": "#1B5FA8",
+      "primaryDark": "#134780",
+      "accent": "#5b9bd5",
+      "accentLight": "#7ab3e0",
+      "accentMuted": "#93b4d9",
+      "headGradient": "linear-gradient(135deg,#0a0f1c,#182438)",
+      "bodyBg": "#0a0f1c",
+      "sectionBg1": "#0f1628",
+      "sectionBg2": "#111827",
+      "sectionBg3": "#0d1425",
+      "starColor": "#d4a843"
+    },
+    {
+      "name": "emerald",
+      "primary": "#059669",
+      "primaryDark": "#047857",
+      "accent": "#34d399",
+      "accentLight": "#6ee7b7",
+      "accentMuted": "#86efac",
+      "headGradient": "linear-gradient(135deg,#022c22,#064e3b)",
+      "bodyBg": "#022c22",
+      "sectionBg1": "#052e16",
+      "sectionBg2": "#064e3b",
+      "sectionBg3": "#03291e",
+      "starColor": "#fbbf24"
+    },
+    {
+      "name": "crimson",
+      "primary": "#dc2626",
+      "primaryDark": "#b91c1c",
+      "accent": "#f87171",
+      "accentLight": "#fca5a5",
+      "accentMuted": "#fecaca",
+      "headGradient": "linear-gradient(135deg,#1c0a0a,#3b1010)",
+      "bodyBg": "#1a0a0a",
+      "sectionBg1": "#1f0c0c",
+      "sectionBg2": "#2a1010",
+      "sectionBg3": "#1c0909",
+      "starColor": "#fbbf24"
+    },
+    {
+      "name": "amber",
+      "primary": "#d97706",
+      "primaryDark": "#b45309",
+      "accent": "#fbbf24",
+      "accentLight": "#fcd34d",
+      "accentMuted": "#fde68a",
+      "headGradient": "linear-gradient(135deg,#1c1207,#2d1f0e)",
+      "bodyBg": "#1a1108",
+      "sectionBg1": "#1f150a",
+      "sectionBg2": "#261a0c",
+      "sectionBg3": "#1c120a",
+      "starColor": "#f59e0b"
+    },
+    {
+      "name": "violet",
+      "primary": "#7c3aed",
+      "primaryDark": "#6d28d9",
+      "accent": "#a78bfa",
+      "accentLight": "#c4b5fd",
+      "accentMuted": "#ddd6fe",
+      "headGradient": "linear-gradient(135deg,#0f0720,#1e1040)",
+      "bodyBg": "#0d0619",
+      "sectionBg1": "#120825",
+      "sectionBg2": "#1a0e35",
+      "sectionBg3": "#0f071f",
+      "starColor": "#fbbf24"
+    },
+    {
+      "name": "slate",
+      "primary": "#3b82f6",
+      "primaryDark": "#2563eb",
+      "accent": "#60a5fa",
+      "accentLight": "#93c5fd",
+      "accentMuted": "#bfdbfe",
+      "headGradient": "linear-gradient(135deg,#0c1222,#1a2540)",
+      "bodyBg": "#0a0f1c",
+      "sectionBg1": "#0f1628",
+      "sectionBg2": "#111827",
+      "sectionBg3": "#0d1425",
+      "starColor": "#d4a843"
+    },
+    {
+      "name": "teal",
+      "primary": "#0d9488",
+      "primaryDark": "#0f766e",
+      "accent": "#2dd4bf",
+      "accentLight": "#5eead4",
+      "accentMuted": "#99f6e4",
+      "headGradient": "linear-gradient(135deg,#042f2e,#0a3d3c)",
+      "bodyBg": "#021716",
+      "sectionBg1": "#03201f",
+      "sectionBg2": "#052e2d",
+      "sectionBg3": "#031c1b",
+      "starColor": "#fbbf24"
+    },
+    {
+      "name": "rose",
+      "primary": "#e11d48",
+      "primaryDark": "#be123c",
+      "accent": "#fb7185",
+      "accentLight": "#fda4af",
+      "accentMuted": "#fecdd3",
+      "headGradient": "linear-gradient(135deg,#1a0610,#30101e)",
+      "bodyBg": "#180510",
+      "sectionBg1": "#1e0814",
+      "sectionBg2": "#280c1a",
+      "sectionBg3": "#1a0710",
+      "starColor": "#fbbf24"
+    }
+  ],
+  "heroImages": {
+    "hvac": [
+      { "url": "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=1920&q=80", "alt": "HVAC technician servicing air conditioning unit" },
+      { "url": "https://images.unsplash.com/photo-1585771724684-38269d6639fd?w=1920&q=80", "alt": "Modern HVAC system installation" },
+      { "url": "https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=1920&q=80", "alt": "Professional heating and cooling service" },
+      { "url": "https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=1920&q=80", "alt": "Home comfort specialists at work" }
+    ],
+    "plumbing": [
+      { "url": "https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=1920&q=80", "alt": "Professional plumbing service" },
+      { "url": "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=1920&q=80", "alt": "Expert plumber repairing pipes" },
+      { "url": "https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=1920&q=80", "alt": "Residential plumbing professionals" },
+      { "url": "https://images.unsplash.com/photo-1621905252507-b35492cc74b4?w=1920&q=80", "alt": "Licensed plumbing contractor" }
+    ],
+    "roofing": [
+      { "url": "https://images.unsplash.com/photo-1632759145351-1d592919f522?w=1920&q=80", "alt": "Professional roofing contractor at work" },
+      { "url": "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1920&q=80", "alt": "Beautiful home with new roof" },
+      { "url": "https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=1920&q=80", "alt": "Expert roofing installation crew" },
+      { "url": "https://images.unsplash.com/photo-1513694203232-719a280e022f?w=1920&q=80", "alt": "Residential roofing specialists" }
+    ]
+  },
+  "testimonials": [
+    [
+      { "name": "Jennifer M.", "text": "Called at 9 PM with a burst pipe. They had someone here in 35 minutes. Incredible service.", "rating": 5 },
+      { "name": "Carlos R.", "text": "Upfront pricing, no surprises. The tech explained everything before starting. Will use again.", "rating": 5 },
+      { "name": "Sarah T.", "text": "They found the leak in 10 minutes that another company couldn't find in 2 hours. Highly recommend.", "rating": 5 }
+    ],
+    [
+      { "name": "Mike D.", "text": "Professional from start to finish. They even cleaned up after the job. That's rare.", "rating": 5 },
+      { "name": "Lisa K.", "text": "Best service I've had in 20 years of homeownership. Fair price, fast work, friendly crew.", "rating": 5 },
+      { "name": "James W.", "text": "They showed up on time, diagnosed the problem fast, and fixed it right. No upselling.", "rating": 5 }
+    ],
+    [
+      { "name": "Amanda P.", "text": "The technician was knowledgeable and patient — answered all my questions without rushing.", "rating": 5 },
+      { "name": "Robert H.", "text": "Emergency call on a Sunday and they still had someone here within an hour. Lifesavers.", "rating": 5 },
+      { "name": "Diana L.", "text": "Finally found a company I trust. They've done 3 jobs for us now and every one was perfect.", "rating": 5 }
+    ],
+    [
+      { "name": "Kevin S.", "text": "Scheduled a tune-up and the tech found a small issue before it became a big one. Saved us hundreds.", "rating": 5 },
+      { "name": "Patricia N.", "text": "The whole process was seamless. From the phone call to the finished job — about 3 hours total.", "rating": 5 },
+      { "name": "Thomas B.", "text": "I've recommended them to 4 neighbors now. Every single one has thanked me. That says it all.", "rating": 5 }
+    ],
+    [
+      { "name": "Rachel G.", "text": "Transparent pricing, great communication, and the work was done perfectly. Five stars isn't enough.", "rating": 5 },
+      { "name": "Steve M.", "text": "They went above and beyond. Found an issue I didn't even know about and fixed it at no extra charge.", "rating": 5 },
+      { "name": "Nancy C.", "text": "Fast, clean, professional. They treated our home with respect. Will absolutely call again.", "rating": 5 }
+    ]
+  ],
+  "stats": [
+    { "avgResponse": "42", "responseLabel": "min", "jobsCompleted": "1,247", "googleRating": "4.9", "yearsInBusiness": "12" },
+    { "avgResponse": "35", "responseLabel": "min", "jobsCompleted": "2,100", "googleRating": "4.8", "yearsInBusiness": "18" },
+    { "avgResponse": "28", "responseLabel": "min", "jobsCompleted": "890", "googleRating": "5.0", "yearsInBusiness": "8" },
+    { "avgResponse": "50", "responseLabel": "min", "jobsCompleted": "3,400", "googleRating": "4.9", "yearsInBusiness": "22" },
+    { "avgResponse": "30", "responseLabel": "min", "jobsCompleted": "1,580", "googleRating": "4.7", "yearsInBusiness": "15" },
+    { "avgResponse": "45", "responseLabel": "min", "jobsCompleted": "640", "googleRating": "5.0", "yearsInBusiness": "6" }
+  ],
+  "heroHeadlines": {
+    "hvac": [
+      "{city}'s Most Trusted",
+      "Your {city} Comfort Experts",
+      "{city}'s #1 Rated",
+      "Keeping {city} Comfortable",
+      "The {city} HVAC Pros"
+    ],
+    "plumbing": [
+      "{city}'s Most Trusted",
+      "{city}'s Go-To Plumber",
+      "#1 Rated in {city}",
+      "Serving {city} Since Day One",
+      "{city}'s Plumbing Experts"
+    ],
+    "roofing": [
+      "{city}'s Most Trusted",
+      "{city}'s Top-Rated Roofer",
+      "Protecting {city} Homes",
+      "#1 in {city} Roofing",
+      "{city}'s Roofing Experts"
+    ]
+  },
+  "sublines": {
+    "hvac": [
+      "Same-day repairs. No overtime fees. Every tech is licensed, background-checked, and on-site in under 60 minutes.",
+      "Reliable heating & cooling for your home. Expert technicians, upfront pricing, and a satisfaction guarantee on every job.",
+      "24/7 emergency service. Certified technicians. Real upfront pricing — no hidden fees, no surprises.",
+      "Fast, honest HVAC service you can count on. Licensed pros dispatched to your door, often in under an hour."
+    ],
+    "plumbing": [
+      "Same-day service. No overtime fees. Every tech is licensed, background-checked, and on-site in under 60 minutes.",
+      "From drips to disasters — fast, honest plumbing with upfront pricing. Licensed and insured.",
+      "24/7 emergency plumbing. Background-checked pros. Upfront pricing before any wrench turns.",
+      "Trusted by thousands of homeowners. Fast response, fair prices, and work that's guaranteed."
+    ],
+    "roofing": [
+      "Free inspections. Honest estimates. Licensed, insured roofers on-site fast — protecting your home from the top down.",
+      "Storm damage? Aging roof? We handle it all — free inspections, insurance claim help, and expert installation.",
+      "Your roof protects everything underneath it. We protect your roof. Free estimates, no obligations.",
+      "Expert roofing backed by warranty. From repairs to full replacements — honest work at honest prices."
+    ]
+  },
+  "ctaLabels": [
+    { "primary": "Get a Free Quote", "secondary": "View Our Services" },
+    { "primary": "Schedule Service", "secondary": "See What We Do" },
+    { "primary": "Book Now — Free Estimate", "secondary": "Our Services" },
+    { "primary": "Request a Free Quote", "secondary": "Learn More" },
+    { "primary": "Get Your Free Estimate", "secondary": "Browse Services" }
+  ],
+  "bookingNames": [
+    ["Jennifer M.", "Carlos R.", "Sarah T.", "Mike D.", "Lisa K.", "James W."],
+    ["Amanda P.", "Robert H.", "Diana L.", "Kevin S.", "Patricia N.", "Thomas B."],
+    ["Rachel G.", "Steve M.", "Nancy C.", "Brian F.", "Melissa A.", "David W."],
+    ["Stephanie R.", "Jason T.", "Laura H.", "Andrew K.", "Michelle G.", "Chris L."],
+    ["Angela M.", "Ryan B.", "Susan D.", "Mark P.", "Kelly S.", "John E."]
+  ],
+  "whyUsVariants": [
+    [
+      { "title": "Same-Day Response", "desc": "On-site in 30–60 minutes for emergencies. Scheduled visits within 2-hour windows." },
+      { "title": "Upfront Pricing", "desc": "You'll know the exact cost before any work begins. No surprises, no hidden fees." },
+      { "title": "Licensed Experts", "desc": "Every technician is fully certified, background-checked, and insured." },
+      { "title": "Satisfaction Guaranteed", "desc": "Not happy? We'll make it right — that's our promise to every customer." }
+    ],
+    [
+      { "title": "Fast Dispatch", "desc": "Technicians ready to roll, often at your door in under an hour. Emergency service available 24/7." },
+      { "title": "No Hidden Fees", "desc": "We quote the price before we start. What we say is what you pay. Period." },
+      { "title": "Background-Checked", "desc": "Every team member passes a background check and drug test. Your safety matters." },
+      { "title": "5-Star Reviews", "desc": "Hundreds of 5-star reviews from real homeowners. See why they keep calling us back." }
+    ],
+    [
+      { "title": "24/7 Availability", "desc": "Emergencies don't wait for business hours. Neither do we. Call anytime, day or night." },
+      { "title": "Transparent Quotes", "desc": "No surprise bills. We walk you through the pricing before a single tool comes out." },
+      { "title": "Trained & Certified", "desc": "Our team trains continuously on the latest equipment and techniques." },
+      { "title": "Warranty on All Work", "desc": "Every job comes with a warranty. If something's not right, we come back and fix it — free." }
+    ],
+    [
+      { "title": "Rapid Response", "desc": "We respect your time. Narrow arrival windows, on-time techs, and quick diagnostics." },
+      { "title": "Fair, Honest Pricing", "desc": "We'll never recommend work you don't need. Our pricing is competitive and transparent." },
+      { "title": "Fully Insured", "desc": "Licensed, bonded, and fully insured. Your home and property are protected." },
+      { "title": "Family-Owned", "desc": "We treat every home like our own. That's the family business difference." }
+    ]
+  ]
+}

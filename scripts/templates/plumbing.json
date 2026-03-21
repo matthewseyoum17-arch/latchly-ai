@@ -1,0 +1,55 @@
+{
+  "niche": "plumbing",
+  "nicheLabel": "Plumbing",
+  "heroImage": "https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=1920&q=80",
+  "heroAlt": "Professional plumbing service",
+  "headlineService": "Plumbing",
+  "subline": "Same-day service. No overtime fees. Every tech is licensed, background-checked, and on-site in under 60 minutes.",
+  "emoji": "🔧",
+  "services": [
+    { "title": "Emergency Plumbing", "desc": "Burst pipes, overflows, and backups handled fast. On-site within 60 minutes, 24/7." },
+    { "title": "Water Heater Repair & Install", "desc": "Tank and tankless experts. Same-day repairs and professional installs with full warranty." },
+    { "title": "Drain Cleaning & Hydro Jetting", "desc": "Stubborn clogs don't stand a chance. State-of-the-art hydro jetting for the toughest blockages." },
+    { "title": "Sewer Line Services", "desc": "Camera inspections to full replacements — handled with minimal disruption to your property." },
+    { "title": "Leak Detection & Repipe", "desc": "Advanced leak detection finds hidden leaks fast. Full repiping for aging or damaged systems." },
+    { "title": "Fixture Installation", "desc": "Expert faucet, toilet, and fixture installation. Quality workmanship with clean, professional results." }
+  ],
+  "serviceOptions": [
+    "Emergency Plumbing",
+    "Water Heater Repair / Install",
+    "Drain Cleaning",
+    "Sewer Line Services",
+    "Leak Detection / Repipe",
+    "Fixture Installation",
+    "Other"
+  ],
+  "stats": {
+    "avgResponse": "42",
+    "jobsCompleted": "1,247",
+    "googleRating": "4.9",
+    "yearsInBusiness": "12"
+  },
+  "whyUs": [
+    { "title": "Same-Day Response", "desc": "On-site in 30–60 minutes for emergencies. Scheduled visits within 2-hour windows." },
+    { "title": "Upfront Pricing", "desc": "You'll know the exact cost before any work begins. No surprises, no hidden fees." },
+    { "title": "Licensed Experts", "desc": "Every plumber is fully certified, background-checked, and insured." },
+    { "title": "Satisfaction Guaranteed", "desc": "Not happy? We'll make it right — that's our promise to every customer." }
+  ],
+  "faqs": [
+    { "q": "How quickly can a plumber arrive?", "a": "For emergencies, we typically have a plumber at your door within 30 to 60 minutes. For scheduled appointments, we offer 2-hour arrival windows so you're not waiting around all day." },
+    { "q": "Do you handle emergency plumbing?", "a": "Absolutely! We offer 24/7 emergency plumbing service. Burst pipes, major leaks, sewage backups — call us anytime and we'll dispatch a licensed plumber immediately." },
+    { "q": "Are your plumbers licensed and insured?", "a": "Yes, every plumber on our team is fully licensed, bonded, and insured. We also conduct thorough background checks. Your family's safety and peace of mind are our top priority." },
+    { "q": "Do you provide free estimates?", "a": "We provide upfront pricing before any work begins. Our $89 service call fee covers a full diagnostic, and that fee is waived if you proceed with the repair." },
+    { "q": "What brands do you service?", "a": "We service all major brands including Bradford White, AO Smith, Rinnai, Navien, Rheem, Moen, Kohler, and many more." },
+    { "q": "Can you help with water heater installation?", "a": "Yes! We install both tank and tankless water heaters. We'll help you choose the right system for your home and budget, with professional installation and full warranty coverage." }
+  ],
+  "bookings": [
+    { "name": "Jennifer M.", "action": "booked Emergency Plumbing", "time": "just now" },
+    { "name": "Carlos R.", "action": "booked Drain Cleaning", "time": "3 min ago" },
+    { "name": "Sarah T.", "action": "requested a Free Quote", "time": "7 min ago" },
+    { "name": "Mike D.", "action": "booked Water Heater Repair", "time": "12 min ago" },
+    { "name": "Lisa K.", "action": "booked Leak Detection", "time": "18 min ago" },
+    { "name": "James W.", "action": "booked Sewer Line Service", "time": "24 min ago" }
+  ],
+  "quickReplies": ["Get a quote", "Emergency plumbing", "Hours & service area", "Drain cleaning"]
+}
