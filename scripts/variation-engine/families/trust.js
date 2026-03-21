@@ -70,6 +70,19 @@ function generate(lead, niche) {
             <span class="text-navy font-semibold text-sm">${b.label}</span>
           </div>`).join('');
 
+  const serviceIconSvgs = [
+    '<svg class="w-9 h-9 text-teal" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75a4.5 4.5 0 01-4.884 4.484c-1.076-.091-2.264.071-2.95.904l-7.152 8.684a2.548 2.548 0 11-3.586-3.586l8.684-7.152c.833-.686.995-1.874.904-2.95a4.5 4.5 0 016.336-4.486l-3.276 3.276a3.004 3.004 0 002.25 2.25l3.276-3.276c.256.565.398 1.192.398 1.852z"/></svg>',
+    '<svg class="w-9 h-9 text-teal" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/></svg>',
+    '<svg class="w-9 h-9 text-teal" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955a1.126 1.126 0 011.591 0l8.955 8.955M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75"/></svg>',
+    '<svg class="w-9 h-9 text-teal" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg>',
+  ];
+  const serviceProofs = [
+    ['Fast dispatch', 'Upfront pricing', 'Clean work area'],
+    ['Licensed technicians', 'Modern tools', 'Workmanship warranty'],
+    ['Honest recommendations', 'Clear communication', 'Respect for your home'],
+    ['Same-day availability', 'Trusted by neighbors', 'Long-term fixes'],
+  ];
+
   // Alternating service rows (first 4 services)
   const serviceRowsHtml = c.services.slice(0, 4).map((s, i) => {
     const isReversed = i % 2 === 1;
@@ -79,10 +92,13 @@ function generate(lead, niche) {
         <div class="max-w-[1100px] mx-auto px-6">
           <div class="flex flex-col ${isReversed ? 'md:flex-row-reverse' : 'md:flex-row'} items-center gap-10 md:gap-16">
             <div class="w-full md:w-1/2">
-              <div class="rounded-2xl overflow-hidden shadow-warm aspect-[4/3] bg-gradient-to-br from-teal/10 to-navy/5 flex items-center justify-center">
-                <div class="text-center p-8">
-                  <div class="text-5xl mb-4">${escHtml(c.emoji)}</div>
-                  <p class="font-heading text-navy text-lg font-semibold">${escHtml(s.title)}</p>
+              <div class="rounded-2xl overflow-hidden shadow-warm border border-warm-100 bg-gradient-to-br from-white to-teal/5 p-8 md:p-10">
+                <div class="w-16 h-16 rounded-2xl bg-teal/10 flex items-center justify-center mb-6">${serviceIconSvgs[i % serviceIconSvgs.length]}</div>
+                <p class="text-teal text-xs font-bold tracking-widest uppercase mb-3">Featured Service</p>
+                <p class="font-heading text-navy text-2xl md:text-3xl font-bold mb-3">${escHtml(s.title)}</p>
+                <p class="text-warm-700 text-base leading-relaxed mb-6">${escHtml(s.desc)}</p>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  ${serviceProofs[i % serviceProofs.length].map(proof => `<div class="rounded-xl bg-white border border-warm-100 px-4 py-3 text-sm text-warm-700 font-medium">${escHtml(proof)}</div>`).join('')}
                 </div>
               </div>
             </div>
@@ -90,8 +106,11 @@ function generate(lead, niche) {
               <p class="text-teal text-xs font-bold tracking-widest uppercase mb-3">Service</p>
               <h3 class="font-heading text-navy text-2xl md:text-3xl font-bold mb-4">${escHtml(s.title)}</h3>
               <p class="text-warm-700 text-base leading-relaxed mb-6">${escHtml(s.desc)}</p>
+              <div class="space-y-3 mb-6">
+                ${serviceProofs[i % serviceProofs.length].map(proof => `<div class="flex items-center gap-3 text-sm text-warm-700"><span class="w-6 h-6 rounded-full bg-teal/10 text-teal flex items-center justify-center text-xs font-bold">✓</span><span>${escHtml(proof)}</span></div>`).join('')}
+              </div>
               <a href="#contact" class="inline-flex items-center gap-2 text-teal font-semibold text-sm hover:gap-3 transition-all">
-                Learn More
+                Request Service
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 8.25L21 12m0 0l-3.75 3.75M21 12H3"/></svg>
               </a>
             </div>
@@ -248,65 +267,6 @@ function generate(lead, niche) {
     .toast-trust.show {
       opacity: 1;
       transform: translateX(-50%) translateY(0);
-    }
-
-    /* Booking notification popup */
-    .booking-popup {
-      position: fixed;
-      bottom: 24px;
-      left: 24px;
-      background: #fff;
-      border-radius: 16px;
-      padding: 14px 18px;
-      box-shadow: 0 8px 32px rgba(27, 42, 74, 0.12);
-      border: 1px solid #f0e6d3;
-      z-index: 9997;
-      max-width: 280px;
-      opacity: 0;
-      transform: translateY(16px);
-      transition: opacity 0.4s, transform 0.4s;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    .booking-popup.show {
-      opacity: 1;
-      transform: translateY(0);
-    }
-    .booking-popup .bp-avatar {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      background: #0D6E6E;
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 700;
-      font-size: 13px;
-      flex-shrink: 0;
-    }
-    .booking-popup .bp-text {
-      font-size: 13px;
-      color: #1B2A4A;
-      line-height: 1.4;
-    }
-    .booking-popup .bp-text strong { font-weight: 700; }
-    .booking-popup .bp-time {
-      font-size: 11px;
-      color: #6b5c4c;
-      margin-top: 2px;
-    }
-    .booking-popup .bp-close {
-      position: absolute;
-      top: 6px;
-      right: 8px;
-      background: none;
-      border: none;
-      cursor: pointer;
-      color: #6b5c4c;
-      font-size: 14px;
-      line-height: 1;
     }
 
     ::selection {
@@ -581,16 +541,6 @@ function generate(lead, niche) {
   <!-- Toast notification -->
   <div id="trust-toast" class="toast-trust">Your request has been submitted! We'll call you back soon.</div>
 
-  <!-- Booking notification popup -->
-  <div id="booking-popup" class="booking-popup">
-    <button class="bp-close" id="bp-close-btn">&times;</button>
-    <div class="bp-avatar">JM</div>
-    <div>
-      <div class="bp-text"><strong>Jennifer M.</strong> just booked a service</div>
-      <div class="bp-time">2 minutes ago in ${city}</div>
-    </div>
-  </div>
-
   ${widgetHtml}
 
   <script>
@@ -647,25 +597,6 @@ function generate(lead, niche) {
       });
     });
 
-    // Booking notification popup — show after 8 seconds
-    var popup = document.getElementById('booking-popup');
-    var popupClose = document.getElementById('bp-close-btn');
-    var names = ['Jennifer M.', 'Carlos R.', 'Mike D.', 'Sarah T.', 'Lisa K.'];
-    var times = ['2 minutes ago', '5 minutes ago', '8 minutes ago', '12 minutes ago'];
-    var idx = 0;
-    function showPopup() {
-      var n = names[idx % names.length];
-      var t = times[idx % times.length];
-      popup.querySelector('.bp-avatar').textContent = n.charAt(0) + n.split(' ')[1].charAt(0);
-      popup.querySelector('.bp-text').innerHTML = '<strong>' + n + '</strong> just booked a service';
-      popup.querySelector('.bp-time').textContent = t + ' in ${city}';
-      popup.classList.add('show');
-      idx++;
-      setTimeout(function() { popup.classList.remove('show'); }, 5000);
-    }
-    popupClose.addEventListener('click', function() { popup.classList.remove('show'); });
-    setTimeout(showPopup, 8000);
-    setInterval(function() { showPopup(); }, 25000);
   })();
   <\/script>
 </body>

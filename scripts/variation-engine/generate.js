@@ -20,13 +20,18 @@ const DEMOS_DIR = path.join(ROOT, 'demos', 'prospects');
 const DRY_RUN = process.env.DRY_RUN === 'true';
 const SITE_BASE = process.env.SITE_BASE || 'https://latchlyai.com';
 
-// Load .env
 const envFile = path.join(ROOT, '.env');
 if (fs.existsSync(envFile)) {
   fs.readFileSync(envFile, 'utf8').split(/\r?\n/).forEach(line => {
     const m = line.match(/^([^#=\s][^=]*)=(.*)$/);
     if (m && !process.env[m[1]]) process.env[m[1]] = m[2].trim();
   });
+}
+
+function qualityBadge(score) {
+  if (score >= 90) return 'A / 9+ ready';
+  if (score >= 80) return 'B / usable';
+  return 'C / needs work';
 }
 
 function main() {
@@ -51,28 +56,28 @@ function main() {
   let built = 0;
 
   if (isPreview) {
-    // Generate all 6 families for the first lead
     const lead = leads[0];
-    if (!lead) { console.error('No leads found'); process.exit(1); }
+    if (!lead) {
+      console.error('No leads found');
+      process.exit(1);
+    }
 
     console.log(`\nPreview mode: generating all 6 families for "${lead.business_name}"\n`);
-    const families = engine.listFamilies();
+    const families = engine.generateAll(lead);
 
     for (const fam of families) {
-      const slug = makeSlug(lead.business_name, lead.city, lead.state) + '-' + fam.name;
-      const { html } = engine.generate(lead, { family: fam.name });
+      const slug = makeSlug(lead.business_name, lead.city, lead.state) + '-' + fam.family;
       const outPath = path.join(DEMOS_DIR, `${slug}.html`);
 
       if (DRY_RUN) {
-        console.log(`  [DRY] ${fam.name.padEnd(12)} → ${slug}`);
+        console.log(`  [DRY] ${fam.family.padEnd(12)} → ${slug}  ${String(fam.score).padStart(3)}/100  ${qualityBadge(fam.score)}`);
       } else {
-        fs.writeFileSync(outPath, html, 'utf8');
-        console.log(`  ✓ ${fam.label.padEnd(30)} → /demo/${slug}`);
+        fs.writeFileSync(outPath, fam.html, 'utf8');
+        console.log(`  ✓ ${fam.label.padEnd(30)} → /demo/${slug}  ${String(fam.score).padStart(3)}/100  ${qualityBadge(fam.score)}`);
       }
       built++;
     }
 
-    // Generate preview index page
     if (!DRY_RUN) {
       const previewHtml = generatePreviewPage(lead, families);
       const previewPath = path.join(DEMOS_DIR, 'preview-index.html');
@@ -80,7 +85,6 @@ function main() {
       console.log(`\n  ✓ Preview index → /demo/preview-index`);
     }
   } else {
-    // Normal mode: one demo per lead
     for (const lead of leads) {
       if (!lead.business_name) continue;
 
@@ -89,14 +93,20 @@ function main() {
       lead.demo_url = `${SITE_BASE}/demo/${slug}`;
 
       const opts = forcedFamily ? { family: forcedFamily } : {};
-      const { html, family } = engine.generate(lead, opts);
+      const result = engine.generate(lead, opts);
       const outPath = path.join(DEMOS_DIR, `${slug}.html`);
 
       if (DRY_RUN) {
-        console.log(`  [DRY] ${lead.business_name} → ${family}`);
+        console.log(`  [DRY] ${lead.business_name} → ${result.family}  ${String(result.score).padStart(3)}/100  ${qualityBadge(result.score)}`);
       } else {
-        fs.writeFileSync(outPath, html, 'utf8');
-        console.log(`  ✓ ${lead.business_name.padEnd(30)} → ${family.padEnd(12)} → /demo/${slug}`);
+        fs.writeFileSync(outPath, result.html, 'utf8');
+        console.log(`  ✓ ${lead.business_name.padEnd(30)} → ${result.family.padEnd(12)} → /demo/${slug}  ${String(result.score).padStart(3)}/100  ${qualityBadge(result.score)}`);
+        if (!forcedFamily && result.ranking) {
+          const summary = result.ranking.slice(0, 3)
+            .map(r => `${r.family}:${r.score}/${r.finalScore}`)
+            .join(' | ');
+          console.log(`      ranking: ${summary}`);
+        }
       }
       built++;
     }
@@ -116,11 +126,12 @@ function generatePreviewPage(lead, families) {
   const frames = families.map(f => `
     <div class="preview-card">
       <div class="preview-header">
-        <span class="family-badge">${f.name}</span>
+        <span class="family-badge">${f.family}</span>
         <span class="family-label">${f.label}</span>
-        <a href="/demo/${slug}-${f.name}" target="_blank" class="open-btn">Open Full ↗</a>
+        <span class="score-badge ${f.score >= 90 ? 'score-good' : f.score >= 80 ? 'score-mid' : 'score-low'}">${f.score}/100</span>
+        <a href="/demo/${slug}-${f.family}" target="_blank" class="open-btn">Open Full ↗</a>
       </div>
-      <iframe src="/demo/${slug}-${f.name}" class="preview-frame"></iframe>
+      <iframe src="/demo/${slug}-${f.family}" class="preview-frame"></iframe>
     </div>`).join('\n');
 
   return `<!DOCTYPE html>
@@ -140,6 +151,10 @@ h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
 .preview-header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid #252525; }
 .family-badge { background: #2563eb; color: #fff; padding: 3px 10px; border-radius: 6px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
 .family-label { flex: 1; font-size: 14px; color: #aaa; }
+.score-badge { padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.score-good { background: rgba(34, 197, 94, 0.16); color: #86efac; }
+.score-mid { background: rgba(250, 204, 21, 0.16); color: #fde68a; }
+.score-low { background: rgba(248, 113, 113, 0.16); color: #fca5a5; }
 .open-btn { color: #60a5fa; text-decoration: none; font-size: 13px; font-weight: 600; }
 .open-btn:hover { text-decoration: underline; }
 .preview-frame { width: 100%; height: 600px; border: none; background: #fff; }

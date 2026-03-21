@@ -17,6 +17,7 @@ module.exports = {
     const city = escHtml(lead.city || 'Your City');
     const state = escHtml(lead.state || '');
     const phone = escHtml(lead.phone || '(555) 000-0000');
+    const phoneHref = (lead.phone || '5550000000').replace(/[^0-9+]/g, '');
     const cityState = [lead.city, lead.state].filter(Boolean).join(', ');
 
     const widget = generateWidget(lead, {
@@ -47,13 +48,27 @@ module.exports = {
       fabShadow: '0 4px 16px rgba(79,70,229,.25)',
     }, c.quickReplies, c.serviceOptions);
 
+    const serviceIcons = [
+      '<svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75a4.5 4.5 0 01-4.884 4.484c-1.076-.091-2.264.071-2.95.904l-7.152 8.684a2.548 2.548 0 11-3.586-3.586l8.684-7.152c.833-.686.995-1.874.904-2.95a4.5 4.5 0 016.336-4.486l-3.276 3.276a3.004 3.004 0 002.25 2.25l3.276-3.276c.256.565.398 1.192.398 1.852z"/></svg>',
+      '<svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/></svg>',
+      '<svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955a1.126 1.126 0 011.591 0l8.955 8.955M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75"/></svg>',
+      '<svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg>',
+      '<svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>',
+      '<svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z"/></svg>'
+    ];
+    const serviceProofs = ['Fast scheduling', 'Clear pricing', 'Licensed team', 'Arrival updates', 'Warranty-backed', 'Respectful cleanup'];
+
     const serviceCards = c.services.map((svc, i) => `
-          <div class="group bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg hover:border-indigo-200 transition-all duration-200 reveal">
-            <div class="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center mb-4 group-hover:bg-indigo-100 transition-colors">
-              <span class="text-indigo-600 font-bold text-lg">${i + 1}</span>
+          <div class="group bg-white border border-gray-200 rounded-2xl p-6 hover:shadow-lg hover:border-indigo-200 transition-all duration-200 reveal">
+            <div class="w-11 h-11 rounded-xl bg-indigo-50 flex items-center justify-center mb-4 group-hover:bg-indigo-100 transition-colors">
+              ${serviceIcons[i % serviceIcons.length]}
             </div>
             <h3 class="font-heading font-semibold text-gray-900 text-base mb-2">${escHtml(svc.title)}</h3>
-            <p class="text-gray-500 text-sm leading-relaxed">${escHtml(svc.desc)}</p>
+            <p class="text-gray-500 text-sm leading-relaxed mb-4">${escHtml(svc.desc)}</p>
+            <div class="inline-flex items-center gap-2 rounded-full bg-gray-50 px-3 py-1.5 text-xs font-semibold text-gray-600">
+              <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+              ${serviceProofs[i % serviceProofs.length]}
+            </div>
           </div>`).join('\n');
 
     const testimonialCards = c.testimonials.map(t => `
@@ -104,6 +119,17 @@ h1,h2,h3,h4{font-family:'Space Grotesk',sans-serif;}
 </head>
 <body class="bg-white font-body">
 
+<!-- UTILITY BAR -->
+<div class="border-b border-gray-100 bg-gray-50/80">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-11 flex items-center justify-between text-xs text-gray-500">
+    <div class="flex items-center gap-3 sm:gap-5">
+      <span class="inline-flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>Open for fast response in ${city}</span>
+      <span class="hidden sm:inline">Upfront pricing before work begins</span>
+    </div>
+    <a href="tel:${phoneHref}" class="font-semibold text-indigo-700 hover:text-indigo-800 transition-colors">Call ${phone}</a>
+  </div>
+</div>
+
 <!-- NAV -->
 <nav id="navbar" class="sticky top-0 z-40 bg-white border-b border-gray-100 transition-shadow duration-200">
   <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -115,9 +141,14 @@ h1,h2,h3,h4{font-family:'Space Grotesk',sans-serif;}
         <a href="#how" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-900 hover:bg-gray-50 rounded-full transition-all">How It Works</a>
         <a href="#contact" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-900 hover:bg-gray-50 rounded-full transition-all">Contact</a>
       </div>
-      <a href="#contact" class="hidden md:inline-flex items-center gap-2 bg-indigo-600 text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-indigo-700 transition-colors">
-        ${escHtml(c.cta1)}
-      </a>
+      <div class="hidden md:flex items-center gap-3">
+        <a href="tel:${phoneHref}" class="inline-flex items-center gap-2 text-sm font-semibold text-gray-700 px-4 py-2.5 rounded-full border border-gray-200 hover:border-indigo-200 hover:text-indigo-700 transition-colors">
+          ${phone}
+        </a>
+        <a href="#contact" class="inline-flex items-center gap-2 bg-indigo-600 text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-indigo-700 transition-colors">
+          ${escHtml(c.cta1)}
+        </a>
+      </div>
       <button id="mobile-toggle" class="md:hidden p-2 text-gray-600" aria-label="Menu">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
       </button>
@@ -129,6 +160,7 @@ h1,h2,h3,h4{font-family:'Space Grotesk',sans-serif;}
       <a href="#reviews" class="mobile-link block px-4 py-2.5 text-gray-700 hover:bg-gray-50 rounded-lg text-sm font-medium">Reviews</a>
       <a href="#how" class="mobile-link block px-4 py-2.5 text-gray-700 hover:bg-gray-50 rounded-lg text-sm font-medium">How It Works</a>
       <a href="#contact" class="mobile-link block px-4 py-2.5 text-gray-700 hover:bg-gray-50 rounded-lg text-sm font-medium">Contact</a>
+      <a href="tel:${phoneHref}" class="block border border-gray-200 text-gray-700 text-center text-sm font-semibold px-4 py-2.5 rounded-lg mt-2">Call ${phone}</a>
       <a href="#contact" class="block bg-indigo-600 text-white text-center text-sm font-semibold px-4 py-2.5 rounded-lg mt-2">${escHtml(c.cta1)}</a>
     </div>
   </div>
@@ -150,9 +182,13 @@ h1,h2,h3,h4{font-family:'Space Grotesk',sans-serif;}
         ${escHtml(c.cta1)}
         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
       </a>
-      <a href="#services" class="inline-flex items-center justify-center gap-2 border border-gray-200 text-gray-700 font-semibold px-7 py-3.5 rounded-full hover:bg-gray-50 transition-colors text-sm">
-        ${escHtml(c.cta2)}
+      <a href="tel:${phoneHref}" class="inline-flex items-center justify-center gap-2 border border-gray-200 text-gray-700 font-semibold px-7 py-3.5 rounded-full hover:bg-gray-50 transition-colors text-sm">
+        Call ${phone}
       </a>
+    </div>
+    <div class="mt-5 flex flex-wrap items-center justify-center gap-3 text-sm text-gray-500">
+      <span class="inline-flex items-center gap-2 rounded-full bg-gray-50 px-3 py-1.5"><span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>Online requests answered fast</span>
+      <span class="inline-flex items-center gap-2 rounded-full bg-gray-50 px-3 py-1.5"><span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>Licensed, insured, and warranty-backed</span>
     </div>
   </div>
 </section>
@@ -311,7 +347,7 @@ ${serviceOpts}
       </div>
       <div>
         <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Contact</h4>
-        <p class="text-gray-500 text-sm mb-1">${phone}</p>
+        <p class="text-gray-500 text-sm mb-1"><a href="tel:${phoneHref}" class="hover:text-indigo-700 transition-colors">${phone}</a></p>
         <p class="text-gray-500 text-sm">Mon–Sat 7am–10pm · 24/7 Emergency</p>
       </div>
     </div>

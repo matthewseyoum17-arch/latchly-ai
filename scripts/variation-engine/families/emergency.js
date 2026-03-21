@@ -155,17 +155,6 @@ tailwind.config = {
   /* Reveal animation */
   .reveal { opacity: 0; transform: translateY(20px); transition: opacity 0.5s ease, transform 0.5s ease; }
   .reveal.visible { opacity: 1; transform: translateY(0); }
-  /* Notification popup */
-  @keyframes slide-in-popup {
-    0% { opacity: 0; transform: translateX(100%); }
-    100% { opacity: 1; transform: translateX(0); }
-  }
-  @keyframes slide-out-popup {
-    0% { opacity: 1; transform: translateX(0); }
-    100% { opacity: 0; transform: translateX(100%); }
-  }
-  .popup-in { animation: slide-in-popup 0.4s ease forwards; }
-  .popup-out { animation: slide-out-popup 0.4s ease forwards; }
   /* Sticky bottom bar */
   .bottom-cta-bar { transform: translateY(100%); transition: transform 0.3s ease; }
   .bottom-cta-bar.show { transform: translateY(0); }
@@ -430,21 +419,6 @@ tailwind.config = {
   <a href="#quote-form" class="flex-1 bg-[#DD6B20] text-white font-barlow font-bold text-sm uppercase tracking-wider py-3 rounded-[4px] text-center">GET HELP NOW</a>
 </div>
 
-<!-- ===== BOOKING NOTIFICATION POPUP ===== -->
-<div id="booking-popup" class="fixed top-28 right-4 z-50 bg-[#1A1A1A] border border-[#E53E3E]/30 rounded-[4px] p-4 max-w-[300px] shadow-2xl hidden">
-  <button onclick="document.getElementById('booking-popup').classList.add('hidden')" class="absolute top-2 right-2 text-gray-600 hover:text-white text-sm">&times;</button>
-  <div class="flex items-start gap-3">
-    <div class="w-8 h-8 rounded-full bg-[#E53E3E]/20 flex items-center justify-center flex-shrink-0">
-      <svg class="w-4 h-4 text-[#E53E3E]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/></svg>
-    </div>
-    <div>
-      <p class="text-white text-sm font-bold">New Booking</p>
-      <p class="text-gray-400 text-xs mt-0.5">Someone in ${city} just requested service.</p>
-      <p class="text-[#E53E3E] text-xs font-bold mt-1">2 minutes ago</p>
-    </div>
-  </div>
-</div>
-
 ${widgetHtml}
 
 <script>
@@ -499,17 +473,6 @@ ${widgetHtml}
     }
     lastScroll = st;
   });
-
-  // Booking notification popup
-  setTimeout(function() {
-    var popup = document.getElementById('booking-popup');
-    popup.classList.remove('hidden');
-    popup.classList.add('popup-in');
-    setTimeout(function() {
-      popup.classList.add('popup-out');
-      setTimeout(function() { popup.classList.add('hidden'); }, 400);
-    }, 6000);
-  }, 8000);
 
   // Hero form handling
   document.getElementById('hero-form').addEventListener('submit', function(e) {

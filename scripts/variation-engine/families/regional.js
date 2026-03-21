@@ -5,7 +5,7 @@
  * Think: the company that OWNS this market.
  */
 
-const { escHtml } = require('../shared/utils');
+const { escHtml, buildCoverageZones } = require('../shared/utils');
 const { getCopy } = require('../shared/copy');
 const { generateWidget } = require('../shared/widget');
 
@@ -116,13 +116,8 @@ function generate(lead, niche) {
                 </div>
               </div>`).join('');
 
-  // Surrounding city names for service area
-  const areaCities = [
-    city, 'Downtown ' + city, 'North ' + city, 'South ' + city,
-    'East ' + city, 'West ' + city, city + ' Heights', city + ' Park',
-    city + ' Hills', 'Greater ' + city + ' Metro',
-    city + ' Springs', city + ' Valley',
-  ];
+  // Safe coverage zones: stay generic instead of inventing suspicious locality names.
+  const areaCities = buildCoverageZones(city);
   const areaCitiesHtml = areaCities.map(c => `<li class="text-slate-300 text-sm py-1">${escHtml(c)}</li>`).join('');
 
   return `<!DOCTYPE html>
@@ -132,7 +127,7 @@ function generate(lead, niche) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
-  <title>${biz} — #1 Rated ${escHtml(c.nicheLabel)} in ${city}</title>
+  <title>${biz} — Trusted ${escHtml(c.nicheLabel)} Across ${city}</title>
   <script src="https://cdn.tailwindcss.com"><\/script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -172,9 +167,6 @@ function generate(lead, niche) {
 
     .toast { position: fixed; top: 24px; right: 24px; background: #0F1B2D; color: #fff; padding: 16px 24px; border-radius: 10px; font-size: 14px; z-index: 9998; opacity: 0; transform: translateY(-12px); transition: opacity 0.3s, transform 0.3s; }
     .toast.show { opacity: 1; transform: translateY(0); }
-
-    .booking-popup { position: fixed; bottom: 100px; left: 24px; background: #fff; border-radius: 10px; box-shadow: 0 8px 30px rgba(0,0,0,0.12); border: 1px solid #e2e8f0; padding: 14px 18px; z-index: 9997; opacity: 0; transform: translateY(12px); transition: opacity 0.4s, transform 0.4s; max-width: 280px; }
-    .booking-popup.show { opacity: 1; transform: translateY(0); }
 
     .nav-scrolled { background: rgba(255,255,255,0.97) !important; box-shadow: 0 1px 8px rgba(0,0,0,0.06); }
     .nav-scrolled .nav-main-link { color: #0F1B2D; }
@@ -324,7 +316,7 @@ function generate(lead, niche) {
           <div class="flex items-center gap-0.5">${fiveStars}</div>
           <span class="font-heading text-navy font-bold text-sm">${escHtml(c.stats.rating)}</span>
           <span class="text-slate-400 text-xs">on Google</span>
-          <span class="bg-blue-600 text-white text-xs font-bold px-2.5 py-0.5 rounded-full">200+ 5-Star Reviews</span>
+          <span class="bg-blue-600 text-white text-xs font-bold px-2.5 py-0.5 rounded-full">Highly Rated Locally</span>
         </div>
       </div>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6 reveal" style="transition-delay:0.1s">
@@ -435,19 +427,6 @@ function generate(lead, niche) {
   <!-- Toast notification -->
   <div id="toast" class="toast">Your request has been submitted! We'll contact you shortly.</div>
 
-  <!-- Booking notification popup -->
-  <div id="booking-popup" class="booking-popup">
-    <div class="flex items-center gap-3">
-      <div class="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center flex-shrink-0">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
-      </div>
-      <div>
-        <p class="text-navy text-xs font-bold">Someone in ${city} just booked</p>
-        <p class="text-slate-400 text-[11px]">AC Repair &middot; 2 minutes ago</p>
-      </div>
-    </div>
-  </div>
-
   ${widgetHtml}
 
   <script>
@@ -513,19 +492,6 @@ function generate(lead, niche) {
         }
       });
     });
-
-    // Booking notification popup
-    var popup = document.getElementById('booking-popup');
-    var services = ${JSON.stringify(c.serviceOptions.slice(0, 5))};
-    function showBooking() {
-      var svc = services[Math.floor(Math.random() * services.length)];
-      var mins = Math.floor(Math.random() * 10) + 1;
-      popup.querySelector('p:last-child').textContent = svc + ' \\u00b7 ' + mins + ' minute' + (mins > 1 ? 's' : '') + ' ago';
-      popup.classList.add('show');
-      setTimeout(function() { popup.classList.remove('show'); }, 4000);
-    }
-    setTimeout(showBooking, 8000);
-    setInterval(showBooking, 25000);
   })();
   <\/script>
 </body>
