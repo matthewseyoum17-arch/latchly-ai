@@ -2,10 +2,10 @@
 /**
  * daily-pipeline.js
  * Runs the full automated daily lead pipeline:
- *   1. Scrape raw leads from BBB (curl-based, no browser)
+ *   1. Scrape raw leads from YellowPages/BBB (autonomous, no browser session needed)
  *   2. Qualify + dedupe against master list (website check, chatbot detection, fit scoring)
- *   3. Build clean batch of BATCH_SIZE leads
- *   4. Email each setter their slice via AgentMail (4 setters × 50 leads)
+ *   3. Build clean batch of BATCH_SIZE leads (target: 300 for 3 SCOs × 100)
+ *   4. Email each SCO their 100-lead slice via AgentMail
  *
  * Env vars required:
  *   AGENTMAIL_API_KEY
@@ -35,7 +35,7 @@ if (fs.existsSync(envFile)) {
 const LEADS_DIR = path.join(ROOT, 'leads');
 const DAILY_DIR = path.join(LEADS_DIR, 'daily');
 const MASTER_CSV = path.join(LEADS_DIR, 'qualified-leads.csv');
-const BATCH_SIZE = parseInt(process.env.BATCH_SIZE || '100', 10);
+const BATCH_SIZE = parseInt(process.env.BATCH_SIZE || '300', 10);
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -95,7 +95,7 @@ async function main() {
   console.log('');
   console.log('═══════════════════════════════════════════════════════');
   console.log(` LATCHLY DAILY LEAD PIPELINE — ${runDate}`);
-  console.log(` Target: ${BATCH_SIZE} qualified leads → 4 setters`);
+  console.log(` Target: ${BATCH_SIZE} qualified leads → 3 SCOs (100 each)`);
   console.log('═══════════════════════════════════════════════════════');
 
   fs.mkdirSync(LEADS_DIR, { recursive: true });
@@ -146,7 +146,7 @@ async function main() {
   console.log(`\n✅ Using raw input: ${path.relative(ROOT, rawInput)} (${countCSVRows(rawInput)} rows)`);
 
   // ── Step 3: Qualify ───────────────────────────────────────────────────────
-  const qualifier = process.env.QUALIFIER || 'playwright';
+  const qualifier = process.env.QUALIFIER || 'cdp';
   const qualifierScript = qualifier === 'cdp' ? 'scripts/qualify-via-cdp.js' : 'scripts/qualify-leads.js';
 
   run(`Qualify leads (${qualifier})`, 'node', [qualifierScript], {
@@ -175,14 +175,14 @@ async function main() {
   // ── Step 5: Archive today's batch ─────────────────────────────────────────
   archiveToDaily('qualified-leads.csv');
 
-  // ── Step 6: Email setters ─────────────────────────────────────────────────
+  // ── Step 6: Email SCOs ───────────────────────────────────────────────────
   const cleanBatchCsv = path.join(LEADS_DIR, 'latchly-clean-batch.csv');
   const emailInput = exists(cleanBatchCsv) ? cleanBatchCsv : MASTER_CSV;
 
   if (process.env.SKIP_EMAIL === '1') {
     console.log('\n📧 SKIP_EMAIL=1 — skipping email dispatch (dry run)');
   } else {
-    run('Email setters', 'node', ['scripts/email-setters.js'], {
+    run('Email SCOs', 'node', ['scripts/email-setters.js'], {
       QUALIFIED_INPUT: emailInput,
       BATCH_SIZE: String(BATCH_SIZE),
     });
@@ -192,7 +192,7 @@ async function main() {
   console.log('');
   console.log('═══════════════════════════════════════════════════════');
   console.log(` ✅ PIPELINE COMPLETE — ${elapsed}s`);
-  console.log(` ${qualifiedRows} qualified → ${Math.min(qualifiedRows, BATCH_SIZE)} dispatched to 4 setters`);
+  console.log(` ${qualifiedRows} qualified → ${Math.min(qualifiedRows, BATCH_SIZE)} dispatched to 3 SCOs`);
   console.log('═══════════════════════════════════════════════════════');
   console.log('');
 }

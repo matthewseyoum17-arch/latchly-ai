@@ -78,7 +78,7 @@ function main() {
 
   console.log(`\nUsing Apollo input: ${path.relative(ROOT, fallbackRaw)}`);
 
-  const qualifier = process.env.QUALIFIER || 'playwright';
+  const qualifier = process.env.QUALIFIER || 'cdp';
   const qualifierScript = qualifier === 'cdp' ? 'scripts/qualify-via-cdp.js' : 'scripts/qualify-leads.js';
   run(`Qualify leads (${qualifier})`, 'node', [qualifierScript], {
     APOLLO_INPUT: fallbackRaw,

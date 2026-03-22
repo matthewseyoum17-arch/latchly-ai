@@ -83,17 +83,24 @@ function inferReachability(title) {
 function normalizeRow(row) {
   const businessName = get(row, ['Business Name', 'Company', 'company', 'businessName']);
   const website = normalizeWebsite(get(row, ['Website', 'website', 'Company Website']));
-  const decisionMaker = get(row, ['Decision Maker', 'decisionMaker', 'person_name', 'Name']);
+  const decisionMaker = get(row, ['Owner Name if public', 'Decision Maker', 'decisionMaker', 'person_name', 'Name']);
   const title = get(row, ['Title', 'title']);
   const phone = get(row, ['Main Business Phone', 'Business Phone', 'businessPhone', 'main_business_phone', 'Direct Phone', 'Direct Phone if available', 'Phone']);
   const niche = get(row, ['Niche', 'niche', 'Industry']) || 'Home Services';
   const city = get(row, ['City', 'city']);
   const state = get(row, ['State', 'state']);
   const chatbot = (get(row, ['Chatbot?', 'Site has chatbot/live chat', 'site_has_chatbot_or_live_chat']) || '').toLowerCase();
+  const verifiedNoChatbot = get(row, ['Verified No Chatbot', 'verifiedNoChatbot']).toLowerCase();
+  const noChatConfidence = parseInt(get(row, ['No-Chat Confidence', 'noChatConfidence']) || '0', 10) || 0;
+  const redesignNeedScore = parseInt(get(row, ['Redesign Need Score', 'redesignNeedScore']) || '0', 10) || 0;
+  const buyerQualityScore = parseInt(get(row, ['Buyer Quality Score', 'buyerQualityScore']) || '0', 10) || 0;
+  const packageFitScore = parseInt(get(row, ['Package-Fit Score', 'packageFitScore']) || '0', 10) || 0;
+  const overallScore = parseInt(get(row, ['Overall Score', 'overallScore', 'Fit Score', 'fit_score']) || '0', 10) || 0;
   const signals = get(row, ['Marketing Signals', 'marketing_signals']);
-  const missed = get(row, ['Missed-Lead Opportunity', 'missed_lead_opportunity']);
-  const why = get(row, ['Why It Fits LatchlyAI', 'Why It Fits', 'why_it_fits_latchlyai']);
-  const fitScore = parseInt(get(row, ['Fit Score', 'fit_score']) || '0', 10) || 0;
+  const missed = get(row, ['Missed-Lead Opportunity', 'missed_lead_opportunity', 'Exact Lead-Capture Gaps']);
+  const redesignProblems = get(row, ['Exact Redesign Problems', 'exactRedesignProblems']);
+  const leadCaptureGaps = get(row, ['Exact Lead-Capture Gaps', 'exactLeadCaptureGaps']);
+  const why = get(row, ['Why This Is A Strong Combo-Offer Lead', 'Why It Fits LatchlyAI', 'Why It Fits', 'why_it_fits_latchlyai']);
   return {
     businessName,
     niche,
@@ -104,18 +111,28 @@ function normalizeRow(row) {
     title,
     phone,
     chatbot,
+    verifiedNoChatbot,
+    noChatConfidence,
+    redesignNeedScore,
+    buyerQualityScore,
+    packageFitScore,
+    overallScore,
     signals,
     missed,
+    redesignProblems,
+    leadCaptureGaps,
     why,
-    fitScore,
+    fitScore: overallScore,
     reachability: inferReachability(title),
   };
 }
 
 function isKeep(row) {
   if (!row.businessName || !row.phone || !row.website) return false;
-  if (row.fitScore < 8) return false;
-  if (row.chatbot && row.chatbot !== 'no' && row.chatbot !== 'no obvious chatbot seen') return false;
+  if (row.verifiedNoChatbot !== 'yes') return false;
+  if (row.redesignNeedScore < 7) return false;
+  if (row.buyerQualityScore < 7) return false;
+  if (row.packageFitScore < 8) return false;
   const bad = /intercom|hubspot|birdeye|drift|tidio|tawk|crisp|livechat|yes/i;
   if (bad.test(row.chatbot)) return false;
   return true;
@@ -126,8 +143,7 @@ function scoreTiebreak(row) {
     .split(';')
     .map(s => s.trim())
     .filter(Boolean).length;
-  const dmBonus = row.decisionMaker ? 1 : 0;
-  return signalCount + dmBonus;
+  return (row.packageFitScore || 0) + signalCount + (row.decisionMaker ? 1 : 0);
 }
 
 function ensureDir(dir) {
@@ -159,10 +175,15 @@ const finalRows = Array.from(merged.values())
   .sort((a, b) => b.fitScore - a.fitScore || scoreTiebreak(b) - scoreTiebreak(a) || a.businessName.localeCompare(b.businessName))
   .slice(0, TARGET);
 
-const headers = ['Business Name','Niche','City','State','Website','Decision Maker','Title','Main Business Phone','Chatbot Present','Fit Score','Reachability','Marketing Signals','Missed-Lead Opportunity','Why It Fits'];
+const headers = [
+  'Business Name','Niche','City','State','Website','Decision Maker','Title','Main Business Phone',
+  'Verified No Chatbot','No-Chat Confidence','Redesign Need Score','Buyer Quality Score','Package-Fit Score','Overall Score',
+  'Reachability','Marketing Signals','Exact Redesign Problems','Exact Lead-Capture Gaps','Why This Is A Strong Combo-Offer Lead'
+];
 const csvOut = [headers.join(',')].concat(finalRows.map(r => [
   r.businessName, r.niche, r.city, r.state, r.website, r.decisionMaker, r.title,
-  r.phone, r.chatbot || 'No', r.fitScore, r.reachability, r.signals, r.missed, r.why,
+  r.phone, 'Yes', r.noChatConfidence, r.redesignNeedScore, r.buyerQualityScore, r.packageFitScore, r.overallScore,
+  r.reachability, r.signals, r.redesignProblems, r.leadCaptureGaps, r.why,
 ].map(csvEscape).join(','))).join('\n') + '\n';
 fs.writeFileSync(OUTPUT_CSV, csvOut);
 
@@ -176,11 +197,15 @@ for (const r of finalRows) {
   md.push(`- Decision Maker: ${r.decisionMaker || 'Needs lookup'}`);
   md.push(`- Title: ${r.title || 'Unknown'}`);
   md.push(`- Phone: ${r.phone}`);
-  md.push(`- Chatbot: ${r.chatbot || 'No'}`);
-  md.push(`- Fit Score: ${r.fitScore}`);
+  md.push(`- Verified no-chatbot: Yes (${r.noChatConfidence}/10 confidence)`);
+  md.push(`- Redesign need: ${r.redesignNeedScore}/10`);
+  md.push(`- Buyer quality: ${r.buyerQualityScore}/10`);
+  md.push(`- Package fit: ${r.packageFitScore}/10`);
+  md.push(`- Overall score: ${r.overallScore}/40`);
   if (r.signals) md.push(`- Marketing Signals: ${r.signals}`);
-  if (r.missed) md.push(`- Missed-Lead Opportunity: ${r.missed}`);
-  if (r.why) md.push(`- Why It Fits: ${r.why}`);
+  if (r.redesignProblems) md.push(`- Exact redesign problems: ${r.redesignProblems}`);
+  if (r.leadCaptureGaps) md.push(`- Exact lead-capture gaps: ${r.leadCaptureGaps}`);
+  if (r.why) md.push(`- Why this is a strong combo-offer lead: ${r.why}`);
   md.push('');
 }
 fs.writeFileSync(OUTPUT_MD, md.join('\n'));
@@ -194,13 +219,13 @@ const emailMd = [
   '',
   `Generated ${generatedAt}`,
   '',
-  `This run produced **${finalRows.length} clean leads** scored 8+ with a phone number, website, and no detected chatbot/live chat.`,
+  `This run produced **${finalRows.length} clean leads** that passed all hard gates: verified no-chatbot, redesign need >= 7, buyer quality >= 7, and package-fit >= 8.`,
   '',
   `Top niches: ${topNiches || 'N/A'}`,
   '',
   '## Recommended outreach angle',
   '',
-  'These businesses are already spending effort on marketing but still leave inbound demand exposed after hours and between callbacks. The pitch should stay simple: convert missed calls / form traffic / after-hours visitors into booked jobs without adding headcount.',
+  'Lead with the combo offer: the business is legitimate enough to buy, the website clearly needs redesign help, and the current lead-capture path is weak enough that AI lead capture has a clean value story.',
   '',
   '## Lead rollup',
   ''
@@ -212,9 +237,11 @@ finalRows.forEach((r, index) => {
   emailMd.push(`- Location: ${r.city}, ${r.state}`);
   emailMd.push(`- Website: ${r.website}`);
   emailMd.push(`- Phone: ${r.phone}`);
-  emailMd.push(`- Fit: ${r.fitScore}/10 | Reachability: ${r.reachability}`);
+  emailMd.push(`- Scores: redesign ${r.redesignNeedScore}/10 | buyer ${r.buyerQualityScore}/10 | package-fit ${r.packageFitScore}/10 | overall ${r.overallScore}/40`);
   if (r.signals) emailMd.push(`- Signals: ${r.signals}`);
-  if (r.missed) emailMd.push(`- Opportunity: ${r.missed}`);
+  if (r.redesignProblems) emailMd.push(`- Redesign problems: ${r.redesignProblems}`);
+  if (r.leadCaptureGaps) emailMd.push(`- Lead-capture gaps: ${r.leadCaptureGaps}`);
+  if (r.why) emailMd.push(`- Combo reason: ${r.why}`);
   emailMd.push('');
 });
 fs.writeFileSync(OUTPUT_EMAIL_MD, emailMd.join('\n'));
@@ -224,7 +251,7 @@ const setterLines = [
   '',
   `Generated ${generatedAt}`,
   '',
-  'Use this as the call/texting queue. Prioritize owners / founders first, then high marketing-signal shops.',
+  'Use this as the call/texting queue. Prioritize owners / founders first, then the highest package-fit scores.',
   ''
 ];
 const setterTxt = [];
@@ -235,9 +262,12 @@ finalRows.forEach((r, index) => {
   setterLines.push(`- Phone: ${r.phone}`);
   setterLines.push(`- Location: ${r.city}, ${r.state}`);
   setterLines.push(`- Website: ${r.website}`);
-  setterLines.push(`- Why now: ${r.missed || 'No instant engagement / after-hours capture gap'}`);
+  setterLines.push(`- Redesign need: ${r.redesignNeedScore}/10`);
+  setterLines.push(`- Buyer quality: ${r.buyerQualityScore}/10`);
+  setterLines.push(`- Package fit: ${r.packageFitScore}/10`);
+  setterLines.push(`- Why now: ${r.leadCaptureGaps || r.missed || 'No instant engagement / after-hours capture gap'}`);
   setterLines.push(`- Proof of demand: ${r.signals || 'Website appears active'}`);
-  setterLines.push(`- Fit: ${r.fitScore}/10`);
+  setterLines.push(`- Combo reason: ${r.why}`);
   setterLines.push('');
 
   setterTxt.push([
@@ -246,9 +276,12 @@ finalRows.forEach((r, index) => {
     `Phone: ${r.phone}`,
     `Location: ${r.city}, ${r.state}`,
     `Website: ${r.website}`,
-    `Why now: ${r.missed || 'No instant engagement / after-hours capture gap'}`,
+    `Redesign need: ${r.redesignNeedScore}/10`,
+    `Buyer quality: ${r.buyerQualityScore}/10`,
+    `Package fit: ${r.packageFitScore}/10`,
+    `Why now: ${r.leadCaptureGaps || r.missed || 'No instant engagement / after-hours capture gap'}`,
     `Proof of demand: ${r.signals || 'Website appears active'}`,
-    `Fit: ${r.fitScore}/10`,
+    `Combo reason: ${r.why}`,
   ].join('\n'));
 });
 fs.writeFileSync(OUTPUT_SETTER_MD, setterLines.join('\n'));
