@@ -1,7 +1,8 @@
 /**
  * EMERGENCY CONVERSION MACHINE
- * Dark, high-contrast, urgent conversion-optimized design family.
- * Barlow Condensed + Roboto | Near-black bg | Red/orange accents
+ * Dense, urgent, conversion-first, high contrast, fast-response energy.
+ * Barlow Condensed + Roboto | Near-black bg (#0D0D0D) | Red/orange accents
+ * Strongest mobile CTA behavior — built to get calls NOW.
  */
 
 const { escHtml } = require('../shared/utils');
@@ -10,6 +11,18 @@ const { generateWidget } = require('../shared/widget');
 
 const name = 'emergency';
 const label = 'Emergency Conversion Machine';
+const designProfile = {
+  layout: 'dense-triage-call-machine',
+  hero: 'split-copy-and-response-panel',
+  typography: 'barlow-condensed+roboto',
+  sectionOrder: 'urgency-bar|sticky-phone-nav|hero-split|response-badges|service-grid|review-strip|faq|mobile-call-bar',
+  components: 'sharp-panels|response-chips|call-heavy-cta|triage-list|alert-badges',
+  personality: 'urgent-no-nonsense-conversion',
+  ctaStrategy: 'call-now-immediate-dispatch',
+  colorScheme: 'black-red-orange-white',
+  density: 'tight-high-urgency',
+  navStyle: 'sticky-phone-visible',
+};
 
 function generate(lead, niche) {
   const c = getCopy(name, niche, lead);
@@ -18,6 +31,7 @@ function generate(lead, niche) {
   const phoneHref = (lead.phone || '5550000000').replace(/[^0-9+]/g, '');
   const city = escHtml(lead.city || 'Your City');
   const state = escHtml(lead.state || '');
+  const cityState = [lead.city, lead.state].filter(Boolean).join(', ');
 
   const widgetHtml = generateWidget(lead, {
     emoji: c.emoji,
@@ -43,454 +57,867 @@ function generate(lead, niche) {
     inputRadius: '4px',
     msgBotRadius: '2px 12px 12px 12px',
     msgUserRadius: '12px 12px 2px 12px',
-    chatBg: '#0D0D0D',
+    chatBg: '#111111',
     fabShadow: '0 4px 20px rgba(229,62,62,.4)',
+    fabBottom: '88px',
+    emojiRadius: '4px',
     sendRadius: '4px',
   }, c.quickReplies, c.serviceOptions);
 
-  // Build service grid HTML
-  const servicesHtml = c.services.map(s => `
-    <div class="bg-[#1A1A1A] border border-[#333] p-5 rounded-[4px] hover:border-[#E53E3E] transition-colors group">
-      <div class="w-10 h-10 rounded-[4px] bg-[#E53E3E]/10 flex items-center justify-center mb-3 group-hover:bg-[#E53E3E]/20 transition-colors">
-        <span class="text-[#E53E3E] text-lg">${escHtml(c.emoji)}</span>
-      </div>
-      <h3 class="font-barlow text-white font-bold text-base uppercase tracking-wide mb-1">${escHtml(s.title)}</h3>
-      <p class="text-gray-500 text-sm leading-relaxed">${escHtml(s.desc)}</p>
-    </div>`).join('\n');
+  // Build service grid items
+  const serviceGridHtml = c.services.map((s, i) => `
+            <div class="svc-block reveal-el" style="animation-delay:${i * 60}ms">
+              <span class="svc-icon">${c.emoji}</span>
+              <span class="svc-name">${escHtml(s.title)}</span>
+            </div>`).join('');
 
-  // Build testimonial strip
-  const testimonialsHtml = c.testimonials.map(t => `
-    <div class="flex-shrink-0 bg-[#1A1A1A] border border-[#333] rounded-[4px] p-4 min-w-[300px] max-w-[340px]">
-      <div class="flex items-center gap-1 mb-2">
-        ${Array(t.rating).fill('<svg class="w-4 h-4 text-[#DD6B20]" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>').join('')}
-      </div>
-      <p class="text-gray-400 text-sm leading-relaxed mb-3">"${escHtml(t.text)}"</p>
-      <p class="text-white text-xs font-bold uppercase tracking-wider">${escHtml(t.name)}</p>
-    </div>`).join('\n');
+  // Build testimonial cards
+  const testimonialCardsHtml = c.testimonials.map((t, i) => `
+              <div class="testi-card reveal-el" style="animation-delay:${i * 80}ms">
+                <div class="testi-stars">${'★'.repeat(t.rating)}</div>
+                <p class="testi-text">"${escHtml(t.text)}"</p>
+                <p class="testi-author">— ${escHtml(t.name)}</p>
+              </div>`).join('');
 
-  // Build FAQ accordion
-  const faqsHtml = c.faqs.map((f, i) => `
-    <div class="border-b border-[#333] faq-item">
-      <button class="w-full flex items-center justify-between py-4 text-left group" onclick="toggleFaq(${i})">
-        <span class="font-barlow text-white font-bold text-sm uppercase tracking-wide pr-4">${escHtml(f.q)}</span>
-        <svg class="w-5 h-5 text-[#E53E3E] flex-shrink-0 faq-icon-${i} transition-transform" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-      </button>
-      <div class="faq-answer-${i} hidden pb-4">
-        <p class="text-gray-400 text-sm leading-relaxed">${escHtml(f.a)}</p>
-      </div>
-    </div>`).join('\n');
-
-  // Build why us
-  const whyUsHtml = c.whyUs.map(w => `
-    <div class="flex items-start gap-3">
-      <div class="w-8 h-8 rounded-[4px] bg-[#E53E3E] flex items-center justify-center flex-shrink-0 mt-0.5">
-        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-      </div>
-      <div>
-        <h4 class="text-white font-barlow font-bold text-sm uppercase tracking-wide">${escHtml(w.title)}</h4>
-        <p class="text-gray-500 text-sm mt-0.5">${escHtml(w.desc)}</p>
-      </div>
-    </div>`).join('\n');
-
-  // Service options for form
-  const serviceOptionsHtml = c.serviceOptions.map(o =>
-    `<option value="${escHtml(o)}">${escHtml(o)}</option>`
-  ).join('\n');
+  // Build FAQ items
+  const faqHtml = c.faqs.map((f, i) => `
+              <div class="faq-item reveal-el" style="animation-delay:${i * 60}ms">
+                <button class="faq-q" onclick="this.parentElement.classList.toggle('open')" aria-expanded="false">
+                  <span>${escHtml(f.q)}</span>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+                </button>
+                <div class="faq-a">
+                  <p>${escHtml(f.a)}</p>
+                </div>
+              </div>`).join('');
 
   return `<!DOCTYPE html>
-<!-- DEMO: ${biz} | Family: emergency | Generated by Variation Engine -->
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="robots" content="noindex, nofollow">
-<title>${biz} | ${escHtml(c.nicheLabel)} in ${city}${state ? ', ' + state : ''}</title>
-<script src="https://cdn.tailwindcss.com"><\/script>
-<script>
-tailwind.config = {
-  theme: {
-    extend: {
-      fontFamily: {
-        barlow: ["'Barlow Condensed'", "sans-serif"],
-        roboto: ["'Roboto'", "sans-serif"],
-      },
-      colors: {
-        dark: { 900: '#111111', 800: '#1A1A1A', 700: '#222222', 600: '#333333' },
-        red: { accent: '#E53E3E' },
-        orange: { accent: '#DD6B20' },
-      }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>${biz} — Emergency ${escHtml(c.nicheLabel)} in ${city}${state ? ', ' + state : ''}</title>
+  <meta name="description" content="${escHtml(c.subline)}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"><\/script>
+  <style>
+    :root {
+      --bg-primary: #0D0D0D;
+      --bg-secondary: #111111;
+      --bg-card: #1A1A1A;
+      --red: #E53E3E;
+      --red-hover: #C53030;
+      --orange: #DD6B20;
+      --white: #FFFFFF;
+      --gray-100: #F7F7F7;
+      --gray-300: #A0A0A0;
+      --gray-500: #6B6B6B;
+      --heading-font: 'Barlow Condensed', sans-serif;
+      --body-font: 'Roboto', sans-serif;
     }
-  }
-}
-<\/script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
-<style>
-  html { scroll-behavior: smooth; }
-  body { font-family: 'Roboto', sans-serif; background: #111111; color: #fff; margin: 0; }
-  .font-barlow { font-family: 'Barlow Condensed', sans-serif; }
-  /* Diagonal stripe pattern for hero */
-  .hero-stripes {
-    background-image: repeating-linear-gradient(
-      -45deg,
-      transparent,
-      transparent 40px,
-      rgba(229,62,62,0.03) 40px,
-      rgba(229,62,62,0.03) 80px
-    );
-  }
-  /* Pulsing dot */
-  @keyframes pulse-dot {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.6; transform: scale(1.4); }
-  }
-  .pulse-dot { animation: pulse-dot 1.5s ease-in-out infinite; }
-  /* Emergency banner scroll */
-  @keyframes scroll-banner {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(-50%); }
-  }
-  .banner-scroll { animation: scroll-banner 20s linear infinite; }
-  /* Reveal animation */
-  .reveal { opacity: 0; transform: translateY(20px); transition: opacity 0.5s ease, transform 0.5s ease; }
-  .reveal.visible { opacity: 1; transform: translateY(0); }
-  /* Sticky bottom bar */
-  .bottom-cta-bar { transform: translateY(100%); transition: transform 0.3s ease; }
-  .bottom-cta-bar.show { transform: translateY(0); }
-</style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--body-font);
+      background: var(--bg-primary);
+      color: var(--white);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── URGENCY BAR ── */
+    .urgency-bar {
+      background: var(--red);
+      padding: 6px 16px;
+      text-align: center;
+      font-family: var(--heading-font);
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      position: relative;
+      z-index: 100;
+    }
+    .urgency-dot {
+      width: 8px; height: 8px;
+      background: #fff;
+      border-radius: 50%;
+      animation: pulse-dot 1.2s ease-in-out infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: .4; transform: scale(.7); }
+    }
+
+    /* ── STICKY NAV ── */
+    .em-nav {
+      position: sticky; top: 0; z-index: 90;
+      background: rgba(13,13,13,.97);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid rgba(229,62,62,.2);
+      padding: 0 16px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .em-nav-logo {
+      font-family: var(--heading-font);
+      font-weight: 800;
+      font-size: 20px;
+      letter-spacing: .5px;
+      text-transform: uppercase;
+      color: var(--white);
+      text-decoration: none;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 200px;
+    }
+    .em-nav-phone {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--red);
+      color: #fff;
+      font-family: var(--heading-font);
+      font-weight: 700;
+      font-size: 15px;
+      letter-spacing: .5px;
+      padding: 8px 18px;
+      border-radius: 4px;
+      text-decoration: none;
+      transition: background .15s;
+    }
+    .em-nav-phone:hover { background: var(--red-hover); }
+    .em-nav-links {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    .em-nav-link {
+      font-family: var(--heading-font);
+      font-weight: 600;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--gray-300);
+      text-decoration: none;
+      transition: color .15s;
+    }
+    .em-nav-link:hover { color: var(--white); }
+    @media(max-width:768px) {
+      .em-nav-links .em-nav-link { display: none; }
+      .em-nav-logo { font-size: 16px; max-width: 140px; }
+      .em-nav-phone { font-size: 13px; padding: 7px 14px; }
+    }
+
+    /* ── HERO ── */
+    .em-hero {
+      background: var(--bg-primary);
+      padding: 48px 16px 56px;
+      border-bottom: 3px solid var(--red);
+    }
+    .em-hero-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 48px;
+      align-items: center;
+    }
+    .em-hero-copy h1 {
+      font-family: var(--heading-font);
+      font-weight: 900;
+      font-size: clamp(40px, 6vw, 64px);
+      line-height: .95;
+      text-transform: uppercase;
+      letter-spacing: -1px;
+      margin-bottom: 8px;
+    }
+    .em-hero-copy h1 .red { color: var(--red); }
+    .em-hero-sub {
+      font-family: var(--heading-font);
+      font-weight: 700;
+      font-size: 20px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--orange);
+      margin-bottom: 16px;
+    }
+    .em-hero-desc {
+      font-size: 16px;
+      line-height: 1.6;
+      color: var(--gray-300);
+      margin-bottom: 24px;
+      max-width: 440px;
+    }
+    .em-hero-badges {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .em-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: var(--gray-300);
+    }
+    .em-badge svg { color: var(--red); flex-shrink: 0; }
+
+    /* Hero inline form */
+    .em-hero-form {
+      background: var(--bg-card);
+      border: 1px solid rgba(229,62,62,.25);
+      border-radius: 4px;
+      padding: 28px 24px;
+    }
+    .em-hero-form h3 {
+      font-family: var(--heading-font);
+      font-weight: 800;
+      font-size: 22px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin-bottom: 4px;
+    }
+    .em-hero-form .form-sub {
+      font-size: 13px;
+      color: var(--gray-500);
+      margin-bottom: 20px;
+    }
+    .em-field {
+      margin-bottom: 12px;
+    }
+    .em-field label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--gray-300);
+      margin-bottom: 4px;
+    }
+    .em-field input,
+    .em-field select {
+      width: 100%;
+      padding: 10px 12px;
+      background: #0D0D0D;
+      border: 1px solid #333;
+      border-radius: 4px;
+      color: #fff;
+      font-family: var(--body-font);
+      font-size: 14px;
+      outline: none;
+      transition: border-color .15s;
+    }
+    .em-field input:focus,
+    .em-field select:focus {
+      border-color: var(--red);
+    }
+    .em-field select option { background: #1A1A1A; }
+    .em-submit {
+      width: 100%;
+      padding: 14px;
+      background: var(--red);
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-family: var(--heading-font);
+      font-weight: 800;
+      font-size: 16px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: background .15s, transform .1s;
+      margin-top: 4px;
+    }
+    .em-submit:hover { background: var(--red-hover); transform: scale(1.01); }
+    .em-form-phone {
+      text-align: center;
+      margin-top: 12px;
+      font-size: 13px;
+      color: var(--gray-500);
+    }
+    .em-form-phone a {
+      color: var(--red);
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    @media(max-width:768px) {
+      .em-hero-inner {
+        grid-template-columns: 1fr;
+        gap: 32px;
+      }
+      .em-hero { padding: 32px 16px 40px; }
+    }
+
+    /* ── RESPONSE STATS BAND ── */
+    .em-stats-band {
+      background: var(--bg-card);
+      border-bottom: 1px solid #222;
+      padding: 16px;
+    }
+    .em-stats-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0;
+      flex-wrap: wrap;
+    }
+    .em-stat-item {
+      font-family: var(--heading-font);
+      font-weight: 800;
+      font-size: 15px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      padding: 4px 24px;
+      white-space: nowrap;
+    }
+    .em-stat-item .num { color: var(--red); }
+    .em-stat-divider {
+      width: 4px; height: 4px;
+      background: var(--red);
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    @media(max-width:640px) {
+      .em-stat-item { font-size: 12px; padding: 4px 12px; letter-spacing: 1px; }
+    }
+
+    /* ── SERVICE BLOCKS ── */
+    .em-services {
+      background: var(--bg-primary);
+      padding: 48px 16px;
+    }
+    .em-services-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .em-section-head {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .em-section-head h2 {
+      font-family: var(--heading-font);
+      font-weight: 900;
+      font-size: clamp(28px, 4vw, 40px);
+      text-transform: uppercase;
+      letter-spacing: -.5px;
+      margin-bottom: 4px;
+    }
+    .em-section-head p {
+      font-size: 14px;
+      color: var(--gray-500);
+    }
+    .svc-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2px;
+    }
+    .svc-block {
+      background: var(--bg-card);
+      border: 1px solid #222;
+      border-radius: 4px;
+      padding: 18px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: border-color .15s, background .15s;
+    }
+    .svc-block:hover {
+      border-color: var(--red);
+      background: rgba(229,62,62,.06);
+    }
+    .svc-icon {
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .svc-name {
+      font-family: var(--heading-font);
+      font-weight: 700;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+    @media(max-width:768px) {
+      .svc-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media(max-width:480px) {
+      .svc-grid { grid-template-columns: 1fr 1fr; }
+      .svc-block { padding: 14px 12px; }
+      .svc-name { font-size: 12px; }
+    }
+
+    /* ── WHY US STRIP ── */
+    .em-why {
+      background: var(--bg-secondary);
+      padding: 48px 16px;
+      border-top: 1px solid #1A1A1A;
+      border-bottom: 1px solid #1A1A1A;
+    }
+    .em-why-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .em-why-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 2px;
+    }
+    .em-why-card {
+      background: var(--bg-card);
+      border: 1px solid #222;
+      border-radius: 4px;
+      padding: 24px 20px;
+      border-top: 3px solid var(--red);
+    }
+    .em-why-card h4 {
+      font-family: var(--heading-font);
+      font-weight: 800;
+      font-size: 16px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin-bottom: 6px;
+    }
+    .em-why-card p {
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--gray-300);
+    }
+    @media(max-width:768px) {
+      .em-why-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+    }
+    @media(max-width:480px) {
+      .em-why-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ── TESTIMONIALS HORIZONTAL SCROLL ── */
+    .em-testimonials {
+      background: var(--bg-primary);
+      padding: 48px 16px;
+    }
+    .em-testi-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .testi-scroll {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      padding-bottom: 12px;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+      scrollbar-color: #333 transparent;
+    }
+    .testi-scroll::-webkit-scrollbar { height: 4px; }
+    .testi-scroll::-webkit-scrollbar-track { background: transparent; }
+    .testi-scroll::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+    .testi-card {
+      background: var(--bg-card);
+      border: 1px solid #222;
+      border-radius: 4px;
+      padding: 20px;
+      min-width: 300px;
+      max-width: 340px;
+      flex-shrink: 0;
+    }
+    .testi-stars {
+      color: #F59E0B;
+      font-size: 14px;
+      letter-spacing: 2px;
+      margin-bottom: 8px;
+    }
+    .testi-text {
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--gray-300);
+      margin-bottom: 10px;
+    }
+    .testi-author {
+      font-family: var(--heading-font);
+      font-weight: 700;
+      font-size: 13px;
+      text-transform: uppercase;
+      color: var(--white);
+    }
+
+    /* ── FAQ ACCORDION ── */
+    .em-faq {
+      background: var(--bg-secondary);
+      padding: 48px 16px;
+      border-top: 1px solid #1A1A1A;
+    }
+    .em-faq-inner {
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    .faq-item {
+      border-bottom: 1px solid #222;
+    }
+    .faq-q {
+      width: 100%;
+      background: none;
+      border: none;
+      color: var(--white);
+      font-family: var(--heading-font);
+      font-weight: 700;
+      font-size: 15px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      text-align: left;
+      padding: 16px 0;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      transition: color .15s;
+    }
+    .faq-q:hover { color: var(--red); }
+    .faq-q svg {
+      flex-shrink: 0;
+      transition: transform .2s;
+      color: var(--gray-500);
+    }
+    .faq-item.open .faq-q svg { transform: rotate(180deg); color: var(--red); }
+    .faq-a {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height .25s ease;
+    }
+    .faq-item.open .faq-a { max-height: 300px; }
+    .faq-a p {
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--gray-300);
+      padding: 0 0 16px;
+    }
+
+    /* ── CTA BAND ── */
+    .em-cta-band {
+      background: var(--red);
+      padding: 40px 16px;
+      text-align: center;
+    }
+    .em-cta-band h2 {
+      font-family: var(--heading-font);
+      font-weight: 900;
+      font-size: clamp(28px, 5vw, 48px);
+      text-transform: uppercase;
+      letter-spacing: -.5px;
+      margin-bottom: 8px;
+    }
+    .em-cta-band p {
+      font-size: 14px;
+      opacity: .9;
+      margin-bottom: 20px;
+    }
+    .em-cta-phone {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--white);
+      color: var(--red);
+      font-family: var(--heading-font);
+      font-weight: 900;
+      font-size: clamp(24px, 4vw, 36px);
+      padding: 16px 36px;
+      border-radius: 4px;
+      text-decoration: none;
+      letter-spacing: 1px;
+      transition: transform .15s, box-shadow .15s;
+    }
+    .em-cta-phone:hover {
+      transform: scale(1.03);
+      box-shadow: 0 8px 32px rgba(0,0,0,.3);
+    }
+
+    /* ── FOOTER ── */
+    .em-footer {
+      background: #080808;
+      border-top: 1px solid #1A1A1A;
+      padding: 32px 16px;
+    }
+    .em-footer-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .em-footer-brand {
+      font-family: var(--heading-font);
+      font-weight: 800;
+      font-size: 16px;
+      text-transform: uppercase;
+    }
+    .em-footer-links {
+      display: flex;
+      gap: 20px;
+    }
+    .em-footer-links a {
+      font-size: 12px;
+      color: var(--gray-500);
+      text-decoration: none;
+      transition: color .15s;
+    }
+    .em-footer-links a:hover { color: var(--white); }
+    .em-footer-copy {
+      font-size: 11px;
+      color: var(--gray-500);
+      width: 100%;
+      text-align: center;
+      margin-top: 8px;
+    }
+    .em-footer-copy a { color: var(--gray-500); text-decoration: none; }
+    .em-footer-copy a:hover { color: var(--white); }
+
+    /* ── STICKY BOTTOM MOBILE CTA ── */
+    .em-mobile-bar {
+      display: none;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      z-index: 80;
+      background: var(--bg-primary);
+      border-top: 2px solid var(--red);
+      padding: 8px 12px;
+    }
+    .em-mobile-bar a {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: var(--red);
+      color: #fff;
+      font-family: var(--heading-font);
+      font-weight: 800;
+      font-size: 16px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      padding: 14px;
+      border-radius: 4px;
+      text-decoration: none;
+      transition: background .15s;
+    }
+    .em-mobile-bar a:hover { background: var(--red-hover); }
+    @media(max-width:768px) {
+      .em-mobile-bar { display: block; }
+      body { padding-bottom: 72px; }
+    }
+
+    /* ── REVEAL ANIMATIONS ── */
+    .reveal-el {
+      opacity: 0;
+      transform: translateY(12px);
+      transition: opacity .3s ease, transform .3s ease;
+    }
+    .reveal-el.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
 </head>
 <body>
 
-<!-- ===== STICKY NAV ===== -->
-<nav id="nav" class="fixed top-0 left-0 right-0 z-50 bg-[#111111] border-b border-[#333]">
-  <div class="max-w-7xl mx-auto px-4 flex items-center justify-between h-14">
-    <a href="#" class="font-barlow font-bold text-lg uppercase tracking-wider text-white">${biz}</a>
-    <a href="tel:${phoneHref}" class="hidden sm:flex items-center gap-2 text-[#E53E3E] font-barlow font-bold text-lg uppercase tracking-wide">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"/></svg>
-      ${phone}
-    </a>
-    <div class="hidden md:flex items-center gap-6">
-      <a href="#services" class="text-gray-400 hover:text-white text-sm font-medium transition-colors">Services</a>
-      <a href="#reviews" class="text-gray-400 hover:text-white text-sm font-medium transition-colors">Reviews</a>
-      <a href="#faq" class="text-gray-400 hover:text-white text-sm font-medium transition-colors">FAQ</a>
-    </div>
-    <a href="tel:${phoneHref}" class="sm:hidden bg-[#E53E3E] text-white font-barlow font-bold text-xs uppercase tracking-wider px-4 py-2 rounded-[4px]">CALL NOW</a>
-  </div>
-</nav>
+  <!-- ═══ SECTION 1: URGENCY BAR ═══ -->
+  <section class="urgency-bar" aria-label="Emergency notice">
+    <span class="urgency-dot"></span>
+    <span>EMERGENCY ${escHtml(c.nicheLabel).toUpperCase()} — ${city.toUpperCase()} — DISPATCHING NOW</span>
+    <span class="urgency-dot"></span>
+  </section>
 
-<!-- ===== EMERGENCY BANNER ===== -->
-<div class="fixed top-14 left-0 right-0 z-40 bg-[#E53E3E] overflow-hidden h-8 flex items-center">
-  <div class="banner-scroll flex whitespace-nowrap">
-    <span class="inline-flex items-center gap-3 px-8 font-barlow font-bold text-sm uppercase tracking-widest text-white">
-      <span class="w-2 h-2 bg-white rounded-full pulse-dot"></span> EMERGENCY SERVICE AVAILABLE
-      <span class="text-white/50">|</span>
-      24/7 RAPID RESPONSE
-      <span class="text-white/50">|</span>
-      NO OVERTIME CHARGES
-      <span class="text-white/50">|</span>
-      LICENSED &amp; INSURED
-      <span class="text-white/50">|</span>
-      SAME-DAY SERVICE
-      <span class="text-white/50">|</span>
-    </span>
-    <span class="inline-flex items-center gap-3 px-8 font-barlow font-bold text-sm uppercase tracking-widest text-white">
-      <span class="w-2 h-2 bg-white rounded-full pulse-dot"></span> EMERGENCY SERVICE AVAILABLE
-      <span class="text-white/50">|</span>
-      24/7 RAPID RESPONSE
-      <span class="text-white/50">|</span>
-      NO OVERTIME CHARGES
-      <span class="text-white/50">|</span>
-      LICENSED &amp; INSURED
-      <span class="text-white/50">|</span>
-      SAME-DAY SERVICE
-      <span class="text-white/50">|</span>
-    </span>
-  </div>
-</div>
-
-<!-- ===== HERO ===== -->
-<section class="pt-[86px] bg-[#111111] hero-stripes">
-  <div class="max-w-7xl mx-auto px-4 py-12 md:py-16 grid md:grid-cols-2 gap-8 items-center">
-    <!-- Left: headline -->
-    <div>
-      <div class="inline-flex items-center gap-2 bg-[#E53E3E]/10 border border-[#E53E3E]/30 rounded-[4px] px-3 py-1.5 mb-5">
-        <span class="w-2 h-2 bg-[#E53E3E] rounded-full pulse-dot"></span>
-        <span class="font-barlow font-bold text-xs uppercase tracking-widest text-[#E53E3E]">Emergency Service Available</span>
-      </div>
-      <h1 class="font-barlow font-black text-5xl md:text-6xl lg:text-7xl uppercase leading-[0.95] tracking-tight text-white mb-3">
-        ${escHtml(c.headline)}
-      </h1>
-      <p class="font-barlow font-semibold text-xl md:text-2xl uppercase tracking-wide text-[#DD6B20] mb-4">
-        ${escHtml(c.headlineSub)}
-      </p>
-      <p class="text-gray-400 text-base md:text-lg leading-relaxed mb-6 max-w-md">
-        ${escHtml(c.subline)}
-      </p>
-      <div class="flex flex-col sm:flex-row items-start gap-3 mb-6">
-        <a href="tel:${phoneHref}" class="inline-flex items-center gap-2 bg-[#E53E3E] hover:bg-[#C53030] text-white font-barlow font-bold text-base uppercase tracking-wider px-8 py-4 rounded-[4px] transition-colors w-full sm:w-auto justify-center">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"/></svg>
-          CALL ${phone}
-        </a>
-        <a href="#quote-form" class="inline-flex items-center gap-2 border-2 border-[#DD6B20] text-[#DD6B20] hover:bg-[#DD6B20] hover:text-white font-barlow font-bold text-base uppercase tracking-wider px-8 py-4 rounded-[4px] transition-colors w-full sm:w-auto justify-center">
-          ${escHtml(c.cta1)}
-        </a>
-      </div>
-      <div class="flex items-center gap-4 text-sm text-gray-500">
-        <div class="flex items-center gap-1">
-          ${Array(5).fill('<svg class="w-4 h-4 text-[#DD6B20]" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>').join('')}
-        </div>
-        <span class="text-gray-400">${escHtml(c.stats.rating)} Stars &middot; ${escHtml(c.stats.jobs)}+ Jobs</span>
-      </div>
+  <!-- ═══ SECTION 2: STICKY NAV ═══ -->
+  <nav class="em-nav" aria-label="Main navigation">
+    <a href="#" class="em-nav-logo">${biz}</a>
+    <div class="em-nav-links">
+      <a href="#services" class="em-nav-link">Services</a>
+      <a href="#reviews" class="em-nav-link">Reviews</a>
+      <a href="#faq" class="em-nav-link">FAQ</a>
+      <a href="tel:${phoneHref}" class="em-nav-phone">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"/></svg>
+        ${phone}
+      </a>
     </div>
-    <!-- Right: inline quote form -->
-    <div id="quote-form" class="bg-[#1A1A1A] border border-[#333] rounded-[4px] p-6 md:p-8">
-      <h2 class="font-barlow font-bold text-2xl uppercase tracking-wide text-white mb-1">Get Help Fast</h2>
-      <p class="text-gray-500 text-sm mb-5">Fill out the form. We'll call you back ASAP.</p>
-      <form id="hero-form" class="space-y-3" onsubmit="return false;">
-        <div>
-          <input type="text" name="name" placeholder="Your Name" required class="w-full bg-[#222222] border border-[#444] rounded-[4px] px-4 py-3 text-white text-sm placeholder-gray-600 focus:border-[#E53E3E] focus:outline-none focus:ring-1 focus:ring-[#E53E3E]/30 transition-colors">
+  </nav>
+
+  <!-- ═══ SECTION 3: HERO WITH INLINE FORM ═══ -->
+  <section class="em-hero" id="hero" aria-label="Hero">
+    <div class="em-hero-inner">
+      <div class="em-hero-copy reveal-el">
+        <h1>${escHtml(c.headline)} <span class="red">${city.toUpperCase()}</span></h1>
+        <p class="em-hero-sub">${escHtml(c.headlineSub)}</p>
+        <p class="em-hero-desc">${escHtml(c.subline)}</p>
+        <div class="em-hero-badges">
+          <span class="em-badge">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            Licensed &amp; Insured
+          </span>
+          <span class="em-badge">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            Upfront Pricing
+          </span>
+          <span class="em-badge">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            Warranty on All Work
+          </span>
         </div>
-        <div>
-          <input type="tel" name="phone" placeholder="Phone Number" required class="w-full bg-[#222222] border border-[#444] rounded-[4px] px-4 py-3 text-white text-sm placeholder-gray-600 focus:border-[#E53E3E] focus:outline-none focus:ring-1 focus:ring-[#E53E3E]/30 transition-colors">
+      </div>
+      <form id="emergency-form" class="em-hero-form reveal-el" style="animation-delay:100ms">
+        <h3>REQUEST EMERGENCY SERVICE</h3>
+        <p class="form-sub">We respond in minutes, not hours.</p>
+        <div class="em-field">
+          <label>Your Name</label>
+          <input type="text" placeholder="Full name" autocomplete="name">
         </div>
-        <div>
-          <select name="service" class="w-full bg-[#222222] border border-[#444] rounded-[4px] px-4 py-3 text-white text-sm focus:border-[#E53E3E] focus:outline-none focus:ring-1 focus:ring-[#E53E3E]/30 transition-colors appearance-none" style="background-image:url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2216%22 height=%2216%22 fill=%22%23666%22 viewBox=%220 0 16 16%22><path d=%22M8 11L3 6h10z%22/></svg>');background-repeat:no-repeat;background-position:right 12px center;">
-            <option value="" disabled selected>Select Service Needed</option>
-            ${serviceOptionsHtml}
+        <div class="em-field">
+          <label>Phone Number</label>
+          <input type="tel" placeholder="(555) 123-4567" autocomplete="tel">
+        </div>
+        <div class="em-field">
+          <label>Service Needed</label>
+          <select>
+            <option value="">Select a service...</option>
+            ${c.serviceOptions.map(opt => `<option value="${escHtml(opt)}">${escHtml(opt)}</option>`).join('')}
           </select>
         </div>
-        <button type="submit" id="hero-submit" class="w-full bg-[#E53E3E] hover:bg-[#C53030] text-white font-barlow font-bold text-base uppercase tracking-wider py-4 rounded-[4px] transition-colors flex items-center justify-center gap-2">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-          GET HELP NOW
-        </button>
+        <button class="em-submit" type="submit">${escHtml(c.cta1).toUpperCase()}</button>
+        <p class="em-form-phone">Or call now: <a href="tel:${phoneHref}">${phone}</a></p>
       </form>
-      <p class="text-gray-600 text-xs mt-3 text-center">Average response time: ${escHtml(c.stats.avgResponse)} minutes</p>
     </div>
-  </div>
-</section>
+  </section>
 
-<!-- ===== TRUST BADGES ===== -->
-<section class="bg-[#1A1A1A] border-y border-[#333] py-8">
-  <div class="max-w-7xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-4">
-    <div class="flex items-center gap-3 justify-center">
-      <div class="w-10 h-10 rounded-[4px] bg-[#E53E3E]/10 flex items-center justify-center flex-shrink-0">
-        <svg class="w-5 h-5 text-[#E53E3E]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-      </div>
-      <div>
-        <p class="font-barlow font-bold text-white text-sm uppercase tracking-wide">Same Day</p>
-        <p class="text-gray-500 text-xs">Service Available</p>
-      </div>
+  <!-- ═══ SECTION 4: RESPONSE STATS BAND ═══ -->
+  <section class="em-stats-band" aria-label="Response statistics">
+    <div class="em-stats-inner">
+      <div class="em-stat-item reveal-el">&lt; <span class="num">${escHtml(c.stats.avgResponse)} MIN</span> RESPONSE</div>
+      <div class="em-stat-divider"></div>
+      <div class="em-stat-item reveal-el" style="animation-delay:80ms">24/7 <span class="num">DISPATCH</span></div>
+      <div class="em-stat-divider"></div>
+      <div class="em-stat-item reveal-el" style="animation-delay:160ms">NO <span class="num">OVERTIME</span> FEES</div>
+      <div class="em-stat-divider"></div>
+      <div class="em-stat-item reveal-el" style="animation-delay:240ms"><span class="num">${escHtml(c.stats.jobs)}+</span> JOBS DONE</div>
     </div>
-    <div class="flex items-center gap-3 justify-center">
-      <div class="w-10 h-10 rounded-[4px] bg-[#DD6B20]/10 flex items-center justify-center flex-shrink-0">
-        <svg class="w-5 h-5 text-[#DD6B20]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z"/></svg>
-      </div>
-      <div>
-        <p class="font-barlow font-bold text-white text-sm uppercase tracking-wide">0% Financing</p>
-        <p class="text-gray-500 text-xs">Available OAC</p>
-      </div>
-    </div>
-    <div class="flex items-center gap-3 justify-center">
-      <div class="w-10 h-10 rounded-[4px] bg-[#E53E3E]/10 flex items-center justify-center flex-shrink-0">
-        <svg class="w-5 h-5 text-[#E53E3E]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg>
-      </div>
-      <div>
-        <p class="font-barlow font-bold text-white text-sm uppercase tracking-wide">Guaranteed</p>
-        <p class="text-gray-500 text-xs">100% Satisfaction</p>
-      </div>
-    </div>
-    <div class="flex items-center gap-3 justify-center">
-      <div class="w-10 h-10 rounded-[4px] bg-[#DD6B20]/10 flex items-center justify-center flex-shrink-0">
-        <svg class="w-5 h-5 text-[#DD6B20]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/></svg>
-      </div>
-      <div>
-        <p class="font-barlow font-bold text-white text-sm uppercase tracking-wide">Licensed</p>
-        <p class="text-gray-500 text-xs">Bonded &amp; Insured</p>
-      </div>
-    </div>
-  </div>
-</section>
+  </section>
 
-<!-- ===== STATS BAR ===== -->
-<section class="bg-[#111111] py-10 reveal">
-  <div class="max-w-7xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-    <div>
-      <p class="font-barlow font-black text-4xl md:text-5xl text-[#E53E3E] leading-none">${escHtml(c.stats.avgResponse)}</p>
-      <p class="font-barlow font-semibold text-xs uppercase tracking-widest text-gray-500 mt-1">Min Avg Response</p>
-    </div>
-    <div>
-      <p class="font-barlow font-black text-4xl md:text-5xl text-[#DD6B20] leading-none">${escHtml(c.stats.jobs)}+</p>
-      <p class="font-barlow font-semibold text-xs uppercase tracking-widest text-gray-500 mt-1">Jobs Completed</p>
-    </div>
-    <div>
-      <p class="font-barlow font-black text-4xl md:text-5xl text-[#E53E3E] leading-none">${escHtml(c.stats.rating)}</p>
-      <p class="font-barlow font-semibold text-xs uppercase tracking-widest text-gray-500 mt-1">Star Rating</p>
-    </div>
-    <div>
-      <p class="font-barlow font-black text-4xl md:text-5xl text-[#DD6B20] leading-none">${escHtml(c.stats.years)}</p>
-      <p class="font-barlow font-semibold text-xs uppercase tracking-widest text-gray-500 mt-1">Years in Business</p>
-    </div>
-  </div>
-</section>
-
-<!-- ===== SERVICES ===== -->
-<section id="services" class="bg-[#111111] py-10 reveal">
-  <div class="max-w-7xl mx-auto px-4">
-    <div class="text-center mb-8">
-      <h2 class="font-barlow font-black text-3xl md:text-4xl uppercase tracking-tight text-white">${escHtml(c.whyTitle)}</h2>
-      <p class="text-gray-500 text-sm mt-2 max-w-lg mx-auto">${escHtml(c.whySub)}</p>
-    </div>
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      ${servicesHtml}
-    </div>
-  </div>
-</section>
-
-<!-- ===== FINANCING BANNER ===== -->
-<section class="bg-gradient-to-r from-[#DD6B20] to-[#E53E3E] py-6 reveal">
-  <div class="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-3">
-    <div class="flex items-center gap-3">
-      <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z"/></svg>
-      <div>
-        <p class="font-barlow font-bold text-xl uppercase tracking-wide text-white">0% Financing Available</p>
-        <p class="text-white/80 text-sm">No money down. Affordable monthly payments. Apply in minutes.</p>
+  <!-- ═══ SECTION 5: WHY US ═══ -->
+  <section class="em-why" id="why" aria-label="Why choose us">
+    <div class="em-why-inner">
+      <div class="em-section-head">
+        <h2>${escHtml(c.whyTitle)}</h2>
+        <p>${escHtml(c.whySub)}</p>
+      </div>
+      <div class="em-why-grid">
+        ${c.whyUs.map((w, i) => `
+        <div class="em-why-card reveal-el" style="animation-delay:${i * 60}ms">
+          <h4>${escHtml(w.title)}</h4>
+          <p>${escHtml(w.desc)}</p>
+        </div>`).join('')}
       </div>
     </div>
-    <a href="tel:${phoneHref}" class="bg-white text-[#E53E3E] font-barlow font-bold text-sm uppercase tracking-wider px-6 py-3 rounded-[4px] hover:bg-gray-100 transition-colors flex-shrink-0">ASK ABOUT FINANCING</a>
-  </div>
-</section>
+  </section>
 
-<!-- ===== WHY US ===== -->
-<section class="bg-[#111111] py-10 reveal">
-  <div class="max-w-7xl mx-auto px-4">
-    <div class="grid md:grid-cols-2 gap-6">
-      ${whyUsHtml}
+  <!-- ═══ SECTION 6: DENSE SERVICE BLOCKS ═══ -->
+  <section class="em-services" id="services" aria-label="Services">
+    <div class="em-services-inner">
+      <div class="em-section-head">
+        <h2>OUR ${escHtml(c.nicheLabel).toUpperCase()} SERVICES</h2>
+        <p>${city}${state ? ', ' + state : ''} &mdash; Licensed, Insured, Warranty-Backed</p>
+      </div>
+      <div class="svc-grid">
+        ${serviceGridHtml}
+      </div>
     </div>
-  </div>
-</section>
+  </section>
 
-<!-- ===== REVIEWS ===== -->
-<section id="reviews" class="bg-[#1A1A1A] py-10 reveal">
-  <div class="max-w-7xl mx-auto px-4">
-    <h2 class="font-barlow font-black text-2xl uppercase tracking-tight text-white mb-6 text-center">What Our Customers Say</h2>
-    <div class="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide" style="-webkit-overflow-scrolling:touch;scrollbar-width:none;">
-      ${testimonialsHtml}
+  <!-- ═══ SECTION 7: TESTIMONIALS SCROLL STRIP ═══ -->
+  <section class="em-testimonials" id="reviews" aria-label="Customer reviews">
+    <div class="em-testi-inner">
+      <div class="em-section-head">
+        <h2>${escHtml(c.stats.rating)}★ RATED — ${escHtml(c.stats.jobs)}+ REVIEWS</h2>
+        <p>Real reviews from real ${city} customers</p>
+      </div>
+      <div class="testi-scroll">
+        ${testimonialCardsHtml}
+      </div>
     </div>
-  </div>
-</section>
+  </section>
 
-<!-- ===== FAQ ===== -->
-<section id="faq" class="bg-[#111111] py-10 reveal">
-  <div class="max-w-3xl mx-auto px-4">
-    <h2 class="font-barlow font-black text-2xl uppercase tracking-tight text-white mb-6 text-center">Frequently Asked Questions</h2>
-    <div>
-      ${faqsHtml}
+  <!-- ═══ SECTION 8: FAQ ACCORDION ═══ -->
+  <section class="em-faq" id="faq" aria-label="Frequently asked questions">
+    <div class="em-faq-inner">
+      <div class="em-section-head" style="text-align:left">
+        <h2>COMMON QUESTIONS</h2>
+      </div>
+      ${faqHtml}
     </div>
-  </div>
-</section>
+  </section>
 
-<!-- ===== BOTTOM CTA ===== -->
-<section class="bg-[#1A1A1A] border-t border-[#333] py-10">
-  <div class="max-w-3xl mx-auto px-4 text-center">
-    <h2 class="font-barlow font-black text-3xl md:text-4xl uppercase tracking-tight text-white mb-3">Ready to Get Started?</h2>
-    <p class="text-gray-400 text-sm mb-6">Call now for same-day service. No overtime charges.</p>
-    <a href="tel:${phoneHref}" class="inline-flex items-center gap-2 bg-[#E53E3E] hover:bg-[#C53030] text-white font-barlow font-bold text-lg uppercase tracking-wider px-10 py-4 rounded-[4px] transition-colors">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"/></svg>
-      CALL ${phone}
+  <!-- ═══ SECTION 9: CTA BAND ═══ -->
+  <section class="em-cta-band" aria-label="Call to action">
+    <h2>DON'T WAIT. CALL NOW.</h2>
+    <p>Licensed technicians standing by for ${city}${state ? ', ' + state : ''}</p>
+    <a href="tel:${phoneHref}" class="em-cta-phone">
+      <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"/></svg>
+      ${phone}
+    </a>
+  </section>
+
+  <!-- ═══ SECTION 10: FOOTER ═══ -->
+  <footer class="em-footer" aria-label="Footer">
+    <div class="em-footer-inner">
+      <div class="em-footer-brand">${biz}</div>
+      <div class="em-footer-links">
+        <a href="#services">Services</a>
+        <a href="#reviews">Reviews</a>
+        <a href="#faq">FAQ</a>
+        <a href="tel:${phoneHref}">${phone}</a>
+      </div>
+      <p class="em-footer-copy">&copy; ${new Date().getFullYear()} ${biz}. All rights reserved. Licensed &amp; insured ${escHtml(c.nicheLabel).toLowerCase()} in ${city}${state ? ', ' + state : ''}. Powered by <a href="https://latchlyai.com">Latchly</a>.</p>
+    </div>
+  </footer>
+
+  <!-- ═══ STICKY MOBILE CTA BAR ═══ -->
+  <div class="em-mobile-bar">
+    <a href="tel:${phoneHref}">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"/></svg>
+      CALL NOW — ${phone}
     </a>
   </div>
-</section>
 
-<!-- ===== FOOTER ===== -->
-<footer class="bg-[#0D0D0D] border-t border-[#222] py-6">
-  <div class="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-3 text-gray-600 text-xs">
-    <p>&copy; ${new Date().getFullYear()} ${biz}. All rights reserved.</p>
-    <p>${city}${state ? ', ' + state : ''} &middot; ${escHtml(c.nicheLabel)}</p>
-  </div>
-</footer>
+  ${widgetHtml}
 
-<!-- ===== MOBILE STICKY BOTTOM BAR ===== -->
-<div id="mobile-cta" class="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#111111] border-t border-[#333] px-4 py-3 flex items-center gap-3 bottom-cta-bar">
-  <a href="tel:${phoneHref}" class="flex-1 bg-[#E53E3E] text-white font-barlow font-bold text-sm uppercase tracking-wider py-3 rounded-[4px] text-center flex items-center justify-center gap-2">
-    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"/></svg>
-    CALL NOW
-  </a>
-  <a href="#quote-form" class="flex-1 bg-[#DD6B20] text-white font-barlow font-bold text-sm uppercase tracking-wider py-3 rounded-[4px] text-center">GET HELP NOW</a>
-</div>
-
-${widgetHtml}
-
-<script>
-(function(){
-  // FAQ accordion
-  window.toggleFaq = function(i) {
-    var answer = document.querySelector('.faq-answer-' + i);
-    var icon = document.querySelector('.faq-icon-' + i);
-    if (!answer) return;
-    var isHidden = answer.classList.contains('hidden');
-    // Close all
-    document.querySelectorAll('[class*="faq-answer-"]').forEach(function(el) { el.classList.add('hidden'); });
-    document.querySelectorAll('[class*="faq-icon-"]').forEach(function(el) { el.style.transform = 'rotate(0deg)'; });
-    if (isHidden) {
-      answer.classList.remove('hidden');
-      icon.style.transform = 'rotate(180deg)';
-    }
-  };
-
-  // Smooth scroll
-  document.querySelectorAll('a[href^="#"]').forEach(function(a) {
-    a.addEventListener('click', function(e) {
-      var target = document.querySelector(this.getAttribute('href'));
-      if (target) {
-        e.preventDefault();
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    });
-  });
-
-  // Reveal on scroll
-  var reveals = document.querySelectorAll('.reveal');
-  var observer = new IntersectionObserver(function(entries) {
-    entries.forEach(function(entry) {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('visible');
-        observer.unobserve(entry.target);
-      }
-    });
-  }, { threshold: 0.1 });
-  reveals.forEach(function(el) { observer.observe(el); });
-
-  // Mobile sticky bar - show on scroll
-  var mobileCta = document.getElementById('mobile-cta');
-  var lastScroll = 0;
-  window.addEventListener('scroll', function() {
-    var st = window.scrollY;
-    if (st > 400) {
-      mobileCta.classList.add('show');
-    } else {
-      mobileCta.classList.remove('show');
-    }
-    lastScroll = st;
-  });
-
-  // Hero form handling
-  document.getElementById('hero-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    var btn = document.getElementById('hero-submit');
-    btn.textContent = 'SUBMITTING...';
-    btn.disabled = true;
-    setTimeout(function() {
-      btn.innerHTML = '<svg class="w-5 h-5 inline" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> WE\\'LL CALL YOU BACK';
-      btn.classList.remove('bg-[#E53E3E]', 'hover:bg-[#C53030]');
-      btn.classList.add('bg-green-600');
-    }, 1200);
-  });
-})();
-<\/script>
+  <script>
+  (function(){
+    // Reveal-on-scroll observer (fast, snappy)
+    var obs = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){
+          e.target.classList.add('visible');
+          obs.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.08, rootMargin: '0px 0px -30px 0px' });
+    document.querySelectorAll('.reveal-el').forEach(function(el){ obs.observe(el); });
+  })();
+  <\/script>
 
 </body>
 </html>`;
 }
 
-module.exports = { name, label, generate };
+module.exports = { name, label, designProfile, generate };

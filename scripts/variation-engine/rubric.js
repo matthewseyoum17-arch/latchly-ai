@@ -26,7 +26,7 @@ const familyModules = {
 
 // ── FAMILY DESIGN DNA ────────────────────────────────────────────────────────
 
-const familyDNA = {
+const familyDNABase = {
   luxury: {
     layout: 'single-column-editorial',
     hero: 'centered-text-no-image',
@@ -100,6 +100,13 @@ const familyDNA = {
     navStyle: 'transparent-overlay-minimal',
   },
 };
+
+const familyDNA = Object.fromEntries(
+  Object.entries(familyDNABase).map(([name, base]) => [
+    name,
+    { ...base, ...((familyModules[name] && familyModules[name].designProfile) || {}) },
+  ])
+);
 
 // ── DIMENSION SCORING ────────────────────────────────────────────────────────
 

@@ -10,11 +10,24 @@ const { generateWidget } = require('../shared/widget');
 
 const name = 'luxury';
 const label = 'Luxury / Minimal Editorial';
+const designProfile = {
+  layout: 'single-column-editorial-sanctuary',
+  hero: 'centered-manifesto-no-image',
+  typography: 'playfair-display+dm-sans',
+  sectionOrder: 'minimal-nav|hero-manifesto|philosophy|services-ledger|single-proof|faq|consultation',
+  components: 'micro-divider|centered-stat-rail|single-pullquote|quiet-service-ledger|minimal-form',
+  personality: 'quiet-architectural-premium',
+  ctaStrategy: 'consultation-low-pressure',
+  colorScheme: 'cream-charcoal-gold',
+  density: 'very-airy',
+  navStyle: 'minimal-centered',
+};
 
 function generate(lead, niche) {
   const c = getCopy('luxury', niche, lead);
   const biz = escHtml(lead.business_name);
   const phone = escHtml(lead.phone || '(555) 000-0000');
+  const phoneHref = (lead.phone || '5550000000').replace(/[^0-9+]/g, '');
   const email = escHtml(lead.email || '');
   const city = escHtml(lead.city || 'Your City');
   const state = escHtml(lead.state || '');
@@ -182,6 +195,7 @@ function generate(lead, niche) {
         <a href="#about" class="text-stone-500 text-sm hover:text-charcoal transition-colors">About</a>
         <a href="#faq" class="text-stone-500 text-sm hover:text-charcoal transition-colors">FAQ</a>
         <a href="#contact" class="text-stone-500 text-sm hover:text-charcoal transition-colors">Contact</a>
+        <a href="tel:${phoneHref}" class="text-charcoal text-sm font-medium hover:text-gold transition-colors">${phone}</a>
       </div>
       <button id="menu-btn" class="md:hidden text-charcoal" aria-label="Menu">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9h16.5m-16.5 6.75h16.5"/></svg>
@@ -193,6 +207,7 @@ function generate(lead, niche) {
       <a href="#about" class="mobile-nav-link font-heading text-2xl text-charcoal">About</a>
       <a href="#faq" class="mobile-nav-link font-heading text-2xl text-charcoal">FAQ</a>
       <a href="#contact" class="mobile-nav-link font-heading text-2xl text-charcoal">Contact</a>
+      <a href="tel:${phoneHref}" class="mobile-nav-link font-heading text-2xl text-gold">${phone}</a>
     </div>
   </nav>
 
@@ -204,6 +219,7 @@ function generate(lead, niche) {
       <p class="text-stone-500 text-lg md:text-xl leading-relaxed max-w-lg mx-auto mb-12 reveal" style="transition-delay: 0.2s;">${escHtml(c.subline)}</p>
       <div class="flex flex-col sm:flex-row items-center justify-center gap-4 reveal" style="transition-delay: 0.3s;">
         <a href="#contact" class="inline-flex items-center px-8 py-3 bg-charcoal text-cream text-sm font-medium rounded-full hover:bg-stone-800 transition-colors">${escHtml(c.cta1)}</a>
+        <a href="tel:${phoneHref}" class="inline-flex items-center px-8 py-3 border border-stone-300 text-sm text-charcoal hover:border-gold hover:text-gold transition-colors rounded-full">Call ${phone}</a>
         <a href="#services" class="inline-flex items-center text-sm text-stone-500 hover:text-charcoal transition-colors group">
           ${escHtml(c.cta2)}
           <svg class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 8.25L21 12m0 0l-3.75 3.75M21 12H3"/></svg>
@@ -408,4 +424,4 @@ function generate(lead, niche) {
 </html>`;
 }
 
-module.exports = { name, label, generate };
+module.exports = { name, label, designProfile, generate };

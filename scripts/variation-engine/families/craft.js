@@ -16,10 +16,23 @@ const projectImages = [
   'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80',
   'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&q=80',
 ];
+const designProfile = {
+  layout: 'asymmetric-portfolio-studio',
+  hero: 'full-bleed-image-with-overlay-card',
+  typography: 'cormorant-garamond+montserrat',
+  sectionOrder: 'transparent-nav|hero-overlap|philosophy|project-showcase|services-editorial|pullquote|process|studio-brief|footer',
+  components: 'project-tiles|editorial-service-rows|single-pullquote|process-columns|studio-brief-form',
+  personality: 'artisanal-detail-obsessed-premium',
+  ctaStrategy: 'portfolio-first-consultation',
+  colorScheme: 'charcoal-gold-warm-stone',
+  density: 'dramatic-asymmetric',
+  navStyle: 'transparent-overlay-minimal',
+};
 
 module.exports = {
   name: 'craft',
   label: 'High-End Craftsmanship',
+  designProfile,
 
   generate(lead, niche) {
     const c = getCopy('craft', niche, lead);
@@ -27,6 +40,7 @@ module.exports = {
     const city = escHtml(lead.city || 'Your City');
     const state = escHtml(lead.state || '');
     const phone = escHtml(lead.phone || '(555) 000-0000');
+    const phoneHref = (lead.phone || '5550000000').replace(/[^0-9+]/g, '');
     const cityState = [lead.city, lead.state].filter(Boolean).join(', ');
     const heroImg = heroImages[niche] || heroImages.hvac;
 
@@ -105,9 +119,12 @@ h1,h2,h3{font-family:'Cormorant Garamond',Georgia,serif;}
         <a href="#process" class="text-stone-500 hover:text-warm text-xs font-medium uppercase tracking-[0.15em] transition-colors">Process</a>
         <a href="#contact" class="text-stone-500 hover:text-warm text-xs font-medium uppercase tracking-[0.15em] transition-colors">Contact</a>
       </div>
-      <a href="#contact" class="hidden lg:inline-flex text-gold text-xs font-medium uppercase tracking-[0.12em] border-b border-gold/30 pb-0.5 hover:border-gold transition-colors">
-        ${escHtml(c.cta1)} →
-      </a>
+      <div class="hidden lg:flex items-center gap-6">
+        <a href="tel:${phoneHref}" class="text-warm text-xs font-semibold uppercase tracking-[0.12em] hover:text-gold transition-colors">Call ${phone}</a>
+        <a href="#contact" class="inline-flex text-gold text-xs font-medium uppercase tracking-[0.12em] border-b border-gold/30 pb-0.5 hover:border-gold transition-colors">
+          ${escHtml(c.cta1)} →
+        </a>
+      </div>
       <button id="mobile-toggle" class="lg:hidden text-warm p-2" aria-label="Menu">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
       </button>
@@ -118,6 +135,7 @@ h1,h2,h3{font-family:'Cormorant Garamond',Georgia,serif;}
       <a href="#work" class="mobile-link block text-stone-400 hover:text-warm text-sm font-medium">Our Work</a>
       <a href="#services" class="mobile-link block text-stone-400 hover:text-warm text-sm font-medium">Services</a>
       <a href="#process" class="mobile-link block text-stone-400 hover:text-warm text-sm font-medium">Process</a>
+      <a href="tel:${phoneHref}" class="mobile-link block text-warm text-sm font-semibold">Call ${phone}</a>
       <a href="#contact" class="mobile-link block text-gold text-sm font-medium">${escHtml(c.cta1)} →</a>
     </div>
   </div>
@@ -139,9 +157,17 @@ h1,h2,h3{font-family:'Cormorant Garamond',Georgia,serif;}
           <a href="#contact" class="text-gold text-xs font-semibold uppercase tracking-[0.12em] border-b border-gold pb-0.5 hover:text-gold-light transition-colors">
             ${escHtml(c.cta1)} →
           </a>
+          <a href="tel:${phoneHref}" class="text-warm text-xs font-semibold uppercase tracking-[0.12em] hover:text-gold transition-colors">
+            Call ${phone}
+          </a>
           <a href="#work" class="text-stone-500 text-xs font-medium uppercase tracking-[0.12em] hover:text-warm transition-colors">
             ${escHtml(c.cta2)}
           </a>
+        </div>
+        <div class="flex flex-wrap items-center gap-2 mt-5 text-[11px] uppercase tracking-[0.14em] text-stone-500">
+          <span class="border border-white/[.08] px-3 py-1.5 rounded-full">Licensed & insured</span>
+          <span class="border border-white/[.08] px-3 py-1.5 rounded-full">Warranty-backed work</span>
+          <span class="border border-white/[.08] px-3 py-1.5 rounded-full">Upfront pricing</span>
         </div>
         <div class="flex items-center gap-4 mt-6 pt-5 border-t border-white/[.06] text-stone-600 text-xs">
           <span>${escHtml(c.stats.years)} years</span>
@@ -251,7 +277,13 @@ ${serviceList}
     <div class="text-center mb-10 reveal">
       <p class="text-gold text-xs font-medium uppercase tracking-[0.2em] mb-4">Get Started</p>
       <h2 class="font-serif text-warm text-3xl md:text-4xl font-semibold mb-3" style="letter-spacing:-0.02em;">Start a Conversation</h2>
-      <p class="text-stone-500 text-sm leading-relaxed">Tell us about your project. We'll schedule a consultation at your convenience.</p>
+      <p class="text-stone-500 text-sm leading-relaxed mb-4">Tell us about your project. We'll schedule a consultation at your convenience.</p>
+      <div class="flex flex-wrap items-center justify-center gap-3 text-[11px] uppercase tracking-[0.14em] text-stone-500">
+        <span class="border border-white/[.08] px-3 py-1.5 rounded-full">Licensed</span>
+        <span class="border border-white/[.08] px-3 py-1.5 rounded-full">Insured</span>
+        <span class="border border-white/[.08] px-3 py-1.5 rounded-full">Workmanship guarantee</span>
+        <a href="tel:${phoneHref}" class="text-gold hover:text-gold-light transition-colors">Call ${phone}</a>
+      </div>
     </div>
     <form id="contact-form" class="reveal" style="background:#222;border:1px solid rgba(255,255,255,.05);border-radius:12px;padding:32px;">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -291,7 +323,7 @@ ${serviceOpts}
         <p class="text-stone-600 text-xs mt-1">${c.nicheLabel} · ${escHtml(cityState)}</p>
       </div>
       <div class="flex items-center gap-6 text-stone-600 text-xs">
-        <span>${phone}</span>
+        <a href="tel:${phoneHref}" class="hover:text-gold transition-colors">${phone}</a>
         <span class="w-px h-3 bg-white/[.06]"></span>
         <span>Mon–Sat · 24/7 Emergency</span>
       </div>
