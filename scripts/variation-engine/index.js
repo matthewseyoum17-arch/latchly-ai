@@ -32,14 +32,15 @@ function getSignalBonus(familyName, signals, niche) {
   let bonus = 0;
 
   if (familyName === 'emergency') {
-    if (signals.emergencyHeavy) bonus += 8;
+    if (signals.emergencyHeavy) bonus += 11;
     if (niche === 'plumbing' || niche === 'roofing') bonus += 1;
+    if (niche === 'hvac' && signals.emergencyHeavy) bonus += 2;
     if (signals.premiumHeavy) bonus -= 2;
   }
 
   if (familyName === 'trust') {
     if (signals.trustHeavy) bonus += 8;
-    if (signals.emergencyHeavy) bonus += 1;
+    if (signals.emergencyHeavy) bonus -= 2;
     if (signals.premiumHeavy) bonus -= 1;
   }
 

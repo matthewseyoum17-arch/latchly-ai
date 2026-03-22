@@ -1,15 +1,31 @@
 /**
  * PREMIUM MODERN UTILITY family
- * Clean white bg, Space Grotesk + Inter, geometric card-grid system.
- * Think Stripe/Linear designed a home service website — clean, functional, premium.
+ * Service-first, action-rail homepage with geometric clarity.
+ * Space Grotesk + Inter. Practical upscale system with a booking / dispatch panel.
  */
 const { escHtml } = require('../shared/utils');
 const { getCopy } = require('../shared/copy');
 const { generateWidget } = require('../shared/widget');
 
+const name = 'modern';
+const label = 'Premium Modern Utility';
+const designProfile = {
+  layout: 'service-first-action-rail',
+  hero: 'split-hero-with-booking-panel',
+  typography: 'space-grotesk+inter',
+  sectionOrder: 'utility|nav|hero-panel|service-matrix|membership-strip|process|compact-reviews|contact-dual',
+  components: 'geometric-panels|pill-badges|metric-strips|stacked-action-rail',
+  personality: 'practical-premium-clean-fast',
+  ctaStrategy: 'request-service-and-call',
+  colorScheme: 'white-indigo-slate',
+  density: 'compact-structured',
+  navStyle: 'utility-bar-plus-clean-nav',
+};
+
 module.exports = {
-  name: 'modern',
-  label: 'Premium Modern Utility',
+  name,
+  label,
+  designProfile,
 
   generate(lead, niche) {
     const c = getCopy('modern', niche, lead);
@@ -56,40 +72,44 @@ module.exports = {
       '<svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>',
       '<svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z"/></svg>'
     ];
-    const serviceProofs = ['Fast scheduling', 'Clear pricing', 'Licensed team', 'Arrival updates', 'Warranty-backed', 'Respectful cleanup'];
-
+    const serviceProofs = ['Fast scheduling', 'Arrival alerts', 'Licensed team', 'Transparent pricing', 'Warranty-backed', 'Respectful cleanup'];
     const serviceCards = c.services.map((svc, i) => `
-          <div class="group bg-white border border-gray-200 rounded-2xl p-6 hover:shadow-lg hover:border-indigo-200 transition-all duration-200 reveal">
-            <div class="w-11 h-11 rounded-xl bg-indigo-50 flex items-center justify-center mb-4 group-hover:bg-indigo-100 transition-colors">
-              ${serviceIcons[i % serviceIcons.length]}
-            </div>
-            <h3 class="font-heading font-semibold text-gray-900 text-base mb-2">${escHtml(svc.title)}</h3>
-            <p class="text-gray-500 text-sm leading-relaxed mb-4">${escHtml(svc.desc)}</p>
-            <div class="inline-flex items-center gap-2 rounded-full bg-gray-50 px-3 py-1.5 text-xs font-semibold text-gray-600">
-              <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
-              ${serviceProofs[i % serviceProofs.length]}
-            </div>
-          </div>`).join('\n');
+      <article class="reveal rounded-3xl border border-gray-200 bg-white p-6 shadow-[0_1px_0_rgba(15,23,42,0.03)] hover:border-indigo-200 hover:shadow-xl transition-all duration-300">
+        <div class="flex items-start justify-between gap-4 mb-5">
+          <div class="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center">${serviceIcons[i % serviceIcons.length]}</div>
+          <span class="inline-flex items-center gap-2 rounded-full bg-gray-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-500">
+            <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>${serviceProofs[i % serviceProofs.length]}
+          </span>
+        </div>
+        <h3 class="font-heading text-lg font-semibold text-gray-900 mb-2">${escHtml(svc.title)}</h3>
+        <p class="text-sm leading-relaxed text-gray-500">${escHtml(svc.desc)}</p>
+      </article>`).join('\n');
 
-    const testimonialCards = c.testimonials.map(t => `
-            <div class="flex-shrink-0 w-80 bg-white border border-gray-200 rounded-xl p-6 snap-start">
-              <div class="flex gap-0.5 mb-3">${'<svg class="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>'.repeat(t.rating)}</div>
-              <p class="text-gray-600 text-sm leading-relaxed mb-4">"${escHtml(t.text)}"</p>
-              <p class="text-gray-900 text-sm font-semibold">${escHtml(t.name)}</p>
-            </div>`).join('\n');
+    const reviewCards = c.testimonials.slice(0, 3).map((t, i) => `
+      <div class="reveal rounded-3xl border ${i === 1 ? 'border-indigo-200 bg-indigo-50/60' : 'border-gray-200 bg-white'} p-6">
+        <div class="flex items-center gap-1 mb-4">${'<svg class="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>'.repeat(t.rating || 5)}</div>
+        <p class="text-sm leading-relaxed text-gray-600 mb-5">“${escHtml(t.text)}”</p>
+        <div class="flex items-center justify-between gap-4">
+          <div>
+            <p class="text-sm font-semibold text-gray-900">${escHtml(t.name)}</p>
+            <p class="text-xs text-gray-500">Verified local customer</p>
+          </div>
+          <span class="rounded-full bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-indigo-600">Fast reply</span>
+        </div>
+      </div>`).join('\n');
 
-    const faqItems = c.faqs.map(faq => `
-          <div class="faq-item border border-gray-200 rounded-xl overflow-hidden">
-            <button class="faq-toggle w-full flex items-center justify-between p-5 text-left hover:bg-gray-50 transition-colors">
-              <span class="font-heading font-semibold text-gray-900 text-sm pr-4">${escHtml(faq.q)}</span>
-              <svg class="faq-icon w-5 h-5 text-gray-400 flex-shrink-0 transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-            </button>
-            <div class="faq-answer">
-              <p class="px-5 pb-5 text-gray-500 text-sm leading-relaxed">${escHtml(faq.a)}</p>
-            </div>
-          </div>`).join('\n');
+    const processSteps = [
+      { title: 'Request service', desc: 'Call or book online and tell us what is happening.' },
+      { title: 'Get clear dispatch details', desc: 'We confirm your window, send updates, and keep you in the loop.' },
+      { title: 'Approve the fix', desc: 'You get upfront options before work begins — no surprises.' },
+    ].map((step, i) => `
+      <div class="reveal rounded-3xl border border-gray-200 bg-white p-6">
+        <div class="w-10 h-10 rounded-2xl bg-gray-900 text-white flex items-center justify-center text-sm font-bold mb-5">0${i + 1}</div>
+        <h3 class="font-heading text-lg font-semibold text-gray-900 mb-2">${step.title}</h3>
+        <p class="text-sm leading-relaxed text-gray-500">${step.desc}</p>
+      </div>`).join('\n');
 
-    const serviceOpts = c.serviceOptions.map(o => `              <option>${escHtml(o)}</option>`).join('\n');
+    const serviceOpts = c.serviceOptions.map(o => `                <option>${escHtml(o)}</option>`).join('\n');
 
     return `<!-- DEMO: ${biz} | Family: modern | Generated by Variation Engine -->
 <!DOCTYPE html>
@@ -100,312 +120,311 @@ module.exports = {
 <meta name="robots" content="noindex, nofollow">
 <title>${biz} — ${c.nicheLabel} | ${escHtml(cityState)}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
 tailwind.config={theme:{extend:{colors:{indigo:{50:'#EEF2FF',100:'#E0E7FF',200:'#C7D2FE',500:'#6366F1',600:'#4F46E5',700:'#4338CA',800:'#3730A3'}},fontFamily:{heading:['Space Grotesk','sans-serif'],body:['Inter','sans-serif']}}}}
 </script>
 <style>
-body{font-family:'Inter',sans-serif;color:#111827;-webkit-font-smoothing:antialiased;}
-h1,h2,h3,h4{font-family:'Space Grotesk',sans-serif;}
-.faq-answer{max-height:0;overflow:hidden;transition:max-height .3s ease;}
-.faq-answer.open{max-height:400px;}
-.faq-icon.rotated{transform:rotate(180deg);}
-.reveal{opacity:0;transform:translateY(12px);transition:opacity .4s ease,transform .4s ease;}
+body{font-family:'Inter',sans-serif;color:#111827;-webkit-font-smoothing:antialiased;background:linear-gradient(180deg,#ffffff 0%,#f7f8fc 100%);}
+h1,h2,h3,h4{font-family:'Space Grotesk',sans-serif;letter-spacing:-0.03em;}
+.reveal{opacity:0;transform:translateY(16px);transition:opacity .45s ease,transform .45s ease;}
 .reveal.active{opacity:1;transform:translateY(0);}
-.scroll-container{scrollbar-width:none;-ms-overflow-style:none;}
-.scroll-container::-webkit-scrollbar{display:none;}
+.mobile-panel{transform:translateY(-105%);transition:transform .28s ease;}
+.mobile-panel.open{transform:translateY(0);}
+.toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,1rem);opacity:0;pointer-events:none;transition:all .3s ease;z-index:70;background:#111827;color:#fff;padding:12px 18px;border-radius:999px;font-size:13px;box-shadow:0 12px 24px rgba(15,23,42,.18);}
 </style>
 </head>
-<body class="bg-white font-body">
+<body>
 
 <!-- UTILITY BAR -->
-<div class="border-b border-gray-100 bg-gray-50/80">
-  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-11 flex items-center justify-between text-xs text-gray-500">
-    <div class="flex items-center gap-3 sm:gap-5">
-      <span class="inline-flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>Open for fast response in ${city}</span>
-      <span class="hidden sm:inline">Upfront pricing before work begins</span>
+<div class="border-b border-gray-100 bg-white/85 backdrop-blur-sm">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-11 flex items-center justify-between text-[11px] sm:text-xs text-gray-500">
+    <div class="flex items-center gap-3 sm:gap-5 overflow-x-auto whitespace-nowrap">
+      <span class="inline-flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>Serving ${city}</span>
+      <span class="hidden sm:inline">Online booking + fast dispatch updates</span>
+      <span class="hidden md:inline">Upfront pricing before work begins</span>
     </div>
-    <a href="tel:${phoneHref}" class="font-semibold text-indigo-700 hover:text-indigo-800 transition-colors">Call ${phone}</a>
+    <a href="tel:${phoneHref}" class="font-semibold text-indigo-700 hover:text-indigo-800 transition-colors">${phone}</a>
   </div>
 </div>
 
 <!-- NAV -->
-<nav id="navbar" class="sticky top-0 z-40 bg-white border-b border-gray-100 transition-shadow duration-200">
-  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="flex items-center justify-between h-16">
-      <a href="#" class="font-heading font-bold text-xl text-gray-900 tracking-tight">${biz}</a>
-      <div class="hidden md:flex items-center gap-1">
-        <a href="#services" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-900 hover:bg-gray-50 rounded-full transition-all">Services</a>
-        <a href="#reviews" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-900 hover:bg-gray-50 rounded-full transition-all">Reviews</a>
-        <a href="#how" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-900 hover:bg-gray-50 rounded-full transition-all">How It Works</a>
-        <a href="#contact" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-900 hover:bg-gray-50 rounded-full transition-all">Contact</a>
-      </div>
-      <div class="hidden md:flex items-center gap-3">
-        <a href="tel:${phoneHref}" class="inline-flex items-center gap-2 text-sm font-semibold text-gray-700 px-4 py-2.5 rounded-full border border-gray-200 hover:border-indigo-200 hover:text-indigo-700 transition-colors">
-          ${phone}
-        </a>
-        <a href="#contact" class="inline-flex items-center gap-2 bg-indigo-600 text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-indigo-700 transition-colors">
-          ${escHtml(c.cta1)}
-        </a>
-      </div>
-      <button id="mobile-toggle" class="md:hidden p-2 text-gray-600" aria-label="Menu">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
-      </button>
+<nav class="sticky top-0 z-40 border-b border-gray-100 bg-white/90 backdrop-blur-sm">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between py-4">
+    <a href="#" class="font-heading text-xl font-bold text-gray-900">${biz}</a>
+    <div class="hidden lg:flex items-center gap-2 rounded-full border border-gray-200 bg-white p-1">
+      <a href="#services" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 rounded-full hover:bg-gray-50 transition-colors">Services</a>
+      <a href="#process" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 rounded-full hover:bg-gray-50 transition-colors">Process</a>
+      <a href="#reviews" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 rounded-full hover:bg-gray-50 transition-colors">Reviews</a>
+      <a href="#contact" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 rounded-full hover:bg-gray-50 transition-colors">Contact</a>
     </div>
+    <div class="hidden lg:flex items-center gap-3">
+      <a href="tel:${phoneHref}" class="inline-flex items-center justify-center rounded-full border border-gray-200 px-5 py-3 text-sm font-semibold text-gray-700 hover:border-indigo-200 hover:text-indigo-700 transition-colors">Call ${phone}</a>
+      <a href="#contact" class="inline-flex items-center justify-center rounded-full bg-indigo-600 px-5 py-3 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors">${escHtml(c.cta1)}</a>
+    </div>
+    <button id="mobile-toggle" class="lg:hidden inline-flex items-center justify-center w-11 h-11 rounded-2xl border border-gray-200 text-gray-700" aria-label="Menu">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
   </div>
-  <div id="mobile-menu" class="hidden md:hidden border-t border-gray-100 bg-white">
+  <div id="mobile-menu" class="mobile-panel lg:hidden absolute inset-x-0 top-full border-b border-gray-100 bg-white shadow-sm">
     <div class="px-4 py-4 space-y-2">
-      <a href="#services" class="mobile-link block px-4 py-2.5 text-gray-700 hover:bg-gray-50 rounded-lg text-sm font-medium">Services</a>
-      <a href="#reviews" class="mobile-link block px-4 py-2.5 text-gray-700 hover:bg-gray-50 rounded-lg text-sm font-medium">Reviews</a>
-      <a href="#how" class="mobile-link block px-4 py-2.5 text-gray-700 hover:bg-gray-50 rounded-lg text-sm font-medium">How It Works</a>
-      <a href="#contact" class="mobile-link block px-4 py-2.5 text-gray-700 hover:bg-gray-50 rounded-lg text-sm font-medium">Contact</a>
-      <a href="tel:${phoneHref}" class="block border border-gray-200 text-gray-700 text-center text-sm font-semibold px-4 py-2.5 rounded-lg mt-2">Call ${phone}</a>
-      <a href="#contact" class="block bg-indigo-600 text-white text-center text-sm font-semibold px-4 py-2.5 rounded-lg mt-2">${escHtml(c.cta1)}</a>
+      <a href="#services" class="mobile-link block rounded-2xl px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50">Services</a>
+      <a href="#process" class="mobile-link block rounded-2xl px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50">Process</a>
+      <a href="#reviews" class="mobile-link block rounded-2xl px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50">Reviews</a>
+      <a href="#contact" class="mobile-link block rounded-2xl px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50">Contact</a>
+      <div class="grid grid-cols-2 gap-2 pt-2">
+        <a href="tel:${phoneHref}" class="rounded-2xl border border-gray-200 px-4 py-3 text-center text-sm font-semibold text-gray-700">Call</a>
+        <a href="#contact" class="rounded-2xl bg-indigo-600 px-4 py-3 text-center text-sm font-semibold text-white">Book</a>
+      </div>
     </div>
   </div>
 </nav>
 
-<!-- HERO — minimal, no image -->
-<section class="bg-white pt-20 pb-16 md:pt-28 md:pb-20">
-  <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-    <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-50 rounded-full mb-6">
-      <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-      <span class="text-xs font-medium text-indigo-700">Serving ${city} — Available Now</span>
-    </div>
-    <h1 class="font-heading font-bold text-gray-900 mb-5" style="font-size:clamp(2rem,4.5vw,3rem);line-height:1.1;letter-spacing:-0.03em;">
-      ${escHtml(c.headline)}
-    </h1>
-    <p class="text-gray-500 text-lg leading-relaxed mb-8 max-w-lg mx-auto">${escHtml(c.subline)}</p>
-    <div class="flex flex-col sm:flex-row gap-3 justify-center">
-      <a href="#contact" class="inline-flex items-center justify-center gap-2 bg-indigo-600 text-white font-semibold px-7 py-3.5 rounded-full hover:bg-indigo-700 transition-colors text-sm">
-        ${escHtml(c.cta1)}
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
-      </a>
-      <a href="tel:${phoneHref}" class="inline-flex items-center justify-center gap-2 border border-gray-200 text-gray-700 font-semibold px-7 py-3.5 rounded-full hover:bg-gray-50 transition-colors text-sm">
-        Call ${phone}
-      </a>
-    </div>
-    <div class="mt-5 flex flex-wrap items-center justify-center gap-3 text-sm text-gray-500">
-      <span class="inline-flex items-center gap-2 rounded-full bg-gray-50 px-3 py-1.5"><span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>Online requests answered fast</span>
-      <span class="inline-flex items-center gap-2 rounded-full bg-gray-50 px-3 py-1.5"><span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>Licensed, insured, and warranty-backed</span>
-    </div>
-  </div>
-</section>
-
-<!-- STATS CARD -->
-<section class="pb-16 md:pb-20">
-  <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="bg-white border border-gray-200 rounded-2xl p-6 md:p-8 reveal">
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-0 md:divide-x divide-gray-100">
-        <div class="text-center md:px-6">
-          <div class="font-heading font-bold text-2xl text-gray-900">${escHtml(c.stats.avgResponse)} min</div>
-          <div class="text-xs text-gray-400 font-medium mt-1 uppercase tracking-wider">Avg Response</div>
+<!-- HERO + ACTION RAIL -->
+<section class="pt-10 pb-12 md:pt-16 md:pb-16">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] items-start">
+    <div class="reveal">
+      <div class="inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-indigo-700 mb-5">
+        <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>${escHtml(c.headlineSub)}
+      </div>
+      <h1 class="max-w-3xl text-gray-900 font-bold mb-5" style="font-size:clamp(2.4rem,5vw,4.7rem);line-height:0.96;">${escHtml(c.headline)}</h1>
+      <p class="max-w-2xl text-lg leading-relaxed text-gray-500 mb-8">${escHtml(c.subline)}</p>
+      <div class="grid gap-4 sm:grid-cols-3 mb-10">
+        <div class="rounded-3xl border border-gray-200 bg-white p-5">
+          <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-400 mb-2">Avg response</p>
+          <p class="font-heading text-3xl font-bold text-gray-900">${escHtml(c.stats.avgResponse)} min</p>
         </div>
-        <div class="text-center md:px-6">
-          <div class="font-heading font-bold text-2xl text-gray-900">${escHtml(c.stats.jobs)}+</div>
-          <div class="text-xs text-gray-400 font-medium mt-1 uppercase tracking-wider">Jobs Done</div>
+        <div class="rounded-3xl border border-gray-200 bg-white p-5">
+          <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-400 mb-2">Jobs completed</p>
+          <p class="font-heading text-3xl font-bold text-gray-900">${escHtml(c.stats.jobs)}+</p>
         </div>
-        <div class="text-center md:px-6">
-          <div class="font-heading font-bold text-2xl text-gray-900">${escHtml(c.stats.rating)}★</div>
-          <div class="text-xs text-gray-400 font-medium mt-1 uppercase tracking-wider">Google Rating</div>
+        <div class="rounded-3xl border border-gray-200 bg-white p-5">
+          <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-400 mb-2">Customer rating</p>
+          <p class="font-heading text-3xl font-bold text-gray-900">${escHtml(c.stats.rating)}★</p>
         </div>
-        <div class="text-center md:px-6">
-          <div class="font-heading font-bold text-2xl text-gray-900">${escHtml(c.stats.years)} yr</div>
-          <div class="text-xs text-gray-400 font-medium mt-1 uppercase tracking-wider">In Business</div>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-2 max-w-2xl">
+        <div class="rounded-3xl bg-gray-900 p-6 text-white">
+          <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-indigo-200 mb-3">What makes this better</p>
+          <ul class="space-y-3 text-sm text-white/80">
+            <li class="flex gap-3"><span class="mt-1 w-1.5 h-1.5 rounded-full bg-indigo-400"></span><span>Service-first UX built to move customers from problem to booking fast.</span></li>
+            <li class="flex gap-3"><span class="mt-1 w-1.5 h-1.5 rounded-full bg-indigo-400"></span><span>Phone, booking, and after-hours lead capture are all visible immediately.</span></li>
+            <li class="flex gap-3"><span class="mt-1 w-1.5 h-1.5 rounded-full bg-indigo-400"></span><span>Clean layout, not cluttered — but still built to convert.</span></li>
+          </ul>
+        </div>
+        <div class="rounded-3xl border border-gray-200 bg-white p-6">
+          <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-400 mb-3">Popular requests</p>
+          <div class="flex flex-wrap gap-2">
+            ${c.serviceOptions.slice(0, 6).map(option => `<span class="rounded-full bg-gray-50 px-3 py-2 text-xs font-medium text-gray-600">${escHtml(option)}</span>`).join('')}
+          </div>
         </div>
       </div>
     </div>
+
+    <aside class="reveal lg:sticky lg:top-28">
+      <div class="rounded-[32px] border border-gray-200 bg-white p-6 shadow-[0_24px_60px_rgba(15,23,42,0.08)]">
+        <div class="flex items-start justify-between gap-4 mb-6">
+          <div>
+            <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-400 mb-2">Fastest path</p>
+            <h2 class="font-heading text-2xl font-bold text-gray-900">Request service</h2>
+          </div>
+          <span class="rounded-full bg-green-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-green-700">Live schedule</span>
+        </div>
+        <div class="grid grid-cols-3 gap-2 mb-6">
+          <div class="rounded-2xl bg-gray-50 p-3 text-center">
+            <p class="text-lg font-bold text-gray-900">1</p>
+            <p class="text-[11px] text-gray-500">Choose service</p>
+          </div>
+          <div class="rounded-2xl bg-gray-50 p-3 text-center">
+            <p class="text-lg font-bold text-gray-900">2</p>
+            <p class="text-[11px] text-gray-500">Pick timing</p>
+          </div>
+          <div class="rounded-2xl bg-gray-50 p-3 text-center">
+            <p class="text-lg font-bold text-gray-900">3</p>
+            <p class="text-[11px] text-gray-500">Get updates</p>
+          </div>
+        </div>
+        <form id="contact-form" class="space-y-4">
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-[0.12em] text-gray-400 mb-2">Service needed</label>
+            <select class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700 focus:border-indigo-500 focus:bg-white focus:outline-none">
+${serviceOpts}
+            </select>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold uppercase tracking-[0.12em] text-gray-400 mb-2">Name</label>
+              <input type="text" placeholder="Your name" class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:border-indigo-500 focus:bg-white focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold uppercase tracking-[0.12em] text-gray-400 mb-2">Phone</label>
+              <input type="tel" placeholder="${phone}" class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:border-indigo-500 focus:bg-white focus:outline-none">
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-[0.12em] text-gray-400 mb-2">What’s happening?</label>
+            <textarea rows="4" placeholder="Tell us what you need help with" class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:border-indigo-500 focus:bg-white focus:outline-none"></textarea>
+          </div>
+          <button type="submit" class="w-full rounded-2xl bg-indigo-600 px-5 py-4 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors">${escHtml(c.cta1)}</button>
+          <div class="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4 text-sm text-gray-600">
+            <p class="font-semibold text-gray-900 mb-1">Prefer the phone?</p>
+            <a href="tel:${phoneHref}" class="text-indigo-700 font-semibold hover:text-indigo-800">Call ${phone}</a>
+          </div>
+        </form>
+      </div>
+    </aside>
   </div>
 </section>
 
 <!-- SERVICES -->
-<section id="services" class="bg-gray-50 py-16 md:py-20">
-  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="text-center mb-12 reveal">
-      <p class="text-indigo-600 text-xs font-bold uppercase tracking-widest mb-3">Our Services</p>
-      <h2 class="font-heading font-bold text-gray-900 text-3xl md:text-4xl" style="letter-spacing:-0.025em;">Everything you need, one team.</h2>
+<section id="services" class="py-16 md:py-20">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-10">
+      <div class="reveal max-w-2xl">
+        <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-indigo-700 mb-3">Service matrix</p>
+        <h2 class="font-heading text-3xl md:text-4xl font-bold text-gray-900 mb-4">Built for fast decision-making</h2>
+        <p class="text-base leading-relaxed text-gray-500">Instead of hiding the important stuff, this layout pushes the actual services and trust details up front so customers can pick a path fast.</p>
+      </div>
+      <div class="reveal inline-flex flex-wrap gap-2">
+        <span class="rounded-full border border-gray-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">Service-first UX</span>
+        <span class="rounded-full border border-gray-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">Phone + form</span>
+        <span class="rounded-full border border-gray-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">Clean hierarchy</span>
+      </div>
     </div>
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
 ${serviceCards}
     </div>
   </div>
 </section>
 
-<!-- REVIEWS — horizontal scroll -->
-<section id="reviews" class="py-16 md:py-20">
-  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="flex items-end justify-between mb-8 reveal">
-      <div>
-        <p class="text-indigo-600 text-xs font-bold uppercase tracking-widest mb-3">Reviews</p>
-        <h2 class="font-heading font-bold text-gray-900 text-2xl md:text-3xl" style="letter-spacing:-0.02em;">What our customers say</h2>
-      </div>
-      <div class="hidden md:flex items-center gap-1.5 text-sm text-gray-400">
-        <span class="text-amber-400">★</span> ${escHtml(c.stats.rating)} on Google
-      </div>
+<!-- MEMBERSHIP / VALUE STRIP -->
+<section class="py-16 md:py-20 bg-gray-900 text-white">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] items-center">
+    <div class="reveal">
+      <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-indigo-200 mb-3">Premium modern utility</p>
+      <h2 class="font-heading text-3xl md:text-4xl font-bold mb-4">The site behaves like a dispatch system, not a brochure.</h2>
+      <p class="max-w-2xl text-base leading-relaxed text-white/75">This family is intentionally more operational: fast scannability, clear actions, compact proof, and enough polish to still feel premium.</p>
     </div>
-    <div class="flex gap-5 overflow-x-auto snap-x snap-mandatory scroll-container pb-4 reveal">
-${testimonialCards}
-    </div>
-  </div>
-</section>
-
-<!-- HOW IT WORKS — 3 steps -->
-<section id="how" class="bg-gray-50 py-16 md:py-20">
-  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="text-center mb-14 reveal">
-      <p class="text-indigo-600 text-xs font-bold uppercase tracking-widest mb-3">How It Works</p>
-      <h2 class="font-heading font-bold text-gray-900 text-2xl md:text-3xl" style="letter-spacing:-0.02em;">Simple as 1-2-3</h2>
-    </div>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 reveal">
-      <div class="text-center">
-        <div class="w-12 h-12 rounded-full bg-indigo-600 text-white font-heading font-bold text-lg flex items-center justify-center mx-auto mb-4">1</div>
-        <h3 class="font-heading font-semibold text-gray-900 mb-2">Book</h3>
-        <p class="text-gray-500 text-sm leading-relaxed">Request a quote online or give us a call. We'll confirm your appointment within minutes.</p>
+    <div class="reveal grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
+      <div class="rounded-3xl border border-white/10 bg-white/5 p-5">
+        <p class="text-sm font-semibold mb-2">Fast response expectation</p>
+        <p class="text-sm text-white/70">Puts response-time reassurance in the first screen instead of burying it later.</p>
       </div>
-      <div class="text-center relative">
-        <div class="hidden md:block absolute top-6 -left-4 w-8 border-t-2 border-dashed border-gray-300"></div>
-        <div class="w-12 h-12 rounded-full bg-indigo-600 text-white font-heading font-bold text-lg flex items-center justify-center mx-auto mb-4">2</div>
-        <h3 class="font-heading font-semibold text-gray-900 mb-2">Service</h3>
-        <p class="text-gray-500 text-sm leading-relaxed">A licensed technician arrives on time, diagnoses the issue, and provides upfront pricing before work begins.</p>
+      <div class="rounded-3xl border border-white/10 bg-white/5 p-5">
+        <p class="text-sm font-semibold mb-2">Clear next action</p>
+        <p class="text-sm text-white/70">Phone, booking, and lead capture all stay visible without feeling loud or cheap.</p>
       </div>
-      <div class="text-center relative">
-        <div class="hidden md:block absolute top-6 -left-4 w-8 border-t-2 border-dashed border-gray-300"></div>
-        <div class="w-12 h-12 rounded-full bg-indigo-600 text-white font-heading font-bold text-lg flex items-center justify-center mx-auto mb-4">3</div>
-        <h3 class="font-heading font-semibold text-gray-900 mb-2">Done</h3>
-        <p class="text-gray-500 text-sm leading-relaxed">Job completed, site cleaned up, and backed by our satisfaction guarantee. It's that simple.</p>
+      <div class="rounded-3xl border border-white/10 bg-white/5 p-5">
+        <p class="text-sm font-semibold mb-2">Practical premium tone</p>
+        <p class="text-sm text-white/70">It feels cleaner and more current than a typical contractor template without drifting into SaaS-land.</p>
       </div>
     </div>
   </div>
 </section>
 
-<!-- FAQ -->
-<section id="faq" class="py-16 md:py-20">
-  <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="text-center mb-10 reveal">
-      <p class="text-indigo-600 text-xs font-bold uppercase tracking-widest mb-3">FAQ</p>
-      <h2 class="font-heading font-bold text-gray-900 text-2xl md:text-3xl" style="letter-spacing:-0.02em;">Common questions</h2>
+<!-- PROCESS -->
+<section id="process" class="py-16 md:py-20">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="reveal max-w-2xl mb-10">
+      <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-indigo-700 mb-3">How it works</p>
+      <h2 class="font-heading text-3xl md:text-4xl font-bold text-gray-900 mb-4">Simple path from problem to booked job</h2>
+      <p class="text-base leading-relaxed text-gray-500">This family uses process clarity as a trust mechanism. It makes the experience feel organized and easy.</p>
     </div>
-    <div class="space-y-3 reveal">
-${faqItems}
+    <div class="grid gap-5 md:grid-cols-3">
+${processSteps}
+    </div>
+  </div>
+</section>
+
+<!-- REVIEWS -->
+<section id="reviews" class="py-16 md:py-20 bg-white">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="reveal flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-10">
+      <div class="max-w-2xl">
+        <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-indigo-700 mb-3">Compact proof</p>
+        <h2 class="font-heading text-3xl md:text-4xl font-bold text-gray-900 mb-4">Operationally sharp. Still trustworthy.</h2>
+        <p class="text-base leading-relaxed text-gray-500">Instead of a giant wall of reviews, this family keeps proof compact and high-signal.</p>
+      </div>
+      <span class="self-start md:self-auto rounded-full bg-indigo-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-indigo-700">${escHtml(c.stats.rating)} average rating</span>
+    </div>
+    <div class="grid gap-5 lg:grid-cols-3">
+${reviewCards}
     </div>
   </div>
 </section>
 
 <!-- CONTACT -->
-<section id="contact" class="bg-gray-50 py-16 md:py-20">
-  <div class="max-w-xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="text-center mb-8 reveal">
-      <h2 class="font-heading font-bold text-gray-900 text-2xl md:text-3xl mb-2" style="letter-spacing:-0.02em;">${escHtml(c.cta1)}</h2>
-      <p class="text-gray-500 text-sm">Fill out the form and we'll get back to you within 15 minutes.</p>
-    </div>
-    <form id="contact-form" class="bg-white border border-gray-200 rounded-2xl p-6 md:p-8 reveal">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-        <div>
-          <label class="block text-xs font-semibold text-gray-600 mb-1.5">Name</label>
-          <input type="text" name="name" required placeholder="John Smith" class="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all">
+<section id="contact" class="py-16 md:py-20">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid gap-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+    <div class="reveal rounded-[32px] bg-indigo-600 p-8 md:p-10 text-white">
+      <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-indigo-100 mb-4">Ready when you are</p>
+      <h2 class="font-heading text-3xl md:text-4xl font-bold mb-4">Make it easy to contact the business.</h2>
+      <p class="text-base leading-relaxed text-indigo-100/90 mb-8">This closing section stays intentionally simple: call, request service, and let the widget handle after-hours questions.</p>
+      <div class="space-y-4 text-sm">
+        <div class="rounded-3xl bg-white/10 px-5 py-4">
+          <p class="text-indigo-100 text-xs uppercase tracking-[0.12em] mb-1">Call now</p>
+          <a href="tel:${phoneHref}" class="text-white font-semibold text-lg">${phone}</a>
         </div>
-        <div>
-          <label class="block text-xs font-semibold text-gray-600 mb-1.5">Phone</label>
-          <input type="tel" name="phone" required placeholder="(555) 123-4567" class="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all">
+        <div class="rounded-3xl bg-white/10 px-5 py-4">
+          <p class="text-indigo-100 text-xs uppercase tracking-[0.12em] mb-1">Coverage</p>
+          <p>${city}${state ? `, ${state}` : ''} and surrounding service area</p>
         </div>
       </div>
-      <div class="mb-4">
-        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Service</label>
-        <select name="service" required class="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all text-gray-700">
-          <option value="" disabled selected>Select a service...</option>
+    </div>
+    <div class="reveal rounded-[32px] border border-gray-200 bg-white p-8 md:p-10">
+      <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-400 mb-3">Quick request</p>
+      <h3 class="font-heading text-2xl md:text-3xl font-bold text-gray-900 mb-4">Tell us what you need.</h3>
+      <p class="text-sm leading-relaxed text-gray-500 mb-6">Fast contact form, clear fields, no clutter.</p>
+      <form class="grid gap-4">
+        <div class="grid gap-4 sm:grid-cols-2">
+          <input type="text" placeholder="Your name" class="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:border-indigo-500 focus:bg-white focus:outline-none">
+          <input type="tel" placeholder="Phone number" class="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:border-indigo-500 focus:bg-white focus:outline-none">
+        </div>
+        <select class="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700 focus:border-indigo-500 focus:bg-white focus:outline-none">
 ${serviceOpts}
         </select>
-      </div>
-      <div class="mb-5">
-        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Message (optional)</label>
-        <textarea name="message" rows="3" placeholder="Describe your issue..." class="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all resize-none"></textarea>
-      </div>
-      <button type="submit" class="w-full bg-indigo-600 text-white font-heading font-semibold py-3 rounded-lg hover:bg-indigo-700 transition-colors text-sm">
-        ${escHtml(c.cta1)}
-      </button>
-    </form>
+        <textarea rows="4" placeholder="Describe the issue or project" class="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:border-indigo-500 focus:bg-white focus:outline-none"></textarea>
+        <button type="submit" class="rounded-2xl bg-gray-900 px-5 py-4 text-sm font-semibold text-white hover:bg-black transition-colors">${escHtml(c.cta1)}</button>
+      </form>
+    </div>
   </div>
 </section>
 
-<!-- FOOTER -->
-<footer class="bg-white border-t border-gray-100 py-12">
-  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-      <div>
-        <p class="font-heading font-bold text-gray-900 text-lg mb-2">${biz}</p>
-        <p class="text-gray-400 text-sm">Fast, reliable ${c.nicheLabel.toLowerCase()} in ${escHtml(cityState)}.</p>
-      </div>
-      <div>
-        <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Quick Links</h4>
-        <ul class="space-y-2">
-          <li><a href="#services" class="text-gray-500 hover:text-gray-900 text-sm transition-colors">Services</a></li>
-          <li><a href="#reviews" class="text-gray-500 hover:text-gray-900 text-sm transition-colors">Reviews</a></li>
-          <li><a href="#how" class="text-gray-500 hover:text-gray-900 text-sm transition-colors">How It Works</a></li>
-          <li><a href="#contact" class="text-gray-500 hover:text-gray-900 text-sm transition-colors">Contact</a></li>
-        </ul>
-      </div>
-      <div>
-        <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Contact</h4>
-        <p class="text-gray-500 text-sm mb-1"><a href="tel:${phoneHref}" class="hover:text-indigo-700 transition-colors">${phone}</a></p>
-        <p class="text-gray-500 text-sm">Mon–Sat 7am–10pm · 24/7 Emergency</p>
-      </div>
-    </div>
-    <div class="mt-10 pt-6 border-t border-gray-100 text-center">
-      <p class="text-gray-300 text-xs">&copy; 2026 ${biz}. All rights reserved.</p>
-    </div>
-  </div>
-</footer>
-
-<!-- Toast -->
-<div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-5 py-3 rounded-lg z-50 flex items-center gap-2 shadow-lg opacity-0 translate-y-4 transition-all duration-300 pointer-events-none">
-  <svg class="w-4 h-4 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
-  <span class="font-medium text-sm">Thanks! We'll be in touch within 15 minutes.</span>
-</div>
+<div id="toast" class="toast">Request captured — this is a concept demo.</div>
+${widget}
 
 <script>
 (function(){
-  // Navbar shadow on scroll
-  var nav=document.getElementById('navbar');
-  window.addEventListener('scroll',function(){nav.style.boxShadow=window.scrollY>20?'0 1px 3px rgba(0,0,0,.06)':'none';});
+  var toggle=document.getElementById('mobile-toggle');
+  var menu=document.getElementById('mobile-menu');
+  toggle.addEventListener('click',function(){menu.classList.toggle('open');});
+  document.querySelectorAll('.mobile-link').forEach(function(link){link.addEventListener('click',function(){menu.classList.remove('open');});});
 
-  // Mobile menu
-  var toggle=document.getElementById('mobile-toggle'),menu=document.getElementById('mobile-menu');
-  toggle.addEventListener('click',function(){menu.classList.toggle('hidden');});
-  document.querySelectorAll('.mobile-link').forEach(function(l){l.addEventListener('click',function(){menu.classList.add('hidden');});});
-
-  // Smooth scroll
   document.querySelectorAll('a[href^="#"]').forEach(function(a){
     a.addEventListener('click',function(e){
-      var t=document.querySelector(this.getAttribute('href'));
-      if(t){e.preventDefault();window.scrollTo({top:t.offsetTop-72,behavior:'smooth'});}
+      var target=document.querySelector(this.getAttribute('href'));
+      if(target){e.preventDefault();window.scrollTo({top:target.offsetTop-88,behavior:'smooth'});menu.classList.remove('open');}
     });
   });
 
-  // Reveal on scroll
-  var ro=new IntersectionObserver(function(entries){entries.forEach(function(e){if(e.isIntersecting){e.target.classList.add('active');ro.unobserve(e.target);}});},{threshold:0.1,rootMargin:'0px 0px -40px 0px'});
+  var ro=new IntersectionObserver(function(entries){entries.forEach(function(entry){if(entry.isIntersecting){entry.target.classList.add('active');ro.unobserve(entry.target);}});},{threshold:0.12,rootMargin:'0px 0px -40px 0px'});
   document.querySelectorAll('.reveal').forEach(function(el){ro.observe(el);});
 
-  // FAQ
-  document.querySelectorAll('.faq-toggle').forEach(function(btn){
-    btn.addEventListener('click',function(){
-      var ans=this.nextElementSibling,icon=this.querySelector('.faq-icon'),open=ans.classList.contains('open');
-      document.querySelectorAll('.faq-answer').forEach(function(a){a.classList.remove('open');});
-      document.querySelectorAll('.faq-icon').forEach(function(i){i.classList.remove('rotated');});
-      if(!open){ans.classList.add('open');icon.classList.add('rotated');}
+  var forms=document.querySelectorAll('form');
+  var toast=document.getElementById('toast');
+  forms.forEach(function(form){
+    form.addEventListener('submit',function(e){
+      e.preventDefault();
+      toast.style.opacity='1';
+      toast.style.transform='translate(-50%,0)';
+      toast.style.pointerEvents='auto';
+      form.reset();
+      setTimeout(function(){toast.style.opacity='0';toast.style.transform='translate(-50%,1rem)';toast.style.pointerEvents='none';},3200);
     });
-  });
-
-  // Form
-  var form=document.getElementById('contact-form'),toast=document.getElementById('toast');
-  form.addEventListener('submit',function(e){
-    e.preventDefault();toast.style.opacity='1';toast.style.transform='translate(-50%,0)';toast.style.pointerEvents='auto';form.reset();
-    setTimeout(function(){toast.style.opacity='0';toast.style.transform='translate(-50%,1rem)';toast.style.pointerEvents='none';},4000);
   });
 })();
 </script>
-
-${widget}
 </body>
 </html>`;
   }
