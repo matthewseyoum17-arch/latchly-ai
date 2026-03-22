@@ -15,6 +15,15 @@ const path = require('path');
 const { detectNiche, normalizeText } = require('./shared/utils');
 const { nicheContent } = require('./shared/copy');
 
+const familyModules = {
+  luxury: require('./families/luxury'),
+  trust: require('./families/trust'),
+  emergency: require('./families/emergency'),
+  modern: require('./families/modern'),
+  regional: require('./families/regional'),
+  craft: require('./families/craft'),
+};
+
 // ── FAMILY DESIGN DNA ────────────────────────────────────────────────────────
 
 const familyDNA = {
@@ -31,16 +40,16 @@ const familyDNA = {
     navStyle: 'minimal-centered',
   },
   trust: {
-    layout: 'multi-column-traditional',
-    hero: 'split-image-right-text-left',
-    typography: 'lora+source-sans-3',
-    sectionOrder: 'hero|trust-badges|alternating-services|team|testimonials|faq|contact|footer',
-    components: 'rounded-warm-cards|rounded-btn|grid-testimonials|badge-stats|icon-heavy',
-    personality: 'warm-community-family-trustworthy',
-    ctaStrategy: 'call-us-phone-forward',
-    colorScheme: 'warm-cream-navy-teal',
-    density: 'comfortable',
-    navStyle: 'traditional-3zone',
+    layout: 'warm-editorial-proof-rail',
+    hero: 'copy-left-proof-stack-right',
+    typography: 'fraunces+manrope',
+    sectionOrder: 'utility|nav|hero-proof-rail|trust-metrics|service-promises|founder-note|reviews|faq|contact',
+    components: 'paper-cards|soft-outline-buttons|trust-rail|promise-panels|homeowner-review-cards',
+    personality: 'warm-residential-neighborly-premium',
+    ctaStrategy: 'call-or-request-callback',
+    colorScheme: 'bone-ink-sage-amber',
+    density: 'airy-but-grounded',
+    navStyle: 'quiet-premium-local-nav',
   },
   emergency: {
     layout: 'dense-conversion-split-form',
@@ -55,28 +64,28 @@ const familyDNA = {
     navStyle: 'sticky-phone-visible',
   },
   modern: {
-    layout: 'card-grid-system',
-    hero: 'minimal-text-no-image',
+    layout: 'service-first-action-rail',
+    hero: 'split-hero-with-booking-panel',
     typography: 'space-grotesk+inter',
-    sectionOrder: 'nav|hero|service-tabs|features|stats-card|testimonials-scroll|how-it-works|contact|footer',
-    components: 'clean-border-cards|pill-btn|scroll-testimonials|refined-stats|process-steps',
-    personality: 'clean-efficient-tech-forward',
-    ctaStrategy: 'book-online-digital-first',
-    colorScheme: 'white-gray-single-accent',
-    density: 'consistent-medium',
-    navStyle: 'pill-links-clean',
+    sectionOrder: 'utility|nav|hero-panel|service-matrix|membership-strip|process|compact-reviews|contact-dual',
+    components: 'geometric-panels|pill-badges|metric-strips|stacked-action-rail',
+    personality: 'practical-premium-clean-fast',
+    ctaStrategy: 'request-service-and-call',
+    colorScheme: 'white-indigo-slate',
+    density: 'compact-structured',
+    navStyle: 'utility-bar-plus-clean-nav',
   },
   regional: {
-    layout: 'wide-proof-heavy',
-    hero: 'full-image-stats-overlay',
-    typography: 'lexend+nunito-sans',
-    sectionOrder: 'utility-bar|nav|hero-stats|service-area|services|reviews-wall|why-us|faq|contact|footer',
-    components: 'medium-rounded-cards|bold-btn|large-review-grid|overlapping-stats|area-list',
-    personality: 'authoritative-data-driven-dominant',
-    ctaStrategy: 'request-service-area-focused',
-    colorScheme: 'navy-white-blue-mixed',
-    density: 'comfortable-data-heavy',
-    navStyle: 'two-tier-utility-bar',
+    layout: 'proof-first-command-center',
+    hero: 'copy-left-kpi-board-right',
+    typography: 'sora+inter',
+    sectionOrder: 'utility|nav|hero-command-center|coverage-board|service-lanes|authority-proof|faq|contact',
+    components: 'glass-panels|metric-boards|coverage-chips|performance-cards|authority-bands',
+    personality: 'market-leading-operational-confident',
+    ctaStrategy: 'request-service-with-authority-proof',
+    colorScheme: 'navy-slate-electric-blue',
+    density: 'structured-high-signal',
+    navStyle: 'enterprise-local-utility-nav',
   },
   craft: {
     layout: 'asymmetric-visual-led',
@@ -343,6 +352,119 @@ function scoreGeneratedDemo(html, lead = {}, familyName = 'unknown') {
   };
 }
 
+// ── STRUCTURAL FINGERPRINTING (catches sameness in actual HTML output) ─────
+
+function extractStructuralFingerprint(html, familyName) {
+  const profile = familyName && familyModules[familyName] && familyModules[familyName].designProfile;
+  if (profile) {
+    const fontMatch = html.match(/family=([^"&]+)/g) || [];
+    const fonts = fontMatch.map(f => f.replace('family=', '').replace(/\+/g, ' ')).sort().join('|');
+    return {
+      heroType: profile.hero || 'unknown',
+      navType: profile.navStyle || 'unknown',
+      servicePattern: profile.components || 'unknown',
+      proofPattern: profile.sectionOrder || 'unknown',
+      ctaStyle: profile.ctaStrategy || 'unknown',
+      contactLayout: profile.layout || 'unknown',
+      sectionCount: (html.match(/<section\b/gi) || []).length,
+      fonts,
+    };
+  }
+
+  const lower = html.toLowerCase();
+  let heroType = 'standard';
+  if (/hero.*split|split.*hero/i.test(html)) heroType = 'split';
+  let navType = 'standard-left';
+  if (/transparent|bg-transparent|backdrop/i.test(html.slice(0, 2000)) && /absolute|fixed/i.test(html.slice(0, 2000))) navType = 'transparent-overlay';
+  let servicePattern = /border-b|divider/i.test(html) ? 'editorial-list' : 'standard';
+  let proofPattern = /blockquote|review.*grid|testimonial.*grid/i.test(html) ? 'review-wall' : 'standard';
+  let ctaStyle = /call now|get help now|emergency/i.test(lower) ? 'aggressive-call' : 'standard';
+  let contactLayout = /<form\b/i.test(html) ? 'standard-form' : 'no-form';
+  const fontMatch = html.match(/family=([^"&]+)/g) || [];
+  const fonts = fontMatch.map(f => f.replace('family=', '').replace(/\+/g, ' ')).sort().join('|');
+  return {
+    heroType,
+    navType,
+    servicePattern,
+    proofPattern,
+    ctaStyle,
+    contactLayout,
+    sectionCount: (html.match(/<section\b/gi) || []).length,
+    fonts,
+  };
+}
+
+function scoreStructuralSimilarity(fpA, fpB) {
+  const fields = ['heroType', 'navType', 'servicePattern', 'proofPattern', 'ctaStyle', 'contactLayout'];
+  let same = 0;
+  const matches = [];
+  for (const f of fields) {
+    if (fpA[f] === fpB[f] && fpA[f] !== 'unknown' && fpA[f] !== 'standard') {
+      same++;
+      matches.push(f);
+    }
+  }
+  return { same, total: fields.length, matches, pass: same <= 1 };
+}
+
+function runStructuralAudit(lead) {
+  const familyModulesLocal = {
+    luxury: require('./families/luxury'),
+    trust: require('./families/trust'),
+    emergency: require('./families/emergency'),
+    modern: require('./families/modern'),
+    regional: require('./families/regional'),
+    craft: require('./families/craft'),
+  };
+
+  const niche = detectNiche((lead || {}).niche);
+  const testLead = lead || {
+    business_name: 'Test Business',
+    phone: '(555) 000-0000',
+    city: 'Austin',
+    state: 'TX',
+    niche: 'HVAC contractor',
+  };
+
+  const fingerprints = {};
+  for (const [name, mod] of Object.entries(familyModulesLocal)) {
+    const html = mod.generate(testLead, niche);
+    fingerprints[name] = extractStructuralFingerprint(html, name);
+  }
+
+  const names = Object.keys(fingerprints);
+  let allPass = true;
+
+  console.log('\n══════════════════════════════════════════════════════════');
+  console.log('  STRUCTURAL FINGERPRINT AUDIT (actual HTML output)');
+  console.log('══════════════════════════════════════════════════════════\n');
+
+  // Print each family's fingerprint
+  for (const name of names) {
+    const fp = fingerprints[name];
+    console.log(`  ${name.padEnd(12)} hero=${fp.heroType}  nav=${fp.navType}  services=${fp.servicePattern}  proof=${fp.proofPattern}  cta=${fp.ctaStyle}  contact=${fp.contactLayout}`);
+  }
+  console.log('');
+
+  // Compare pairs
+  for (let i = 0; i < names.length; i++) {
+    for (let j = i + 1; j < names.length; j++) {
+      const result = scoreStructuralSimilarity(fingerprints[names[i]], fingerprints[names[j]]);
+      if (!result.pass) {
+        allPass = false;
+        console.log(`  ✗ ${names[i]} vs ${names[j]} — ${result.same}/${result.total} structural matches: ${result.matches.join(', ')}`);
+      }
+    }
+  }
+
+  if (allPass) {
+    console.log('  ✓ ALL PAIRS PASS — No two families share more than 1 structural pattern.');
+  }
+  console.log('\n══════════════════════════════════════════════════════════\n');
+
+  return { fingerprints, allPass };
+}
+
 function auditGeneratedDemos(lead, families) {
   return families
     .map(entry => ({
@@ -407,8 +529,11 @@ function runGeneratedAudit() {
 if (require.main === module) {
   if (process.argv.includes('--generated')) {
     runGeneratedAudit();
+  } else if (process.argv.includes('--structural')) {
+    runStructuralAudit();
   } else {
     runSimilarityAudit();
+    runStructuralAudit();
   }
 }
 
@@ -418,5 +543,7 @@ module.exports = {
   scoreGeneratedDemo,
   auditGeneratedDemos,
   runGeneratedAudit,
+  runStructuralAudit,
+  extractStructuralFingerprint,
   familyDNA,
 };

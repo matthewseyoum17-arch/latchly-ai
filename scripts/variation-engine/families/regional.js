@@ -1,126 +1,159 @@
 /**
  * REGIONAL MARKET LEADER family
- * Dark navy hero, wide full-bleed layout, data/proof-heavy.
- * Lexend + Nunito Sans. Stats-forward, service-area prominence.
- * Think: the company that OWNS this market.
+ * Proof-first command-center layout with market coverage, metrics, and operational authority.
  */
-
 const { escHtml, buildCoverageZones } = require('../shared/utils');
 const { getCopy } = require('../shared/copy');
 const { generateWidget } = require('../shared/widget');
 
 const name = 'regional';
 const label = 'Regional Market Leader';
+const designProfile = {
+  layout: 'proof-first-command-center',
+  hero: 'copy-left-kpi-board-right',
+  typography: 'sora+inter',
+  sectionOrder: 'utility|nav|hero-command-center|coverage-board|service-lanes|authority-proof|faq|contact',
+  components: 'glass-panels|metric-boards|coverage-chips|performance-cards|authority-bands',
+  personality: 'market-leading-operational-confident',
+  ctaStrategy: 'request-service-with-authority-proof',
+  colorScheme: 'navy-slate-electric-blue',
+  density: 'structured-high-signal',
+  navStyle: 'enterprise-local-utility-nav',
+};
 
-function generate(lead, niche) {
-  const c = getCopy('regional', niche, lead);
-  const biz = escHtml(lead.business_name);
-  const phone = escHtml(lead.phone || '(555) 000-0000');
-  const email = escHtml(lead.email || '');
-  const city = escHtml(lead.city || 'Your City');
-  const state = escHtml(lead.state || '');
+module.exports = {
+  name,
+  label,
+  designProfile,
 
-  const heroImages = {
-    hvac: 'https://images.unsplash.com/photo-1585771724684-38269d6639fd?w=1920&q=80',
-    plumbing: 'https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=1920&q=80',
-    roofing: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1920&q=80',
-  };
-  const heroImg = heroImages[niche] || heroImages.hvac;
+  generate(lead, niche) {
+    const c = getCopy('regional', niche, lead);
+    const biz = escHtml(lead.business_name);
+    const phone = escHtml(lead.phone || '(555) 000-0000');
+    const phoneHref = (lead.phone || '5550000000').replace(/[^0-9+]/g, '');
+    const email = escHtml(lead.email || '');
+    const city = escHtml(lead.city || 'Your City');
+    const state = escHtml(lead.state || '');
+    const coverageZones = buildCoverageZones(city);
 
-  const widgetHtml = generateWidget(lead, {
-    emoji: c.emoji,
-    headBg: 'linear-gradient(135deg, #0F1B2D, #1a2d47)',
-    avatarBg: 'linear-gradient(135deg, #0F1B2D, #1a2d47)',
-    fabBg: '#2563EB',
-    fabRadius: '10px',
-    fabSize: '52px',
-    panelRadius: '10px',
-    bodyFont: "'Nunito Sans', sans-serif",
-    headingFont: "'Lexend', sans-serif",
-    userMsgBg: '#2563EB',
-    sendBg: '#2563EB',
-    sendHoverBg: '#1d4ed8',
-    linkColor: '#2563EB',
-    inputFocusBorder: '#2563EB',
-    inputFocusRing: 'rgba(37, 99, 235, 0.12)',
-    qrBorder: 'rgba(37, 99, 235, 0.3)',
-    qrColor: '#2563EB',
-    qrBg: 'rgba(37, 99, 235, 0.06)',
-    qrHoverBg: '#2563EB',
-    qrRadius: '8px',
-    inputRadius: '10px',
-    msgBotRadius: '4px 14px 14px 14px',
-    msgUserRadius: '14px 14px 4px 14px',
-    chatBg: '#f8fafc',
-    fabShadow: '0 4px 20px rgba(37, 99, 235, 0.35)',
-  }, c.quickReplies, c.serviceOptions);
+    const widgetHtml = generateWidget(lead, {
+      emoji: c.emoji,
+      headBg: 'linear-gradient(135deg, #0B1220, #14233A)',
+      avatarBg: 'linear-gradient(135deg, #0B1220, #14233A)',
+      fabBg: '#2563EB',
+      fabRadius: '12px',
+      fabSize: '54px',
+      panelRadius: '14px',
+      bodyFont: "'Inter', sans-serif",
+      headingFont: "'Sora', sans-serif",
+      userMsgBg: '#2563EB',
+      sendBg: '#2563EB',
+      sendHoverBg: '#1d4ed8',
+      linkColor: '#2563EB',
+      inputFocusBorder: '#2563EB',
+      inputFocusRing: 'rgba(37, 99, 235, 0.12)',
+      qrBorder: 'rgba(37, 99, 235, 0.24)',
+      qrColor: '#2563EB',
+      qrBg: 'rgba(37, 99, 235, 0.05)',
+      qrHoverBg: '#2563EB',
+      qrRadius: '14px',
+      inputRadius: '12px',
+      msgBotRadius: '6px 16px 16px 16px',
+      msgUserRadius: '16px 16px 6px 16px',
+      chatBg: '#F8FAFC',
+      fabShadow: '0 10px 24px rgba(37, 99, 235, 0.28)',
+    }, c.quickReplies, c.serviceOptions);
 
-  // Service icon SVGs by index
-  const serviceIcons = [
-    '<svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17l-5.384 3.183 1.03-5.996L2.34 7.86l6.027-.876L11.42 1.5l3.053 5.484 6.027.876-4.726 4.497 1.03 5.996z"/></svg>',
-    '<svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75a4.5 4.5 0 01-4.884 4.484c-1.076-.091-2.264.071-2.95.904l-7.152 8.684a2.548 2.548 0 11-3.586-3.586l8.684-7.152c.833-.686.995-1.874.904-2.95a4.5 4.5 0 016.336-4.486l-3.276 3.276a3.004 3.004 0 002.25 2.25l3.276-3.276c.256.565.398 1.192.398 1.852z"/></svg>',
-    '<svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955a1.126 1.126 0 011.591 0l8.955 8.955M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75"/></svg>',
-    '<svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg>',
-    '<svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/></svg>',
-    '<svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>',
-  ];
+    const metrics = [
+      { label: 'Response time', value: `${escHtml(c.stats.avgResponse)} min`, note: 'Average dispatch response' },
+      { label: 'Completed jobs', value: `${escHtml(c.stats.jobs)}+`, note: 'Documented service history' },
+      { label: 'Average rating', value: `${escHtml(c.stats.rating)}★`, note: 'Local homeowner satisfaction' },
+      { label: 'Years active', value: `${escHtml(c.stats.years)}+`, note: 'Operating in the market' },
+    ];
 
-  // Services grid HTML
-  const servicesHtml = c.services.map((s, i) => `
-              <div class="bg-white rounded-[10px] shadow-sm hover:shadow-md transition-shadow p-6 group">
-                <div class="w-14 h-14 rounded-[10px] bg-blue-50 text-blue-600 flex items-center justify-center mb-4 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                  ${serviceIcons[i] || serviceIcons[0]}
-                </div>
-                <h3 class="font-heading text-navy text-lg font-semibold mb-2">${escHtml(s.title)}</h3>
-                <p class="text-slate-500 text-sm leading-relaxed">${escHtml(s.desc)}</p>
-              </div>`).join('');
+    const metricTiles = metrics.map((item, i) => `
+      <div class="reveal rounded-[26px] border ${i === 0 ? 'border-blue-400/40 bg-blue-500/10' : 'border-white/10 bg-white/5'} p-5 backdrop-blur-sm">
+        <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 mb-2">${item.label}</p>
+        <p class="font-heading text-3xl font-semibold text-white mb-2">${item.value}</p>
+        <p class="text-sm leading-6 text-slate-400">${item.note}</p>
+      </div>`).join('');
 
-  // Testimonials grid
-  const starSvg = '<svg class="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>';
-  const fiveStars = `${starSvg}${starSvg}${starSvg}${starSvg}${starSvg}`;
-  const testimonialsHtml = c.testimonials.map(t => `
-              <div class="bg-white rounded-[10px] shadow-sm p-6">
-                <div class="flex items-center gap-1 mb-3">${fiveStars}</div>
-                <p class="text-slate-600 text-sm leading-relaxed mb-4">&ldquo;${escHtml(t.text)}&rdquo;</p>
-                <div class="flex items-center gap-3">
-                  <div class="w-9 h-9 rounded-full bg-navy text-white flex items-center justify-center text-xs font-bold">${escHtml(t.name.charAt(0))}</div>
-                  <span class="text-navy text-sm font-semibold">${escHtml(t.name)}</span>
-                </div>
-              </div>`).join('');
+    const laneColors = ['blue', 'slate', 'indigo', 'cyan'];
+    const serviceLanes = c.services.slice(0, 4).map((service, i) => {
+      const accent = laneColors[i % laneColors.length];
+      const tags = [
+        ['Priority scheduling', 'Clear scope'],
+        ['Certified crews', 'Quality materials'],
+        ['Real-time updates', 'Clean handoff'],
+        ['Long-term value', 'Warranty-backed'],
+      ][i % 4];
+      return `
+        <article class="reveal rounded-[30px] border border-slate-200 bg-white p-7 shadow-[0_12px_50px_rgba(15,23,42,0.05)]">
+          <div class="flex items-start justify-between gap-5 mb-6">
+            <div>
+              <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-${accent}-600 mb-2">Service lane</p>
+              <h3 class="font-heading text-2xl font-semibold text-slate-900 leading-tight">${escHtml(service.title)}</h3>
+            </div>
+            <div class="rounded-full border border-slate-200 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Operational</div>
+          </div>
+          <p class="text-[15px] leading-7 text-slate-600 mb-6">${escHtml(service.desc)}</p>
+          <div class="grid gap-3 sm:grid-cols-2">
+            ${tags.map(tag => `<div class="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-medium text-slate-600 border border-slate-200">${escHtml(tag)}</div>`).join('')}
+          </div>
+        </article>`;
+    }).join('');
 
-  // Why Us 4-col grid
-  const whyIcons = [
-    '<svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>',
-    '<svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z"/></svg>',
-    '<svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg>',
-    '<svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.633 10.5c.806 0 1.533-.446 2.031-1.08a9.041 9.041 0 012.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 00.322-1.672V3a.75.75 0 01.75-.75A2.25 2.25 0 0116.5 4.5c0 1.152-.26 2.243-.723 3.218-.266.558.107 1.282.725 1.282h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 01-2.649 7.521c-.388.482-.987.729-1.605.729H14.23c-.483 0-.964-.078-1.423-.23l-3.114-1.04a4.501 4.501 0 00-1.423-.23H5.904M14.25 9h2.25M5.904 18.75c.083.205.173.405.27.602.197.4-.078.898-.523.898h-.908c-.889 0-1.713-.518-1.972-1.368a12 12 0 01-.521-3.507c0-1.553.295-3.036.831-4.398C3.387 10.203 4.167 9.75 5 9.75h1.053c.472 0 .745.556.5.96a8.958 8.958 0 00-1.302 4.665c0 1.194.232 2.333.654 3.375z"/></svg>',
-  ];
-  const whyUsHtml = c.whyUs.map((w, i) => `
-              <div class="text-center">
-                <div class="w-14 h-14 mx-auto rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mb-4">
-                  ${whyIcons[i] || whyIcons[0]}
-                </div>
-                <h4 class="font-heading text-navy text-base font-semibold mb-2">${escHtml(w.title)}</h4>
-                <p class="text-slate-500 text-sm leading-relaxed">${escHtml(w.desc)}</p>
-              </div>`).join('');
+    const authorityCards = [
+      {
+        title: 'Coverage confidence',
+        body: `Strong operators win when their service area, speed, and proof are visible before the visitor has to dig.`
+      },
+      {
+        title: 'Stronger homeowner confidence',
+        body: `This family is built to make the business look established, capable, and operationally sharp — the kind of site that supports a premium offer.`
+      },
+      {
+        title: 'Cleaner trust hierarchy',
+        body: `Instead of generic contractor sections, it uses a command-center rhythm: metrics, lanes, coverage, authority, then conversion.`
+      },
+    ].map((card, i) => `
+      <div class="reveal rounded-[28px] border ${i === 1 ? 'border-blue-200 bg-blue-50/70' : 'border-slate-200 bg-white'} p-6 shadow-[0_8px_36px_rgba(15,23,42,0.04)]">
+        <p class="font-heading text-2xl font-semibold text-slate-900 mb-3">${card.title}</p>
+        <p class="text-[15px] leading-7 text-slate-600">${card.body}</p>
+      </div>`).join('');
 
-  // FAQ accordion
-  const faqHtml = c.faqs.map((f, i) => `
-              <div class="faq-item border-b border-slate-200">
-                <button class="faq-toggle w-full text-left py-5 flex items-center justify-between group" data-faq="${i}">
-                  <span class="font-heading text-navy font-semibold text-sm pr-8">${escHtml(f.q)}</span>
-                  <svg class="faq-icon w-5 h-5 text-slate-400 transition-transform duration-300 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </button>
-                <div class="faq-content overflow-hidden max-h-0 transition-all duration-300">
-                  <p class="text-slate-500 text-sm leading-relaxed pb-5">${escHtml(f.a)}</p>
-                </div>
-              </div>`).join('');
+    const coverageChips = coverageZones.map((zone, i) => `
+      <div class="rounded-2xl border ${i % 3 === 0 ? 'border-blue-200 bg-blue-50/70 text-blue-700' : 'border-slate-200 bg-white text-slate-600'} px-4 py-3 text-sm font-medium shadow-[0_4px_24px_rgba(15,23,42,0.03)]">${escHtml(zone)}</div>`).join('');
 
-  // Safe coverage zones: stay generic instead of inventing suspicious locality names.
-  const areaCities = buildCoverageZones(city);
-  const areaCitiesHtml = areaCities.map(c => `<li class="text-slate-300 text-sm py-1">${escHtml(c)}</li>`).join('');
+    const reviewCards = c.testimonials.map((review, i) => `
+      <article class="reveal rounded-[28px] border ${i === 0 ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-900'} p-6 shadow-[0_12px_44px_rgba(15,23,42,0.04)]">
+        <div class="flex items-center gap-1 mb-4">${'<svg class="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>'.repeat(review.rating || 5)}</div>
+        <p class="text-[15px] leading-7 ${i === 0 ? 'text-white/80' : 'text-slate-600'} mb-5">“${escHtml(review.text)}”</p>
+        <div class="flex items-center justify-between gap-4">
+          <div>
+            <p class="font-semibold">${escHtml(review.name)}</p>
+            <p class="text-xs uppercase tracking-[0.14em] ${i === 0 ? 'text-white/40' : 'text-slate-400'} mt-1">Verified local customer</p>
+          </div>
+          <div class="rounded-full ${i === 0 ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-900'} w-11 h-11 flex items-center justify-center font-semibold">${escHtml(review.name.charAt(0).toUpperCase())}</div>
+        </div>
+      </article>`).join('');
 
-  return `<!DOCTYPE html>
+    const faqHtml = c.faqs.map((faq, i) => `
+      <div class="faq-item border-b border-slate-200">
+        <button class="faq-toggle w-full py-5 text-left flex items-center justify-between gap-6" data-faq="${i}">
+          <span class="font-heading text-xl text-slate-900 font-medium">${escHtml(faq.q)}</span>
+          <span class="faq-icon w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-slate-500 transition-all">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+          </span>
+        </button>
+        <div class="faq-content overflow-hidden max-h-0 transition-all duration-300">
+          <p class="pb-5 pr-10 text-[15px] leading-7 text-slate-600">${escHtml(faq.a)}</p>
+        </div>
+      </div>`).join('');
+
+    const contactOptions = c.serviceOptions.slice(0, 6).map(opt => `<option>${escHtml(opt)}</option>`).join('');
+
+    return `<!DOCTYPE html>
 <!-- DEMO: ${biz} | Family: regional | Generated by Variation Engine -->
 <html lang="en">
 <head>
@@ -128,374 +161,291 @@ function generate(lead, niche) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
   <title>${biz} — Trusted ${escHtml(c.nicheLabel)} Across ${city}</title>
-  <script src="https://cdn.tailwindcss.com"><\/script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800&family=Nunito+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
       theme: {
         extend: {
           colors: {
-            navy: '#0F1B2D',
-            'navy-light': '#162236',
-            'navy-mid': '#1a2d47',
-            blue: { 600: '#2563EB', 700: '#1d4ed8' },
-            'light-bg': '#F8FAFC',
+            night: '#0B1220',
+            panel: '#111C31',
+            slate2: '#1B273B',
           },
           fontFamily: {
-            heading: ['"Lexend"', 'sans-serif'],
-            body: ['"Nunito Sans"', 'sans-serif'],
+            heading: ['Sora', 'sans-serif'],
+            body: ['Inter', 'sans-serif'],
           },
         },
       },
     };
-  <\/script>
+  </script>
   <style>
     html { scroll-behavior: smooth; }
-    body { font-family: 'Nunito Sans', sans-serif; color: #334155; }
-
-    .reveal { opacity: 0; transform: translateY(28px); transition: opacity 0.7s ease, transform 0.7s ease; }
+    body { font-family: 'Inter', sans-serif; color: #0f172a; background: #F8FAFC; }
+    .reveal { opacity: 0; transform: translateY(24px); transition: opacity .55s ease, transform .55s ease; }
     .reveal.visible { opacity: 1; transform: translateY(0); }
-
-    .faq-item .faq-content { max-height: 0; }
-    .faq-item.open .faq-content { max-height: 400px; }
-    .faq-item.open .faq-icon { transform: rotate(180deg); }
-
-    #mobile-menu { transform: translateX(100%); transition: transform 0.3s ease; }
-    #mobile-menu.open { transform: translateX(0); }
-
-    .toast { position: fixed; top: 24px; right: 24px; background: #0F1B2D; color: #fff; padding: 16px 24px; border-radius: 10px; font-size: 14px; z-index: 9998; opacity: 0; transform: translateY(-12px); transition: opacity 0.3s, transform 0.3s; }
-    .toast.show { opacity: 1; transform: translateY(0); }
-
-    .nav-scrolled { background: rgba(255,255,255,0.97) !important; box-shadow: 0 1px 8px rgba(0,0,0,0.06); }
-    .nav-scrolled .nav-main-link { color: #0F1B2D; }
-    .nav-scrolled .nav-main-logo { color: #0F1B2D; }
-
-    ::selection { background: rgba(37, 99, 235, 0.15); }
+    .faq-item.open .faq-content { max-height: 320px; }
+    .faq-item.open .faq-icon { transform: rotate(180deg); border-color: rgba(37,99,235,.35); color: #2563EB; background: rgba(37,99,235,.06); }
+    .mobile-panel { transform: translateY(-105%); transition: transform .28s ease; }
+    .mobile-panel.open { transform: translateY(0); }
+    .toast { position: fixed; right: 24px; top: 24px; background: #0B1220; color: #fff; padding: 14px 18px; border-radius: 18px; box-shadow: 0 16px 36px rgba(15,23,42,.18); opacity: 0; transform: translateY(-10px); pointer-events: none; transition: all .3s ease; z-index: 80; }
+    .grid-bg { background-image: linear-gradient(rgba(148,163,184,.12) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,.12) 1px, transparent 1px); background-size: 36px 36px; }
   </style>
 </head>
-<body class="bg-white antialiased">
+<body>
 
-  <!-- UTILITY BAR -->
-  <div class="bg-navy text-white">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex items-center justify-between text-xs">
-      <div class="flex items-center gap-4 sm:gap-6">
-        <span class="flex items-center gap-1.5">
-          <svg class="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>
-          Serving ${city} Metro
-        </span>
-        <span class="hidden sm:flex items-center gap-1.5">
-          <svg class="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-          Mon-Sat: 7AM - 8PM &middot; Sun: Emergency Only
-        </span>
+<div class="bg-night text-white border-b border-white/10">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-11 flex items-center justify-between text-[11px] sm:text-xs text-slate-300">
+    <div class="flex items-center gap-3 sm:gap-6 overflow-x-auto whitespace-nowrap">
+      <span class="inline-flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span>Serving ${city}${state ? `, ${state}` : ''} and surrounding communities</span>
+      <span class="hidden sm:inline">Authority-driven regional service presentation</span>
+    </div>
+    <a href="tel:${phoneHref}" class="font-semibold text-white hover:text-blue-300 transition-colors">${phone}</a>
+  </div>
+</div>
+
+<nav class="sticky top-0 z-40 border-b border-slate-200 bg-white/92 backdrop-blur-sm">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+    <a href="#" class="font-heading text-2xl font-semibold text-slate-900 tracking-tight">${biz}</a>
+    <div class="hidden lg:flex items-center gap-8 text-sm text-slate-600">
+      <a href="#coverage" class="hover:text-slate-900 transition-colors">Coverage</a>
+      <a href="#services" class="hover:text-slate-900 transition-colors">Services</a>
+      <a href="#authority" class="hover:text-slate-900 transition-colors">Authority</a>
+      <a href="#faq" class="hover:text-slate-900 transition-colors">FAQ</a>
+      <a href="#contact" class="hover:text-slate-900 transition-colors">Contact</a>
+    </div>
+    <div class="hidden lg:flex items-center gap-3">
+      <a href="tel:${phoneHref}" class="inline-flex items-center justify-center rounded-full border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-900 hover:border-blue-500 hover:text-blue-600 transition-colors">${phone}</a>
+      <a href="#contact" class="inline-flex items-center justify-center rounded-full bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700 transition-colors">${escHtml(c.cta1)}</a>
+    </div>
+    <button id="mobile-toggle" class="lg:hidden inline-flex items-center justify-center w-11 h-11 rounded-full border border-slate-300 text-slate-900" aria-label="Menu">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+  </div>
+  <div id="mobile-menu" class="mobile-panel lg:hidden absolute inset-x-0 top-full border-b border-slate-200 bg-white shadow-sm">
+    <div class="px-4 py-4 space-y-2">
+      <a href="#coverage" class="mobile-link block rounded-2xl px-4 py-3 text-sm font-medium text-slate-900 hover:bg-slate-50">Coverage</a>
+      <a href="#services" class="mobile-link block rounded-2xl px-4 py-3 text-sm font-medium text-slate-900 hover:bg-slate-50">Services</a>
+      <a href="#authority" class="mobile-link block rounded-2xl px-4 py-3 text-sm font-medium text-slate-900 hover:bg-slate-50">Authority</a>
+      <a href="#faq" class="mobile-link block rounded-2xl px-4 py-3 text-sm font-medium text-slate-900 hover:bg-slate-50">FAQ</a>
+      <a href="#contact" class="mobile-link block rounded-2xl px-4 py-3 text-sm font-medium text-slate-900 hover:bg-slate-50">Contact</a>
+      <div class="grid grid-cols-2 gap-2 pt-2">
+        <a href="tel:${phoneHref}" class="rounded-2xl border border-slate-300 px-4 py-3 text-center text-sm font-semibold text-slate-900">Call</a>
+        <a href="#contact" class="rounded-2xl bg-blue-600 px-4 py-3 text-center text-sm font-semibold text-white">Request</a>
       </div>
-      <a href="tel:${phone.replace(/[^\d+]/g, '')}" class="flex items-center gap-1.5 font-bold hover:text-blue-300 transition-colors">
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"/></svg>
-        ${phone}
-      </a>
     </div>
   </div>
+</nav>
 
-  <!-- MAIN NAV -->
-  <nav id="main-nav" class="sticky top-0 z-50 bg-white border-b border-slate-100 transition-all duration-300">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
-      <a href="#" class="nav-main-logo font-heading text-navy text-xl font-bold tracking-tight">${biz}</a>
-      <div class="hidden lg:flex items-center gap-8">
-        <a href="#service-area" class="nav-main-link text-slate-600 text-sm font-medium hover:text-navy transition-colors">Service Area</a>
-        <a href="#services" class="nav-main-link text-slate-600 text-sm font-medium hover:text-navy transition-colors">Services</a>
-        <a href="#reviews" class="nav-main-link text-slate-600 text-sm font-medium hover:text-navy transition-colors">Reviews</a>
-        <a href="#why-us" class="nav-main-link text-slate-600 text-sm font-medium hover:text-navy transition-colors">Why Us</a>
-        <a href="#faq" class="nav-main-link text-slate-600 text-sm font-medium hover:text-navy transition-colors">FAQ</a>
+<section class="relative overflow-hidden bg-night text-white">
+  <div class="absolute inset-0 grid-bg opacity-25"></div>
+  <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(37,99,235,0.22),transparent_32%),radial-gradient(circle_at_bottom_left,rgba(14,165,233,0.14),transparent_28%)]"></div>
+  <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-20 lg:py-24 grid gap-10 lg:grid-cols-[minmax(0,1fr)_430px] items-start">
+    <div class="reveal">
+      <div class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-300 mb-6">
+        <span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span>${escHtml(c.headlineSub)}
       </div>
-      <div class="flex items-center gap-3">
-        <a href="#contact" class="hidden sm:inline-flex items-center px-5 py-2.5 bg-blue-600 text-white text-sm font-bold rounded-[10px] hover:bg-blue-700 transition-colors shadow-sm">${escHtml(c.cta1)}</a>
-        <button id="menu-btn" class="lg:hidden text-navy p-1" aria-label="Menu">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg>
-        </button>
+      <h1 class="font-heading font-semibold mb-6 max-w-3xl" style="font-size:clamp(2.8rem,5vw,5rem);line-height:0.98;">${escHtml(c.headline)}</h1>
+      <p class="max-w-2xl text-lg leading-8 text-slate-300 mb-8">${escHtml(c.subline)}</p>
+      <div class="flex flex-col sm:flex-row gap-3 mb-6">
+        <a href="#contact" class="inline-flex items-center justify-center rounded-full bg-blue-600 px-7 py-4 text-sm font-semibold text-white hover:bg-blue-700 transition-colors">${escHtml(c.cta1)}</a>
+        <a href="#coverage" class="inline-flex items-center justify-center rounded-full border border-white/15 px-7 py-4 text-sm font-semibold text-white hover:bg-white/5 transition-colors">${escHtml(c.cta2)}</a>
       </div>
-    </div>
-    <!-- Mobile menu -->
-    <div id="mobile-menu" class="lg:hidden fixed inset-0 top-0 bg-white z-[60] flex flex-col">
-      <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-        <span class="font-heading text-navy text-xl font-bold">${biz}</span>
-        <button id="menu-close" class="text-navy p-1" aria-label="Close">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-        </button>
+      <div class="flex flex-wrap gap-2 mb-10 max-w-2xl">
+        <span class="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-300">Licensed & insured</span>
+        <span class="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-300">Warranty-backed work</span>
+        <span class="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-300">Transparent pricing</span>
+        <span class="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-300">Financing available</span>
       </div>
-      <div class="flex-1 flex flex-col items-center justify-center gap-8">
-        <a href="#service-area" class="mobile-nav-link font-heading text-2xl text-navy font-semibold">Service Area</a>
-        <a href="#services" class="mobile-nav-link font-heading text-2xl text-navy font-semibold">Services</a>
-        <a href="#reviews" class="mobile-nav-link font-heading text-2xl text-navy font-semibold">Reviews</a>
-        <a href="#why-us" class="mobile-nav-link font-heading text-2xl text-navy font-semibold">Why Us</a>
-        <a href="#faq" class="mobile-nav-link font-heading text-2xl text-navy font-semibold">FAQ</a>
-        <a href="#contact" class="mobile-nav-link mt-4 inline-flex items-center px-8 py-3 bg-blue-600 text-white text-base font-bold rounded-[10px]">${escHtml(c.cta1)}</a>
-      </div>
-    </div>
-  </nav>
-
-  <!-- HERO with full-width image + stats overlay -->
-  <section class="relative">
-    <div class="relative h-[600px] sm:h-[650px] lg:h-[700px] overflow-hidden">
-      <img src="${heroImg}" alt="${escHtml(c.nicheLabel)} in ${city}" class="absolute inset-0 w-full h-full object-cover" loading="eager">
-      <div class="absolute inset-0 bg-gradient-to-b from-navy/80 via-navy/60 to-navy/90"></div>
-      <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex flex-col justify-center pb-28">
-        <p class="text-blue-300 text-xs sm:text-sm tracking-[0.15em] uppercase font-bold mb-4 reveal">${escHtml(c.headlineSub)}</p>
-        <h1 class="font-heading text-white text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight max-w-3xl mb-6 reveal" style="transition-delay:0.1s">${escHtml(c.headline)}</h1>
-        <p class="text-slate-300 text-base sm:text-lg leading-relaxed max-w-xl mb-8 reveal" style="transition-delay:0.2s">${escHtml(c.subline)}</p>
-        <div class="flex flex-col sm:flex-row items-start gap-3 reveal" style="transition-delay:0.3s">
-          <a href="#contact" class="inline-flex items-center px-7 py-3 bg-blue-600 text-white text-sm font-bold rounded-[10px] hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/25">${escHtml(c.cta1)}</a>
-          <a href="#service-area" class="inline-flex items-center px-7 py-3 border-2 border-white/30 text-white text-sm font-bold rounded-[10px] hover:bg-white/10 transition-colors">${escHtml(c.cta2)}</a>
+      <div class="grid gap-4 sm:grid-cols-2 max-w-2xl">
+        <div class="rounded-[28px] border border-white/10 bg-white/5 p-6 backdrop-blur-sm">
+          <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 mb-2">Regional positioning</p>
+          <p class="font-heading text-2xl leading-tight mb-3">Built to make the business feel like the operator that owns the market.</p>
+          <p class="text-sm leading-7 text-slate-400">Less brochure, more command center. Coverage, proof, and capabilities are visible early.</p>
+        </div>
+        <div class="rounded-[28px] border border-white/10 bg-blue-500/10 p-6 backdrop-blur-sm">
+          <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-300 mb-2">Why it feels premium</p>
+          <ul class="space-y-3 text-sm leading-6 text-slate-300">
+            <li class="flex gap-3"><span class="mt-2 w-1.5 h-1.5 rounded-full bg-blue-400"></span><span>Stronger metric hierarchy than a typical local service site.</span></li>
+            <li class="flex gap-3"><span class="mt-2 w-1.5 h-1.5 rounded-full bg-blue-400"></span><span>Coverage and authority are designed like proof assets, not filler text.</span></li>
+            <li class="flex gap-3"><span class="mt-2 w-1.5 h-1.5 rounded-full bg-blue-400"></span><span>The whole experience is sharper and more "8k site" than template-local.</span></li>
+          </ul>
         </div>
       </div>
     </div>
-    <!-- STATS OVERLAY BAR — overlaps hero into next section -->
-    <div class="relative z-20 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 -mt-20">
-      <div class="bg-white rounded-[10px] shadow-xl shadow-slate-200/50 border border-slate-100 grid grid-cols-2 lg:grid-cols-4 divide-x divide-slate-100">
-        <div class="p-6 sm:p-8 text-center">
-          <div class="font-heading text-navy text-3xl sm:text-4xl font-extrabold">${escHtml(c.stats.avgResponse)}<span class="text-blue-600">min</span></div>
-          <p class="text-slate-400 text-xs sm:text-sm font-medium mt-1">Avg Response Time</p>
-        </div>
-        <div class="p-6 sm:p-8 text-center">
-          <div class="font-heading text-navy text-3xl sm:text-4xl font-extrabold">${escHtml(c.stats.jobs)}<span class="text-blue-600">+</span></div>
-          <p class="text-slate-400 text-xs sm:text-sm font-medium mt-1">Jobs Completed</p>
-        </div>
-        <div class="p-6 sm:p-8 text-center">
-          <div class="font-heading text-navy text-3xl sm:text-4xl font-extrabold">${escHtml(c.stats.rating)}<span class="text-amber-400">&#9733;</span></div>
-          <p class="text-slate-400 text-xs sm:text-sm font-medium mt-1">Google Rating</p>
-        </div>
-        <div class="p-6 sm:p-8 text-center">
-          <div class="font-heading text-navy text-3xl sm:text-4xl font-extrabold">${escHtml(c.stats.years)}<span class="text-blue-600">yr</span></div>
-          <p class="text-slate-400 text-xs sm:text-sm font-medium mt-1">Years in Business</p>
-        </div>
-      </div>
-    </div>
-  </section>
 
-  <!-- SERVICE AREA -->
-  <section id="service-area" class="pt-28 pb-20 bg-navy text-white mt-12">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center mb-12 reveal">
-        <p class="text-blue-400 text-xs tracking-[0.2em] uppercase font-bold mb-3">Coverage Area</p>
-        <h2 class="font-heading text-white text-2xl sm:text-3xl lg:text-4xl font-bold">Proudly Serving the Greater ${city} Metro</h2>
-        <p class="text-slate-400 text-base mt-3 max-w-xl mx-auto">Full-service ${escHtml(c.nicheLabel.toLowerCase())} coverage across the entire ${city} metropolitan area and surrounding communities.</p>
-      </div>
-      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-8 gap-y-1 max-w-3xl mx-auto reveal" style="transition-delay:0.1s">
-        <ul>${areaCitiesHtml}</ul>
-      </div>
-      <div class="text-center mt-10 reveal" style="transition-delay:0.2s">
-        <a href="#contact" class="inline-flex items-center gap-2 text-blue-400 text-sm font-bold hover:text-blue-300 transition-colors group">
-          Don't see your area? Contact us
-          <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 8.25L21 12m0 0l-3.75 3.75M21 12H3"/></svg>
-        </a>
-      </div>
-    </div>
-  </section>
-
-  <!-- SERVICES -->
-  <section id="services" class="py-20 bg-light-bg">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center mb-14 reveal">
-        <p class="text-blue-600 text-xs tracking-[0.2em] uppercase font-bold mb-3">What We Do</p>
-        <h2 class="font-heading text-navy text-2xl sm:text-3xl lg:text-4xl font-bold">Our ${escHtml(c.nicheLabel)} Solutions</h2>
-      </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 reveal" style="transition-delay:0.1s">
-        ${servicesHtml}
-      </div>
-    </div>
-  </section>
-
-  <!-- REVIEWS -->
-  <section id="reviews" class="py-20 bg-white">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center mb-14 reveal">
-        <p class="text-blue-600 text-xs tracking-[0.2em] uppercase font-bold mb-3">Customer Reviews</p>
-        <h2 class="font-heading text-navy text-2xl sm:text-3xl lg:text-4xl font-bold mb-4">What ${city} Homeowners Say</h2>
-        <!-- Google badge -->
-        <div class="inline-flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-full px-5 py-2.5">
-          <div class="flex items-center gap-0.5">${fiveStars}</div>
-          <span class="font-heading text-navy font-bold text-sm">${escHtml(c.stats.rating)}</span>
-          <span class="text-slate-400 text-xs">on Google</span>
-          <span class="bg-blue-600 text-white text-xs font-bold px-2.5 py-0.5 rounded-full">Highly Rated Locally</span>
-        </div>
-      </div>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 reveal" style="transition-delay:0.1s">
-        ${testimonialsHtml}
-      </div>
-    </div>
-  </section>
-
-  <!-- WHY CHOOSE US -->
-  <section id="why-us" class="py-20 bg-light-bg">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center mb-14 reveal">
-        <p class="text-blue-600 text-xs tracking-[0.2em] uppercase font-bold mb-3">Why Choose Us</p>
-        <h2 class="font-heading text-navy text-2xl sm:text-3xl lg:text-4xl font-bold">${escHtml(c.whyTitle)}</h2>
-        <p class="text-slate-500 text-base mt-3 max-w-lg mx-auto">${escHtml(c.whySub)}</p>
-      </div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 reveal" style="transition-delay:0.1s">
-        ${whyUsHtml}
-      </div>
-    </div>
-  </section>
-
-  <!-- FAQ -->
-  <section id="faq" class="py-20 bg-white">
-    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center mb-14 reveal">
-        <p class="text-blue-600 text-xs tracking-[0.2em] uppercase font-bold mb-3">FAQ</p>
-        <h2 class="font-heading text-navy text-2xl sm:text-3xl font-bold">Frequently Asked Questions</h2>
-      </div>
-      <div class="reveal" style="transition-delay:0.1s">
-        ${faqHtml}
-      </div>
-    </div>
-  </section>
-
-  <!-- CONTACT -->
-  <section id="contact" class="py-20 bg-navy">
-    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center mb-12 reveal">
-        <p class="text-blue-400 text-xs tracking-[0.2em] uppercase font-bold mb-3">Get Started</p>
-        <h2 class="font-heading text-white text-2xl sm:text-3xl lg:text-4xl font-bold mb-3">Request Service Today</h2>
-        <p class="text-slate-400 text-base">Fill out the form below or call <a href="tel:${phone.replace(/[^\d+]/g, '')}" class="text-blue-400 font-bold hover:underline">${phone}</a></p>
-      </div>
-      <form id="contact-form" class="bg-white rounded-[10px] p-6 sm:p-8 shadow-xl reveal" style="transition-delay:0.1s">
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
+    <aside class="reveal">
+      <div class="rounded-[34px] border border-white/10 bg-white/5 p-5 backdrop-blur-md shadow-[0_24px_80px_rgba(15,23,42,0.24)]">
+        <div class="flex items-center justify-between gap-4 mb-5">
           <div>
-            <label class="block text-xs text-slate-500 font-bold uppercase tracking-wider mb-2">Full Name *</label>
-            <input type="text" required class="w-full border border-slate-200 rounded-[10px] px-4 py-3 text-sm text-navy outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/10 transition font-body" placeholder="John Smith">
+            <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 mb-1">Market overview</p>
+            <h2 class="font-heading text-2xl font-semibold text-white">Performance board</h2>
           </div>
-          <div>
-            <label class="block text-xs text-slate-500 font-bold uppercase tracking-wider mb-2">Phone *</label>
-            <input type="tel" required class="w-full border border-slate-200 rounded-[10px] px-4 py-3 text-sm text-navy outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/10 transition font-body" placeholder="(555) 123-4567">
-          </div>
+          <span class="rounded-full bg-blue-500/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-blue-300">Live-ready</span>
         </div>
-        <div class="mb-5">
-          <label class="block text-xs text-slate-500 font-bold uppercase tracking-wider mb-2">Email</label>
-          <input type="email" class="w-full border border-slate-200 rounded-[10px] px-4 py-3 text-sm text-navy outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/10 transition font-body" placeholder="john@email.com">
+        <div class="grid gap-4 sm:grid-cols-2">
+          ${metricTiles}
         </div>
-        <div class="mb-5">
-          <label class="block text-xs text-slate-500 font-bold uppercase tracking-wider mb-2">Service Needed *</label>
-          <select required class="w-full border border-slate-200 rounded-[10px] px-4 py-3 text-sm text-navy outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/10 transition font-body appearance-none cursor-pointer bg-white">
-            <option value="">Select a service</option>
-            ${c.serviceOptions.map(o => `<option value="${escHtml(o)}">${escHtml(o)}</option>`).join('')}
-          </select>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<section id="coverage" class="py-16 md:py-20">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] items-start">
+    <div class="reveal rounded-[32px] bg-slate-900 text-white p-8 md:p-10 shadow-[0_20px_60px_rgba(15,23,42,0.14)]">
+      <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-300 mb-4">Coverage board</p>
+      <h2 class="font-heading text-4xl md:text-5xl font-semibold mb-5">Service area shown like a strength, not a footnote.</h2>
+      <p class="text-base leading-8 text-slate-300 mb-8">Regional operators look stronger when their footprint is visible early. This family treats coverage as proof of operational maturity.</p>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div class="rounded-[24px] bg-white/5 px-5 py-5 border border-white/10">
+          <p class="text-[11px] uppercase tracking-[0.14em] text-slate-400 mb-2">Primary market</p>
+          <p class="font-heading text-2xl text-white">${city}${state ? `, ${state}` : ''}</p>
         </div>
-        <div class="mb-6">
-          <label class="block text-xs text-slate-500 font-bold uppercase tracking-wider mb-2">Tell Us More</label>
-          <textarea rows="3" class="w-full border border-slate-200 rounded-[10px] px-4 py-3 text-sm text-navy outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/10 transition font-body resize-none" placeholder="Describe your issue or project"></textarea>
+        <div class="rounded-[24px] bg-white/5 px-5 py-5 border border-white/10">
+          <p class="text-[11px] uppercase tracking-[0.14em] text-slate-400 mb-2">Lead path</p>
+          <p class="font-heading text-2xl text-white">Coverage → authority → request</p>
         </div>
-        <button type="submit" class="w-full py-3.5 bg-blue-600 text-white text-sm font-bold rounded-[10px] hover:bg-blue-700 transition-colors shadow-sm">${escHtml(c.cta1)}</button>
+      </div>
+    </div>
+    <div class="reveal grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      ${coverageChips}
+    </div>
+  </div>
+</section>
+
+<section id="services" class="py-16 md:py-20 bg-white border-y border-slate-200">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="reveal max-w-2xl mb-10 md:mb-14">
+      <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-600 mb-3">Capability lanes</p>
+      <h2 class="font-heading text-4xl md:text-5xl font-semibold text-slate-900 mb-5">A service system that feels organized and scalable.</h2>
+      <p class="text-base leading-8 text-slate-600">This family presents services like operational lanes rather than generic feature cards — cleaner, stronger, and more premium.</p>
+    </div>
+    <div class="grid gap-6 lg:grid-cols-2">
+      ${serviceLanes}
+    </div>
+  </div>
+</section>
+
+<section id="authority" class="py-16 md:py-20">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="reveal flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-10">
+      <div class="max-w-2xl">
+        <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-600 mb-3">Authority proof</p>
+        <h2 class="font-heading text-4xl md:text-5xl font-semibold text-slate-900 mb-4">Proof modules with more weight and less fluff.</h2>
+        <p class="text-base leading-8 text-slate-600">This section is where the regional family separates itself: more command, less charm, still premium.</p>
+      </div>
+      <div class="rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-600">${escHtml(c.stats.jobs)}+ completed jobs</div>
+    </div>
+
+    <div class="grid gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] items-start mb-8">
+      <div class="grid gap-6 md:grid-cols-3">
+        ${reviewCards}
+      </div>
+      <div class="grid gap-6">
+        ${authorityCards}
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="faq" class="py-16 md:py-20 bg-slate-50 border-y border-slate-200">
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="reveal text-center max-w-2xl mx-auto mb-10">
+      <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-600 mb-3">Operational clarity</p>
+      <h2 class="font-heading text-4xl md:text-5xl font-semibold text-slate-900 mb-4">FAQ built like an executive summary.</h2>
+      <p class="text-base leading-8 text-slate-600">Simple answers, clean hierarchy, no filler accordion styling.</p>
+    </div>
+    <div class="reveal rounded-[30px] border border-slate-200 bg-white px-6 md:px-8 shadow-[0_10px_40px_rgba(15,23,42,0.04)]">
+      ${faqHtml}
+    </div>
+  </div>
+</section>
+
+<section id="contact" class="py-16 md:py-20 bg-night text-white">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid gap-6 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
+    <div class="reveal rounded-[34px] border border-white/10 bg-white/5 p-8 md:p-10 backdrop-blur-sm">
+      <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-300 mb-4">Request service</p>
+      <h2 class="font-heading text-4xl font-semibold mb-4">Close with confidence, not clutter.</h2>
+      <p class="text-base leading-8 text-slate-300 mb-8">The contact module stays structured: phone, coverage, and a clear request path with a more premium operational feel.</p>
+      <div class="space-y-4 text-sm text-slate-300">
+        <div class="rounded-[24px] bg-white/5 px-5 py-4 border border-white/10">
+          <p class="text-[11px] uppercase tracking-[0.16em] text-slate-400 mb-1">Call now</p>
+          <a href="tel:${phoneHref}" class="font-semibold text-lg text-white hover:text-blue-300 transition-colors">${phone}</a>
+        </div>
+        <div class="rounded-[24px] bg-white/5 px-5 py-4 border border-white/10">
+          <p class="text-[11px] uppercase tracking-[0.16em] text-slate-400 mb-1">Coverage</p>
+          <p>${city}${state ? `, ${state}` : ''} plus nearby service area</p>
+        </div>
+        ${email ? `<div class="rounded-[24px] bg-white/5 px-5 py-4 border border-white/10"><p class="text-[11px] uppercase tracking-[0.16em] text-slate-400 mb-1">Email</p><a href="mailto:${email}" class="font-semibold text-white hover:text-blue-300 transition-colors">${email}</a></div>` : ''}
+      </div>
+    </div>
+    <div class="reveal rounded-[34px] bg-white text-slate-900 p-8 md:p-10 shadow-[0_20px_56px_rgba(15,23,42,0.16)]">
+      <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 mb-4">Service intake</p>
+      <h3 class="font-heading text-3xl md:text-4xl font-semibold mb-4">Tell the team what you need.</h3>
+      <p class="text-sm leading-7 text-slate-600 mb-6">Strong regional sites should make intake feel organized and reliable.</p>
+      <form id="contact-form" class="grid gap-4">
+        <div class="grid gap-4 sm:grid-cols-2">
+          <input type="text" placeholder="Your name" class="rounded-[18px] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:outline-none">
+          <input type="tel" placeholder="Phone number" class="rounded-[18px] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:outline-none">
+        </div>
+        <select class="rounded-[18px] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-blue-500 focus:bg-white focus:outline-none">
+          <option>Choose a service</option>
+          ${contactOptions}
+        </select>
+        <textarea rows="4" placeholder="Describe the issue or project" class="rounded-[18px] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:outline-none"></textarea>
+        <button type="submit" class="rounded-full bg-blue-600 px-5 py-4 text-sm font-semibold text-white hover:bg-blue-700 transition-colors">${escHtml(c.cta1)}</button>
+        <p class="text-xs text-slate-500">Typical response time: ${escHtml(c.stats.avgResponse)} minutes during staffed hours.</p>
       </form>
     </div>
-  </section>
+  </div>
+</section>
 
-  <!-- FOOTER -->
-  <footer class="bg-navy border-t border-white/10 py-16">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
-        <div>
-          <h3 class="font-heading text-white text-lg font-bold mb-3">${biz}</h3>
-          <p class="text-slate-400 text-sm leading-relaxed">${city}${state ? ', ' + state : ''}'s most trusted ${escHtml(c.nicheLabel.toLowerCase())} provider. Licensed, bonded, and insured.</p>
-          <p class="text-slate-400 text-sm mt-3">
-            <a href="tel:${phone.replace(/[^\d+]/g, '')}" class="text-blue-400 font-bold hover:text-blue-300 transition-colors">${phone}</a>
-          </p>
-        </div>
-        <div>
-          <h4 class="font-heading text-white text-sm font-bold uppercase tracking-wider mb-3">Quick Links</h4>
-          <ul class="space-y-2">
-            <li><a href="#services" class="text-slate-400 text-sm hover:text-white transition-colors">Services</a></li>
-            <li><a href="#reviews" class="text-slate-400 text-sm hover:text-white transition-colors">Reviews</a></li>
-            <li><a href="#why-us" class="text-slate-400 text-sm hover:text-white transition-colors">Why Us</a></li>
-            <li><a href="#contact" class="text-slate-400 text-sm hover:text-white transition-colors">Contact</a></li>
-          </ul>
-        </div>
-        <div>
-          <h4 class="font-heading text-white text-sm font-bold uppercase tracking-wider mb-3">Service Areas</h4>
-          <ul class="grid grid-cols-2 gap-x-4 gap-y-1">
-            ${areaCities.slice(0, 8).map(ac => `<li class="text-slate-400 text-sm">${escHtml(ac)}</li>`).join('')}
-          </ul>
-        </div>
-      </div>
-      <div class="border-t border-white/10 pt-8 text-center">
-        <p class="text-slate-500 text-xs">&copy; ${new Date().getFullYear()} ${biz}. All rights reserved.</p>
-      </div>
-    </div>
-  </footer>
+<div id="toast" class="toast">Request captured — this is a concept demo.</div>
+${widgetHtml}
 
-  <!-- Toast notification -->
-  <div id="toast" class="toast">Your request has been submitted! We'll contact you shortly.</div>
+<script>
+(function(){
+  var toggle=document.getElementById('mobile-toggle');
+  var menu=document.getElementById('mobile-menu');
+  toggle.addEventListener('click',function(){menu.classList.toggle('open');});
+  document.querySelectorAll('.mobile-link').forEach(function(link){link.addEventListener('click',function(){menu.classList.remove('open');});});
 
-  ${widgetHtml}
-
-  <script>
-  (function() {
-    // Mobile menu
-    var menuBtn = document.getElementById('menu-btn');
-    var menuClose = document.getElementById('menu-close');
-    var mobileMenu = document.getElementById('mobile-menu');
-    function openMenu() { mobileMenu.classList.add('open'); document.body.style.overflow = 'hidden'; }
-    function closeMenu() { mobileMenu.classList.remove('open'); document.body.style.overflow = ''; }
-    menuBtn.addEventListener('click', openMenu);
-    menuClose.addEventListener('click', closeMenu);
-    document.querySelectorAll('.mobile-nav-link').forEach(function(a) {
-      a.addEventListener('click', closeMenu);
+  document.querySelectorAll('a[href^="#"]').forEach(function(a){
+    a.addEventListener('click',function(e){
+      var target=document.querySelector(this.getAttribute('href'));
+      if(target){e.preventDefault();window.scrollTo({top:target.offsetTop-90,behavior:'smooth'});menu.classList.remove('open');}
     });
+  });
 
-    // Nav scroll behavior
-    var mainNav = document.getElementById('main-nav');
-    window.addEventListener('scroll', function() {
-      if (window.scrollY > 60) {
-        mainNav.classList.add('nav-scrolled');
-      } else {
-        mainNav.classList.remove('nav-scrolled');
-      }
+  document.querySelectorAll('.faq-toggle').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var item=this.closest('.faq-item');
+      var wasOpen=item.classList.contains('open');
+      document.querySelectorAll('.faq-item').forEach(function(el){el.classList.remove('open');});
+      if(!wasOpen){item.classList.add('open');}
     });
+  });
 
-    // FAQ accordion
-    document.querySelectorAll('.faq-toggle').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        var item = this.closest('.faq-item');
-        var wasOpen = item.classList.contains('open');
-        document.querySelectorAll('.faq-item').forEach(function(fi) { fi.classList.remove('open'); });
-        if (!wasOpen) item.classList.add('open');
-      });
-    });
+  var ro=new IntersectionObserver(function(entries){entries.forEach(function(entry){if(entry.isIntersecting){entry.target.classList.add('visible');ro.unobserve(entry.target);}});},{threshold:0.1,rootMargin:'0px 0px -40px 0px'});
+  document.querySelectorAll('.reveal').forEach(function(el){ro.observe(el);});
 
-    // Contact form
-    var form = document.getElementById('contact-form');
-    var toast = document.getElementById('toast');
-    form.addEventListener('submit', function(e) {
-      e.preventDefault();
-      toast.classList.add('show');
-      form.reset();
-      setTimeout(function() { toast.classList.remove('show'); }, 3500);
-    });
-
-    // Scroll reveal
-    var reveals = document.querySelectorAll('.reveal');
-    var observer = new IntersectionObserver(function(entries) {
-      entries.forEach(function(entry) {
-        if (entry.isIntersecting) entry.target.classList.add('visible');
-      });
-    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
-    reveals.forEach(function(el) { observer.observe(el); });
-
-    // Smooth scroll
-    document.querySelectorAll('a[href^="#"]').forEach(function(a) {
-      a.addEventListener('click', function(e) {
-        var target = document.querySelector(this.getAttribute('href'));
-        if (target) {
-          e.preventDefault();
-          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      });
-    });
-  })();
-  <\/script>
+  var form=document.getElementById('contact-form');
+  var toast=document.getElementById('toast');
+  form.addEventListener('submit',function(e){
+    e.preventDefault();
+    toast.style.opacity='1';
+    toast.style.transform='translateY(0)';
+    toast.style.pointerEvents='auto';
+    form.reset();
+    setTimeout(function(){toast.style.opacity='0';toast.style.transform='translateY(-10px)';toast.style.pointerEvents='none';},3200);
+  });
+})();
+</script>
 </body>
 </html>`;
-}
-
-module.exports = { name, label, generate };
+  },
+};
