@@ -10,6 +10,7 @@ import IndustrySection from "@/components/landing/IndustrySection";
 import PricingSection from "@/components/landing/PricingSection";
 import HowItWorksSection from "@/components/landing/HowItWorksSection";
 import FAQSection from "@/components/landing/FAQSection";
+import LeadCaptureSection from "@/components/landing/LeadCaptureSection";
 import FinalCTA from "@/components/landing/FinalCTA";
 import Footer from "@/components/landing/Footer";
 import ChatWidget from "@/components/chat/ChatWidget";
@@ -55,6 +56,7 @@ export default function LatchlyLanding() {
       <DemoSection />
       <ROICalculator />
       <IndustrySection />
+      <LeadCaptureSection />
       <PricingSection />
       <HowItWorksSection />
       <FAQSection />

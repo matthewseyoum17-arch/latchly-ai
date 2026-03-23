@@ -14,7 +14,7 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const navItems = ["Demo", "ROI", "Industries", "Pricing", "FAQ"];
+  const navItems = ["Demo", "ROI", "Industries", "Pricing", "FAQ", "Contact"];
 
   const scrollTo = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -41,15 +41,25 @@ export default function Navbar() {
 
         {/* Desktop nav */}
         <div className="hidden md:flex items-center gap-1">
-          {navItems.map((item) => (
-            <button
-              key={item}
-              onClick={() => scrollTo(item.toLowerCase())}
-              className="px-4 py-2 text-[13px] font-semibold text-slate-500 hover:text-brand rounded-lg hover:bg-brand/5 transition-all cursor-pointer"
-            >
-              {item}
-            </button>
-          ))}
+          {navItems.map((item) =>
+            item === "Contact" ? (
+              <a
+                key={item}
+                href="/contact"
+                className="px-4 py-2 text-[13px] font-semibold text-slate-500 hover:text-brand rounded-lg hover:bg-brand/5 transition-all cursor-pointer"
+              >
+                {item}
+              </a>
+            ) : (
+              <button
+                key={item}
+                onClick={() => scrollTo(item.toLowerCase())}
+                className="px-4 py-2 text-[13px] font-semibold text-slate-500 hover:text-brand rounded-lg hover:bg-brand/5 transition-all cursor-pointer"
+              >
+                {item}
+              </button>
+            )
+          )}
           <div className="ml-3 pl-3 border-l border-slate-200">
             <Button size="sm" onClick={() => scrollTo("demo")}>
               Try Live Demo
@@ -69,15 +79,25 @@ export default function Navbar() {
       {/* Mobile menu */}
       {mobileOpen && (
         <div className="md:hidden bg-white/95 backdrop-blur-xl border-t border-slate-100 px-5 py-4 flex flex-col gap-1 animate-fade-in shadow-lifted">
-          {navItems.map((item) => (
-            <button
-              key={item}
-              onClick={() => scrollTo(item.toLowerCase())}
-              className="text-left text-sm font-semibold text-slate-600 py-3 px-3 rounded-lg hover:bg-brand/5 hover:text-brand transition-all"
-            >
-              {item}
-            </button>
-          ))}
+          {navItems.map((item) =>
+            item === "Contact" ? (
+              <a
+                key={item}
+                href="/contact"
+                className="text-left text-sm font-semibold text-slate-600 py-3 px-3 rounded-lg hover:bg-brand/5 hover:text-brand transition-all"
+              >
+                {item}
+              </a>
+            ) : (
+              <button
+                key={item}
+                onClick={() => scrollTo(item.toLowerCase())}
+                className="text-left text-sm font-semibold text-slate-600 py-3 px-3 rounded-lg hover:bg-brand/5 hover:text-brand transition-all"
+              >
+                {item}
+              </button>
+            )
+          )}
           <Button size="sm" onClick={() => scrollTo("demo")} className="mt-3">
             Try Live Demo
           </Button>

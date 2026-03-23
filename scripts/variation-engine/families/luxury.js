@@ -7,6 +7,7 @@
 const { escHtml } = require('../shared/utils');
 const { getCopy } = require('../shared/copy');
 const { generateWidget } = require('../shared/widget');
+const { getTheme } = require('../shared/niche-themes');
 
 const name = 'luxury';
 const label = 'Luxury / Minimal Editorial';
@@ -24,6 +25,8 @@ const designProfile = {
 };
 
 function generate(lead, niche) {
+  const t = getTheme('luxury', niche);
+  const tc = t.colors;
   const c = getCopy('luxury', niche, lead);
   const biz = escHtml(lead.business_name);
   const phone = escHtml(lead.phone || '(555) 000-0000');
@@ -34,41 +37,44 @@ function generate(lead, niche) {
 
   const widgetHtml = generateWidget(lead, {
     emoji: c.emoji,
-    headBg: 'linear-gradient(135deg, #2c2c2c, #1a1a1a)',
-    avatarBg: 'linear-gradient(135deg, #2c2c2c, #1a1a1a)',
-    fabBg: '#1a1a1a',
+    headBg: `linear-gradient(135deg, #2c2c2c, ${tc.primary})`,
+    avatarBg: `linear-gradient(135deg, #2c2c2c, ${tc.primary})`,
+    fabBg: tc.primary,
     fabRadius: '50%',
     fabSize: '48px',
     panelRadius: '12px',
     bodyFont: "'DM Sans', sans-serif",
     headingFont: "'Playfair Display', serif",
-    userMsgBg: '#1a1a1a',
-    sendBg: '#1a1a1a',
-    sendHoverBg: '#333',
-    linkColor: '#b08d57',
-    inputFocusBorder: '#b08d57',
-    inputFocusRing: 'rgba(176, 141, 87, 0.12)',
-    qrBorder: 'rgba(176, 141, 87, 0.3)',
-    qrColor: '#b08d57',
-    qrBg: 'rgba(176, 141, 87, 0.06)',
-    qrHoverBg: '#b08d57',
+    userMsgBg: tc.primary,
+    sendBg: tc.primary,
+    sendHoverBg: tc.primaryHover,
+    linkColor: tc.accent,
+    inputFocusBorder: tc.accent,
+    inputFocusRing: tc.accentLight,
+    qrBorder: tc.accentLight,
+    qrColor: tc.accent,
+    qrBg: tc.accentLight,
+    qrHoverBg: tc.accent,
     qrRadius: '24px',
     inputRadius: '8px',
     msgBotRadius: '2px 12px 12px 12px',
     msgUserRadius: '12px 12px 2px 12px',
-    chatBg: '#FAFAF7',
+    chatBg: tc.bg,
     fabShadow: '0 4px 16px rgba(0,0,0,0.15)',
   }, c.quickReplies, c.serviceOptions);
 
-  // Build services HTML
-  const servicesHtml = c.services.map(s => `
-            <div class="py-6 border-b border-stone-200 last:border-b-0">
-              <h3 class="font-heading text-lg text-charcoal mb-2">${escHtml(s.title)}</h3>
-              <p class="text-stone-500 text-sm leading-relaxed">${escHtml(s.desc)}</p>
+  // Build services HTML with niche-specific icons
+  const servicesHtml = c.services.map((s, i) => `
+            <div class="py-6 border-b border-stone-200 last:border-b-0 flex items-start gap-4">
+              <div class="w-6 h-6 flex-shrink-0 mt-0.5" style="color: ${tc.accent};">${t.icons[i % t.icons.length]}</div>
+              <div>
+                <h3 class="font-heading text-lg text-charcoal mb-2">${escHtml(s.title)}</h3>
+                <p class="text-stone-500 text-sm leading-relaxed">${escHtml(s.desc)}</p>
+              </div>
             </div>`).join('');
 
   // Single large testimonial (first one)
-  const t = c.testimonials[0];
+  const tm = c.testimonials[0];
   const starSvg = '<svg class="w-4 h-4 text-gold" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>';
 
   // Why Us items
@@ -107,11 +113,11 @@ function generate(lead, niche) {
       theme: {
         extend: {
           colors: {
-            cream: '#FAFAF7',
-            charcoal: '#1a1a1a',
-            gold: '#b08d57',
-            'gold-light': '#c9a96e',
-            'gold-muted': 'rgba(176, 141, 87, 0.12)',
+            cream: '${tc.bg}',
+            charcoal: '${tc.ink}',
+            gold: '${tc.accent}',
+            'gold-light': '${tc.accent}',
+            'gold-muted': '${tc.accentLight}',
           },
           fontFamily: {
             heading: ['"Playfair Display"', 'serif'],
@@ -123,7 +129,7 @@ function generate(lead, niche) {
   <\/script>
   <style>
     html { scroll-behavior: smooth; }
-    body { font-family: 'DM Sans', sans-serif; background: #FAFAF7; color: #1a1a1a; }
+    body { font-family: 'DM Sans', sans-serif; background: ${tc.bg}; color: ${tc.ink}; }
 
     /* Reveal animation */
     .reveal {
@@ -145,7 +151,7 @@ function generate(lead, niche) {
     .divider-gold {
       width: 40px;
       height: 1px;
-      background: #b08d57;
+      background: ${tc.accent};
       margin: 0 auto;
     }
 
@@ -163,7 +169,7 @@ function generate(lead, niche) {
       position: fixed;
       top: 24px;
       right: 24px;
-      background: #1a1a1a;
+      background: ${tc.ink};
       color: #fff;
       padding: 16px 24px;
       border-radius: 8px;
@@ -180,77 +186,94 @@ function generate(lead, niche) {
 
     /* Selection color */
     ::selection {
-      background: rgba(176, 141, 87, 0.2);
+      background: ${tc.accentLight};
     }
   </style>
 </head>
 <body class="bg-cream antialiased">
 
   <!-- NAVIGATION -->
-  <nav class="fixed top-0 left-0 right-0 z-50 bg-cream/90 backdrop-blur-md border-b border-stone-200/60">
-    <div class="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
-      <a href="#" class="font-heading text-charcoal text-lg font-semibold tracking-tight">${biz}</a>
-      <div class="hidden md:flex items-center gap-8">
-        <a href="#services" class="text-stone-500 text-sm hover:text-charcoal transition-colors">Services</a>
-        <a href="#about" class="text-stone-500 text-sm hover:text-charcoal transition-colors">About</a>
-        <a href="#faq" class="text-stone-500 text-sm hover:text-charcoal transition-colors">FAQ</a>
-        <a href="#contact" class="text-stone-500 text-sm hover:text-charcoal transition-colors">Contact</a>
+  <nav class="fixed top-0 left-0 right-0 z-50 bg-cream/90 backdrop-blur-md border-b border-stone-200/40">
+    <div class="max-w-6xl mx-auto px-6 lg:px-10 py-5 flex items-center justify-between">
+      <a href="#" class="font-heading text-charcoal text-xl font-semibold tracking-tight">${biz}</a>
+      <div class="hidden md:flex items-center gap-10">
+        <a href="#services" class="text-stone-400 text-xs uppercase tracking-[0.15em] font-medium hover:text-charcoal transition-colors">Services</a>
+        <a href="#about" class="text-stone-400 text-xs uppercase tracking-[0.15em] font-medium hover:text-charcoal transition-colors">About</a>
+        <a href="#faq" class="text-stone-400 text-xs uppercase tracking-[0.15em] font-medium hover:text-charcoal transition-colors">FAQ</a>
+        <a href="#contact" class="text-stone-400 text-xs uppercase tracking-[0.15em] font-medium hover:text-charcoal transition-colors">Contact</a>
+      </div>
+      <div class="hidden md:flex items-center gap-5">
         <a href="tel:${phoneHref}" class="text-charcoal text-sm font-medium hover:text-gold transition-colors">${phone}</a>
+        <a href="#contact" class="inline-flex items-center px-6 py-2.5 bg-charcoal text-cream text-xs font-medium uppercase tracking-[0.1em] rounded-full hover:bg-stone-800 transition-colors">${escHtml(c.cta1)}</a>
       </div>
       <button id="menu-btn" class="md:hidden text-charcoal" aria-label="Menu">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9h16.5m-16.5 6.75h16.5"/></svg>
       </button>
     </div>
     <!-- Mobile menu -->
-    <div id="mobile-menu" class="md:hidden fixed inset-0 top-[57px] bg-cream z-40 flex flex-col items-center justify-center gap-8">
+    <div id="mobile-menu" class="md:hidden fixed inset-0 top-[65px] bg-cream z-40 flex flex-col items-center justify-center gap-8">
       <a href="#services" class="mobile-nav-link font-heading text-2xl text-charcoal">Services</a>
       <a href="#about" class="mobile-nav-link font-heading text-2xl text-charcoal">About</a>
       <a href="#faq" class="mobile-nav-link font-heading text-2xl text-charcoal">FAQ</a>
       <a href="#contact" class="mobile-nav-link font-heading text-2xl text-charcoal">Contact</a>
-      <a href="tel:${phoneHref}" class="mobile-nav-link font-heading text-2xl text-gold">${phone}</a>
+      <a href="tel:${phoneHref}" class="mobile-nav-link font-heading text-xl text-gold">${phone}</a>
     </div>
   </nav>
 
-  <!-- HERO -->
-  <section class="min-h-screen flex items-center justify-center relative overflow-hidden" style="background: linear-gradient(175deg, #FAFAF7 0%, #f5f0e8 50%, #FAFAF7 100%);">
-    <div class="max-w-2xl mx-auto px-6 text-center pt-24 pb-32">
-      <p class="text-gold text-xs tracking-[0.25em] uppercase font-medium mb-6 reveal">${escHtml(c.headlineSub)}</p>
-      <h1 class="font-heading text-charcoal text-4xl sm:text-5xl md:text-6xl font-medium leading-tight mb-8 reveal" style="transition-delay: 0.1s;">${escHtml(c.headline)}</h1>
-      <p class="text-stone-500 text-lg md:text-xl leading-relaxed max-w-lg mx-auto mb-12 reveal" style="transition-delay: 0.2s;">${escHtml(c.subline)}</p>
-      <div class="flex flex-col sm:flex-row items-center justify-center gap-4 reveal" style="transition-delay: 0.3s;">
-        <a href="#contact" class="inline-flex items-center px-8 py-3 bg-charcoal text-cream text-sm font-medium rounded-full hover:bg-stone-800 transition-colors">${escHtml(c.cta1)}</a>
-        <a href="tel:${phoneHref}" class="inline-flex items-center px-8 py-3 border border-stone-300 text-sm text-charcoal hover:border-gold hover:text-gold transition-colors rounded-full">Call ${phone}</a>
-        <a href="#services" class="inline-flex items-center text-sm text-stone-500 hover:text-charcoal transition-colors group">
-          ${escHtml(c.cta2)}
-          <svg class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 8.25L21 12m0 0l-3.75 3.75M21 12H3"/></svg>
-        </a>
-      </div>
-      <!-- Stats inline, understated -->
-      <div class="mt-16 flex items-center justify-center gap-8 text-stone-400 text-xs tracking-wide reveal" style="transition-delay: 0.4s;">
-        <span>${escHtml(c.stats.years)}+ Years</span>
-        <span class="w-px h-3 bg-stone-300"></span>
-        <span>${escHtml(c.stats.jobs)}+ Projects</span>
-        <span class="w-px h-3 bg-stone-300"></span>
-        <span>${escHtml(c.stats.rating)} Rating</span>
+  <!-- HERO — editorial split with architectural image -->
+  <section class="relative overflow-hidden" style="background: linear-gradient(175deg, ${tc.bg} 0%, ${tc.bgAlt} 50%, ${tc.bg} 100%); background-image: ${t.pattern(tc.accent, 0.02)}; min-height: 100vh;">
+    <div class="max-w-6xl mx-auto px-6 lg:px-10 pt-32 pb-20 lg:pt-40 lg:pb-28">
+      <div class="grid gap-12 lg:grid-cols-[1fr_420px] items-center">
+        <div>
+          <p class="text-gold text-xs tracking-[0.25em] uppercase font-medium mb-8 reveal">${escHtml(c.headlineSub)}</p>
+          <h1 class="font-heading text-charcoal font-medium mb-8 reveal" style="font-size:clamp(2.8rem,5vw,4.5rem);line-height:1.05;letter-spacing:-0.02em;transition-delay:0.1s;">${escHtml(c.headline)}</h1>
+          <p class="text-stone-500 text-lg leading-relaxed max-w-lg mb-10 reveal" style="transition-delay: 0.2s;">${escHtml(c.subline)}</p>
+          <div class="flex flex-col sm:flex-row items-start gap-4 mb-12 reveal" style="transition-delay: 0.3s;">
+            <a href="#contact" class="inline-flex items-center px-8 py-3.5 bg-charcoal text-cream text-sm font-medium rounded-full hover:bg-stone-800 transition-colors">${escHtml(c.cta1)}</a>
+            <a href="tel:${phoneHref}" class="inline-flex items-center px-8 py-3.5 border border-stone-300 text-sm text-charcoal hover:border-gold hover:text-gold transition-colors rounded-full">Call ${phone}</a>
+          </div>
+          <div class="flex items-center gap-8 text-stone-400 text-xs tracking-wide reveal" style="transition-delay: 0.4s;">
+            <span>${escHtml(c.stats.years)}+ Years</span>
+            <span class="w-px h-3 bg-stone-300"></span>
+            <span>${escHtml(c.stats.jobs)}+ Projects</span>
+            <span class="w-px h-3 bg-stone-300"></span>
+            <span>${escHtml(c.stats.rating)} Rating</span>
+          </div>
+        </div>
+        <div class="reveal" style="transition-delay: 0.25s;">
+          <div class="relative">
+            <div class="rounded-[24px] overflow-hidden shadow-[0_32px_80px_rgba(0,0,0,0.08)]">
+              <img src="${escHtml(t.heroImages.primary)}" alt="${biz} ${escHtml(c.nicheLabel)}" class="w-full aspect-[3/4] object-cover">
+            </div>
+            <div class="absolute -bottom-6 -left-6 rounded-[18px] bg-white border border-stone-200/80 px-6 py-4 shadow-[0_16px_40px_rgba(0,0,0,0.06)]">
+              <div class="flex items-center gap-1 mb-1">${starSvg}${starSvg}${starSvg}${starSvg}${starSvg}</div>
+              <p class="text-charcoal text-sm font-medium">${escHtml(c.stats.rating)} Rating</p>
+              <p class="text-stone-400 text-xs">${escHtml(c.stats.jobs)}+ completed projects</p>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-2 mt-10 reveal" style="transition-delay: 0.5s;">
+            ${t.badges.map(b => `<span class="inline-block text-xs tracking-wide px-3 py-1.5 rounded-full border" style="color: ${tc.accent}; border-color: ${tc.accentLight}; background: ${tc.accentLight};">${escHtml(b)}</span>`).join('')}
+          </div>
+        </div>
       </div>
     </div>
   </section>
 
   <!-- ABOUT / PHILOSOPHY -->
-  <section id="about" class="py-28 md:py-36">
-    <div class="max-w-2xl mx-auto px-6 text-center reveal">
+  <section id="about" class="py-28 md:py-36" style="background-image: ${t.pattern(tc.accent, 0.025)}">
+    <div class="max-w-3xl mx-auto px-6 lg:px-10 text-center reveal">
       <div class="divider-gold mb-8"></div>
       <h2 class="font-heading text-charcoal text-2xl md:text-3xl font-medium leading-snug mb-6">${escHtml(c.whyTitle)}</h2>
       <p class="text-stone-500 text-base md:text-lg leading-relaxed max-w-xl mx-auto">${escHtml(c.whySub)}</p>
     </div>
-    <div class="max-w-2xl mx-auto px-6 mt-16 grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-10 reveal" style="transition-delay: 0.15s;">
+    <div class="max-w-3xl mx-auto px-6 lg:px-10 mt-16 grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-10 reveal" style="transition-delay: 0.15s;">
       ${whyUsHtml}
     </div>
   </section>
 
   <!-- SERVICES -->
   <section id="services" class="py-28 md:py-36 bg-white">
-    <div class="max-w-2xl mx-auto px-6">
+    <div class="max-w-3xl mx-auto px-6 lg:px-10">
       <div class="text-center mb-16 reveal">
         <p class="text-gold text-xs tracking-[0.25em] uppercase font-medium mb-4">What We Do</p>
         <h2 class="font-heading text-charcoal text-2xl md:text-3xl font-medium">Our Services</h2>
@@ -263,21 +286,21 @@ function generate(lead, niche) {
 
   <!-- TESTIMONIAL (single large pull-quote) -->
   <section class="py-28 md:py-36">
-    <div class="max-w-2xl mx-auto px-6 text-center reveal">
+    <div class="max-w-3xl mx-auto px-6 lg:px-10 text-center reveal">
       <div class="flex items-center justify-center gap-1 mb-8">
         ${starSvg}${starSvg}${starSvg}${starSvg}${starSvg}
       </div>
       <blockquote class="font-heading italic text-charcoal text-2xl md:text-3xl leading-relaxed mb-8">
-        &ldquo;${escHtml(t.text)}&rdquo;
+        &ldquo;${escHtml(tm.text)}&rdquo;
       </blockquote>
       <div class="divider-gold mb-6"></div>
-      <cite class="text-stone-500 text-sm not-italic tracking-wide">${escHtml(t.name)}</cite>
+      <cite class="text-stone-500 text-sm not-italic tracking-wide">${escHtml(tm.name)}</cite>
     </div>
   </section>
 
   <!-- FAQ -->
   <section id="faq" class="py-28 md:py-36 bg-white">
-    <div class="max-w-2xl mx-auto px-6">
+    <div class="max-w-3xl mx-auto px-6 lg:px-10">
       <div class="text-center mb-16 reveal">
         <p class="text-gold text-xs tracking-[0.25em] uppercase font-medium mb-4">Common Questions</p>
         <h2 class="font-heading text-charcoal text-2xl md:text-3xl font-medium">Frequently Asked</h2>
@@ -289,8 +312,8 @@ function generate(lead, niche) {
   </section>
 
   <!-- CONTACT -->
-  <section id="contact" class="py-28 md:py-36">
-    <div class="max-w-xl mx-auto px-6">
+  <section id="contact" class="py-28 md:py-36" style="background-image: ${t.pattern(tc.accent, 0.025)}">
+    <div class="max-w-xl mx-auto px-6 lg:px-10">
       <div class="text-center mb-12 reveal">
         <p class="text-gold text-xs tracking-[0.25em] uppercase font-medium mb-4">Get in Touch</p>
         <h2 class="font-heading text-charcoal text-2xl md:text-3xl font-medium mb-4">Start a Conversation</h2>
@@ -331,7 +354,7 @@ function generate(lead, niche) {
 
   <!-- FOOTER -->
   <footer class="py-16 border-t border-stone-200">
-    <div class="max-w-2xl mx-auto px-6 text-center">
+    <div class="max-w-3xl mx-auto px-6 lg:px-10 text-center">
       <p class="font-heading text-charcoal text-base font-medium mb-3">${biz}</p>
       <p class="text-stone-400 text-sm mb-1">${city}${state ? ', ' + state : ''}</p>
       <p class="text-stone-400 text-sm mb-6">

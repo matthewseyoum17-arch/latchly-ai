@@ -43,14 +43,25 @@ export default function Footer() {
                 { label: "Demo", id: "demo" },
                 { label: "Pricing", id: "pricing" },
                 { label: "FAQ", id: "faq" },
+                { label: "Contact", id: "contact", href: "/contact" },
               ].map((l) => (
-                <button
-                  key={l.label}
-                  onClick={() => scrollTo(l.id)}
-                  className="text-sm text-slate-500 hover:text-brand transition-colors text-left cursor-pointer"
-                >
-                  {l.label}
-                </button>
+                "href" in l ? (
+                  <a
+                    key={l.label}
+                    href={l.href}
+                    className="text-sm text-slate-500 hover:text-brand transition-colors text-left cursor-pointer"
+                  >
+                    {l.label}
+                  </a>
+                ) : (
+                  <button
+                    key={l.label}
+                    onClick={() => scrollTo(l.id)}
+                    className="text-sm text-slate-500 hover:text-brand transition-colors text-left cursor-pointer"
+                  >
+                    {l.label}
+                  </button>
+                )
               ))}
             </div>
           </div>
@@ -93,15 +104,12 @@ export default function Footer() {
             &copy; 2026 Latchly. All rights reserved.
           </div>
           <div className="flex gap-6">
-            {["Privacy Policy", "Terms of Service"].map((l) => (
-              <a
-                key={l}
-                href="#"
-                className="text-xs text-slate-600 hover:text-slate-400 transition-colors"
-              >
-                {l}
-              </a>
-            ))}
+            <a href="/privacy" className="text-xs text-slate-600 hover:text-slate-400 transition-colors">
+              Privacy Policy
+            </a>
+            <a href="/terms" className="text-xs text-slate-600 hover:text-slate-400 transition-colors">
+              Terms of Service
+            </a>
           </div>
         </div>
       </div>

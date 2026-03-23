@@ -26,6 +26,8 @@ const CHATBOT_SIGNATURES = [
   'podium.com', 'birdeye.com', 'webchat.so', 'liveperson.com', 'comm100.com',
   'helpcrunch.com', 'customerly.io', 'chatra.com', 'kommunicate.io', 'gorgias.com',
   'smith.ai', 'chatfuel.com', 'latchly', 'latchlyai',
+  'leadconnector', 'gohighlevel', 'msgsndr.com', 'purechat.com', 'jivochat.com',
+  'socialintents.com', 'formilla.com', 'clickdesk.com', 'acquire.io', 'respond.io',
 ];
 
 const MARKETING_SIGNALS = {
@@ -268,9 +270,12 @@ function detectChatbot(html) {
     if (lower.includes(sig.toLowerCase())) return sig;
   }
   const generic = [
-    /class=["'][^"']*(chat-widget|chat-bubble|live-chat)[^"']*["']/i,
-    /id=["'][^"']*(chat-widget|chatbubble|livechat)[^"']*["']/i,
-    /aria-label=["'][^"']*(chat|message us)[^"']*["']/i,
+    /class=["'][^"']*(chat-widget|chat-bubble|live-chat|chatbot|chat-container|chat-btn|chat-button|chat-icon|chat-launcher|chat-popup|chat-window|chat-box|chatwidget)[^"']*["']/i,
+    /id=["'][^"']*(chat-widget|chatbubble|livechat|chatbot|chat-container|chat-btn|chat-launcher|chat-popup|chat-window|webchat)[^"']*["']/i,
+    /aria-label=["'][^"']*(chat|message us|live chat|chat with us|chat now)[^"']*["']/i,
+    /data-chat|data-widget-id.*chat/i,
+    /<iframe[^>]*(chat|messenger|webchat)/i,
+    /window\.(LiveChat|Tawk_API|drift|Intercom|HubSpotConversations|smartsupp|fcWidget|chaport|__lc)/i,
   ];
   for (const re of generic) {
     if (re.test(html)) return re.source;
@@ -444,6 +449,22 @@ function scoreLead(lead, siteData, decisionMaker) {
   if (!franchise.test(lead.businessName)) { score++; reasons.push('Independent operator'); }
   if (siteData.missedLeadOpportunity && siteData.missedLeadOpportunity.length > 10) { score++; reasons.push('Clear missed-lead opportunity'); }
   if (lead.employees === 0 || (lead.employees >= 5 && lead.employees <= 75)) { score++; reasons.push('Right company size'); }
+
+  // ── Bonus signals for SCO bundle (redesign + Latchly) ──────────────────────
+  // Bonus 1: Owner directly reachable — name identified AND owner-level title
+  if (decisionMaker && /owner|founder|president|proprietor|principal/i.test(lead.title || '')) {
+    score++; reasons.push('Owner directly reachable');
+  }
+  // Bonus 2: Revenue capacity — established business with active marketing investment
+  if (siteData.hasReviews && siteData.marketingSignals.length >= 3) {
+    score++; reasons.push('Established business with strong marketing signals');
+  }
+  // Bonus 3: Max conversion gap — running ads but missing lead capture infrastructure
+  if (siteData.hasGoogleAds && (!siteData.hasForm || !siteData.hasPhoneProminent)) {
+    score++; reasons.push('High-ROI gap: running ads without lead capture');
+  }
+
+  score = Math.min(10, score); // cap at 10
   return { score, reasons };
 }
 

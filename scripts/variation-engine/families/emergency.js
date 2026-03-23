@@ -8,6 +8,7 @@
 const { escHtml } = require('../shared/utils');
 const { getCopy } = require('../shared/copy');
 const { generateWidget } = require('../shared/widget');
+const { getTheme } = require('../shared/niche-themes');
 
 const name = 'emergency';
 const label = 'Emergency Conversion Machine';
@@ -26,6 +27,8 @@ const designProfile = {
 
 function generate(lead, niche) {
   const c = getCopy(name, niche, lead);
+  const t = getTheme('emergency', niche);
+  const tc = t.colors;
   const biz = escHtml(lead.business_name);
   const phone = escHtml(lead.phone || '(555) 000-0000');
   const phoneHref = (lead.phone || '5550000000').replace(/[^0-9+]/g, '');
@@ -35,46 +38,46 @@ function generate(lead, niche) {
 
   const widgetHtml = generateWidget(lead, {
     emoji: c.emoji,
-    headBg: 'linear-gradient(135deg,#1A1A1A,#2D1A1A)',
-    avatarBg: 'linear-gradient(135deg,#E53E3E,#DD6B20)',
-    fabBg: '#E53E3E',
+    headBg: `linear-gradient(135deg,${tc.bgCard},${tc.bgCard}dd)`,
+    avatarBg: `linear-gradient(135deg,${tc.primary},${tc.secondary})`,
+    fabBg: tc.primary,
     fabRadius: '4px',
     fabSize: '56px',
     panelRadius: '4px',
     bodyFont: "'Roboto',sans-serif",
     headingFont: "'Barlow Condensed',sans-serif",
-    userMsgBg: '#E53E3E',
-    sendBg: '#E53E3E',
-    sendHoverBg: '#C53030',
-    linkColor: '#E53E3E',
-    inputFocusBorder: '#E53E3E',
-    inputFocusRing: 'rgba(229,62,62,.15)',
-    qrBorder: 'rgba(229,62,62,.3)',
-    qrColor: '#E53E3E',
-    qrBg: 'rgba(229,62,62,.08)',
-    qrHoverBg: '#E53E3E',
+    userMsgBg: tc.primary,
+    sendBg: tc.primary,
+    sendHoverBg: tc.primaryHover,
+    linkColor: tc.primary,
+    inputFocusBorder: tc.primary,
+    inputFocusRing: tc.accentGlow,
+    qrBorder: `${tc.primary}4d`,
+    qrColor: tc.primary,
+    qrBg: `${tc.primary}14`,
+    qrHoverBg: tc.primary,
     qrRadius: '4px',
     inputRadius: '4px',
     msgBotRadius: '2px 12px 12px 12px',
     msgUserRadius: '12px 12px 2px 12px',
-    chatBg: '#111111',
-    fabShadow: '0 4px 20px rgba(229,62,62,.4)',
+    chatBg: tc.bgAlt,
+    fabShadow: `0 4px 20px ${tc.accentGlow}`,
     fabBottom: '88px',
     emojiRadius: '4px',
     sendRadius: '4px',
   }, c.quickReplies, c.serviceOptions);
 
-  // Build service grid items
+  // Build service grid items with niche-specific icons
   const serviceGridHtml = c.services.map((s, i) => `
             <div class="svc-block reveal-el" style="animation-delay:${i * 60}ms">
-              <span class="svc-icon">${c.emoji}</span>
+              <span class="svc-icon">${t.icons[i % t.icons.length] || c.emoji}</span>
               <span class="svc-name">${escHtml(s.title)}</span>
             </div>`).join('');
 
   // Build testimonial cards
   const testimonialCardsHtml = c.testimonials.map((t, i) => `
               <div class="testi-card reveal-el" style="animation-delay:${i * 80}ms">
-                <div class="testi-stars">${'★'.repeat(t.rating)}</div>
+                <div class="testi-stars">${'<svg class="testi-star" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>'.repeat(t.rating)}</div>
                 <p class="testi-text">"${escHtml(t.text)}"</p>
                 <p class="testi-author">— ${escHtml(t.name)}</p>
               </div>`).join('');
@@ -105,12 +108,13 @@ function generate(lead, niche) {
   <script src="https://cdn.tailwindcss.com"><\/script>
   <style>
     :root {
-      --bg-primary: #0D0D0D;
-      --bg-secondary: #111111;
-      --bg-card: #1A1A1A;
-      --red: #E53E3E;
-      --red-hover: #C53030;
-      --orange: #DD6B20;
+      --bg-primary: ${tc.bg};
+      --bg-secondary: ${tc.bgAlt};
+      --bg-card: ${tc.bgCard};
+      --red: ${tc.primary};
+      --red-hover: ${tc.primaryHover};
+      --orange: ${tc.secondary};
+      --niche-accent: ${tc.nicheAccent || tc.secondary};
       --white: #FFFFFF;
       --gray-100: #F7F7F7;
       --gray-300: #A0A0A0;
@@ -123,6 +127,7 @@ function generate(lead, niche) {
     body {
       font-family: var(--body-font);
       background: var(--bg-primary);
+      background-image: ${t.pattern(tc.primary, 0.03)};
       color: var(--white);
       -webkit-font-smoothing: antialiased;
     }
@@ -158,9 +163,9 @@ function generate(lead, niche) {
     /* ── STICKY NAV ── */
     .em-nav {
       position: sticky; top: 0; z-index: 90;
-      background: rgba(13,13,13,.97);
+      background: ${tc.bg}f7;
       backdrop-filter: blur(8px);
-      border-bottom: 1px solid rgba(229,62,62,.2);
+      border-bottom: 1px solid ${tc.primary}33;
       padding: 0 16px;
       height: 56px;
       display: flex;
@@ -223,6 +228,18 @@ function generate(lead, niche) {
       background: var(--bg-primary);
       padding: 48px 16px 56px;
       border-bottom: 3px solid var(--red);
+      position: relative;
+      overflow: hidden;
+    }
+    .em-hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: url('${escHtml(t.heroImages.primary)}');
+      background-size: cover;
+      background-position: center;
+      opacity: 0.07;
+      filter: grayscale(100%);
     }
     .em-hero-inner {
       max-width: 1100px;
@@ -231,6 +248,8 @@ function generate(lead, niche) {
       grid-template-columns: 1fr 1fr;
       gap: 48px;
       align-items: center;
+      position: relative;
+      z-index: 1;
     }
     .em-hero-copy h1 {
       font-family: var(--heading-font);
@@ -278,7 +297,7 @@ function generate(lead, niche) {
     /* Hero inline form */
     .em-hero-form {
       background: var(--bg-card);
-      border: 1px solid rgba(229,62,62,.25);
+      border: 1px solid ${tc.primary}40;
       border-radius: 4px;
       padding: 28px 24px;
     }
@@ -311,7 +330,7 @@ function generate(lead, niche) {
     .em-field select {
       width: 100%;
       padding: 10px 12px;
-      background: #0D0D0D;
+      background: ${tc.bg};
       border: 1px solid #333;
       border-radius: 4px;
       color: #fff;
@@ -324,7 +343,7 @@ function generate(lead, niche) {
     .em-field select:focus {
       border-color: var(--red);
     }
-    .em-field select option { background: #1A1A1A; }
+    .em-field select option { background: ${tc.bgCard}; }
     .em-submit {
       width: 100%;
       padding: 14px;
@@ -439,11 +458,18 @@ function generate(lead, niche) {
     }
     .svc-block:hover {
       border-color: var(--red);
-      background: rgba(229,62,62,.06);
+      background: ${tc.accentGlow};
     }
     .svc-icon {
       font-size: 18px;
       flex-shrink: 0;
+      width: 20px;
+      height: 20px;
+      color: var(--niche-accent);
+    }
+    .svc-icon svg {
+      width: 100%;
+      height: 100%;
     }
     .svc-name {
       font-family: var(--heading-font);
@@ -465,8 +491,8 @@ function generate(lead, niche) {
     .em-why {
       background: var(--bg-secondary);
       padding: 48px 16px;
-      border-top: 1px solid #1A1A1A;
-      border-bottom: 1px solid #1A1A1A;
+      border-top: 1px solid ${tc.bgCard};
+      border-bottom: 1px solid ${tc.bgCard};
     }
     .em-why-inner {
       max-width: 1100px;
@@ -536,9 +562,13 @@ function generate(lead, niche) {
     }
     .testi-stars {
       color: #F59E0B;
-      font-size: 14px;
-      letter-spacing: 2px;
+      display: flex;
+      gap: 2px;
       margin-bottom: 8px;
+    }
+    .testi-star {
+      width: 14px;
+      height: 14px;
     }
     .testi-text {
       font-size: 13px;
@@ -558,7 +588,7 @@ function generate(lead, niche) {
     .em-faq {
       background: var(--bg-secondary);
       padding: 48px 16px;
-      border-top: 1px solid #1A1A1A;
+      border-top: 1px solid ${tc.bgCard};
     }
     .em-faq-inner {
       max-width: 700px;
@@ -648,7 +678,7 @@ function generate(lead, niche) {
     /* ── FOOTER ── */
     .em-footer {
       background: #080808;
-      border-top: 1px solid #1A1A1A;
+      border-top: 1px solid ${tc.bgCard};
       padding: 32px 16px;
     }
     .em-footer-inner {
@@ -763,18 +793,10 @@ function generate(lead, niche) {
         <p class="em-hero-sub">${escHtml(c.headlineSub)}</p>
         <p class="em-hero-desc">${escHtml(c.subline)}</p>
         <div class="em-hero-badges">
-          <span class="em-badge">
+          ${t.badges.map(badge => `<span class="em-badge">
             <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            Licensed &amp; Insured
-          </span>
-          <span class="em-badge">
-            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            Upfront Pricing
-          </span>
-          <span class="em-badge">
-            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            Warranty on All Work
-          </span>
+            ${escHtml(badge)}
+          </span>`).join('')}
         </div>
       </div>
       <form id="emergency-form" class="em-hero-form reveal-el" style="animation-delay:100ms">
@@ -848,7 +870,7 @@ function generate(lead, niche) {
   <section class="em-testimonials" id="reviews" aria-label="Customer reviews">
     <div class="em-testi-inner">
       <div class="em-section-head">
-        <h2>${escHtml(c.stats.rating)}★ RATED — ${escHtml(c.stats.jobs)}+ REVIEWS</h2>
+        <h2>${escHtml(c.stats.rating)} RATED — ${escHtml(c.stats.jobs)}+ REVIEWS</h2>
         <p>Real reviews from real ${city} customers</p>
       </div>
       <div class="testi-scroll">

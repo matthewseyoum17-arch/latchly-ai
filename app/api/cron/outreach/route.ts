@@ -333,11 +333,3 @@ export async function GET(request: NextRequest) {
       : null,
   });
 }
-86400000)
-      : null,
-  });
-}
-TART).getTime()) / 86400000)
-      : null,
-  });
-}

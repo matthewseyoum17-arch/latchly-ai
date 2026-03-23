@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Niche Theme Test — Side by Side Comparison</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0a; color: #e0e0e0; padding: 32px; }
+    h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+    .subtitle { color: #888; margin-bottom: 32px; font-size: 14px; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 48px; }
+    .section-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid #333; }
+    .card { background: #1a1a1a; border-radius: 12px; overflow: hidden; border: 1px solid #333; transition: border-color 0.2s; }
+    .card:hover { border-color: #666; }
+    .card-header { padding: 12px 16px; background: #222; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
+    .card-header h3 { font-size: 13px; font-weight: 600; }
+    .niche-tag { font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .niche-hvac { background: #0D948822; color: #0D9488; }
+    .niche-plumbing { background: #2563EB22; color: #60A5FA; }
+    .niche-roofing { background: #B4530922; color: #F59E0B; }
+    iframe { width: 100%; height: 500px; border: none; background: #fff; }
+    .open-link { display: block; padding: 8px 16px; text-align: center; font-size: 12px; color: #888; text-decoration: none; border-top: 1px solid #333; }
+    .open-link:hover { color: #fff; background: #252525; }
+    .filter-bar { display: flex; gap: 8px; margin-bottom: 24px; }
+    .filter-btn { padding: 6px 16px; border-radius: 6px; border: 1px solid #444; background: transparent; color: #aaa; cursor: pointer; font-size: 13px; font-weight: 500; }
+    .filter-btn.active { background: #333; color: #fff; border-color: #666; }
+    @media (max-width: 1200px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <h1>Niche Theme Comparison</h1>
+  <p class="subtitle">Each row shows the same family across 3 different trades. Colors, icons, patterns, and badges should be visually distinct per niche.</p>
+
+  <div class="filter-bar">
+    <button class="filter-btn active" onclick="showFamily('all')">All Families</button>
+    <button class="filter-btn" onclick="showFamily('trust')">Trust</button>
+    <button class="filter-btn" onclick="showFamily('emergency')">Emergency</button>
+    <button class="filter-btn" onclick="showFamily('modern')">Modern</button>
+    <button class="filter-btn" onclick="showFamily('luxury')">Luxury</button>
+    <button class="filter-btn" onclick="showFamily('regional')">Regional</button>
+    <button class="filter-btn" onclick="showFamily('craft')">Craft</button>
+  </div>
+
+  <script>
+    const families = ['trust', 'emergency', 'modern', 'luxury', 'regional', 'craft'];
+    const niches = [
+      { key: 'hvac-contractor', label: 'HVAC', cls: 'niche-hvac', biz: 'Comfort Zone HVAC' },
+      { key: 'plumber', label: 'Plumbing', cls: 'niche-plumbing', biz: 'FlowRight Plumbing' },
+      { key: 'roofing-contractor', label: 'Roofing', cls: 'niche-roofing', biz: 'Summit Roofing Co' },
+    ];
+
+    const container = document.body;
+
+    families.forEach(family => {
+      const section = document.createElement('div');
+      section.className = 'family-section';
+      section.dataset.family = family;
+
+      const title = document.createElement('h2');
+      title.className = 'section-title';
+      title.textContent = family.charAt(0).toUpperCase() + family.slice(1) + ' Family';
+      section.appendChild(title);
+
+      const grid = document.createElement('div');
+      grid.className = 'grid';
+
+      niches.forEach(niche => {
+        const file = `${family}-${niche.key}.html`;
+        grid.innerHTML += `
+          <div class="card">
+            <div class="card-header">
+              <h3>${niche.biz}</h3>
+              <span class="niche-tag ${niche.cls}">${niche.label}</span>
+            </div>
+            <iframe src="${file}" loading="lazy"></iframe>
+            <a href="${file}" target="_blank" class="open-link">Open full page &rarr;</a>
+          </div>
+        `;
+      });
+
+      section.appendChild(grid);
+      container.appendChild(section);
+    });
+
+    function showFamily(name) {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      event.target.classList.add('active');
+      document.querySelectorAll('.family-section').forEach(s => {
+        s.style.display = (name === 'all' || s.dataset.family === name) ? '' : 'none';
+      });
+    }
+  </script>
+</body>
+</html>

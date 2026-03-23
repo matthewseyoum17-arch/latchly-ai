@@ -52,18 +52,19 @@ export default function HeroSection() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 mb-8 justify-center lg:justify-start">
-            <Button size="lg" onClick={() => scrollTo("demo")} className="gap-2 group">
-              See It In Action{" "}
-              <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
-            </Button>
+            {/* On mobile, booking CTA comes first and is primary */}
             <a
               href="https://calendly.com/latchly/setup"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center whitespace-nowrap rounded-xl text-base font-bold h-14 px-8 border-2 border-slate-200 text-slate-600 hover:border-brand hover:text-brand bg-white/80 backdrop-blur transition-all hover:-translate-y-0.5"
+              className="inline-flex items-center justify-center whitespace-nowrap rounded-xl text-base font-bold h-14 px-8 bg-brand text-white hover:bg-brand-dark transition-all hover:-translate-y-0.5 shadow-glow-brand sm:order-2 sm:bg-white/80 sm:text-slate-600 sm:border-2 sm:border-slate-200 sm:shadow-none sm:hover:border-brand sm:hover:text-brand sm:backdrop-blur"
             >
               Book a Free 10-Min Setup Call
             </a>
+            <Button size="lg" onClick={() => scrollTo("demo")} className="gap-2 group sm:order-1">
+              See It In Action{" "}
+              <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
+            </Button>
           </div>
 
           {/* Trust bar */}

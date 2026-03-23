@@ -1,30 +1,26 @@
 /**
  * HIGH-TRUST FAMILY-OWNED AUTHORITY family
  * Warm editorial residential brand with calmer premium spacing and homeowner-first conversion.
+ * NOW WITH NICHE-AWARE THEMING: colors, patterns, icons shift per trade.
  */
 const { escHtml } = require('../shared/utils');
 const { getCopy } = require('../shared/copy');
 const { generateWidget } = require('../shared/widget');
+const { getTheme } = require('../shared/niche-themes');
 
 const name = 'trust';
 const label = 'High-Trust Family-Owned Authority';
 const designProfile = {
   layout: 'warm-editorial-proof-rail',
   hero: 'copy-left-visual-stage-right',
-  typography: 'fraunces+manrope',
+  typography: 'fraunces+instrument-sans',
   sectionOrder: 'utility|nav|hero-stage|standards-strip|service-ledger|founder-note|review-editorial|faq-split|contact',
   components: 'editorial-ledger|soft-proof-rail|featured-review|quiet-cta-rails|paper-panels',
   personality: 'warm-residential-neighborly-premium',
   ctaStrategy: 'call-or-request-callback',
-  colorScheme: 'bone-ink-sage-amber',
+  colorScheme: 'niche-adaptive',
   density: 'airy-but-grounded',
   navStyle: 'quiet-premium-local-nav',
-};
-
-const heroImages = {
-  hvac: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=900&q=80',
-  plumbing: 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=900&q=80',
-  roofing: 'https://images.unsplash.com/photo-1632759145351-1d592919f522?w=900&q=80',
 };
 
 module.exports = {
@@ -34,45 +30,49 @@ module.exports = {
 
   generate(lead, niche) {
     const c = getCopy('trust', niche, lead);
+    const t = getTheme('trust', niche);
+    const tc = t.colors;
     const biz = escHtml(lead.business_name);
     const phone = escHtml(lead.phone || '(555) 000-0000');
     const phoneHref = (lead.phone || '5550000000').replace(/[^0-9+]/g, '');
     const email = escHtml(lead.email || '');
     const city = escHtml(lead.city || 'Your City');
     const state = escHtml(lead.state || '');
-    const heroImg = heroImages[niche] || heroImages.hvac;
+    const heroImg = t.familyHero;
+    const goldStarSvg = '<svg class="w-4 h-4" style="color:' + tc.accent + '" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>';
+    const fiveStars = goldStarSvg.repeat(5);
 
     const widgetHtml = generateWidget(lead, {
       emoji: c.emoji,
-      headBg: 'linear-gradient(135deg, #2F261E, #3E3024)',
-      avatarBg: 'linear-gradient(135deg, #355D54, #274940)',
-      fabBg: '#355D54',
+      headBg: `linear-gradient(135deg, ${tc.ink}, ${tc.ink}dd)`,
+      avatarBg: `linear-gradient(135deg, ${tc.primary}, ${tc.primaryHover})`,
+      fabBg: tc.primary,
       fabRadius: '18px',
       fabSize: '56px',
       panelRadius: '18px',
-      bodyFont: "'Manrope', sans-serif",
+      bodyFont: "'Instrument Sans', sans-serif",
       headingFont: "'Fraunces', serif",
-      userMsgBg: '#355D54',
-      sendBg: '#355D54',
-      sendHoverBg: '#274940',
-      linkColor: '#355D54',
-      inputFocusBorder: '#355D54',
-      inputFocusRing: 'rgba(53, 93, 84, 0.12)',
-      qrBorder: 'rgba(53, 93, 84, 0.24)',
-      qrColor: '#355D54',
-      qrBg: 'rgba(53, 93, 84, 0.05)',
-      qrHoverBg: '#355D54',
+      userMsgBg: tc.primary,
+      sendBg: tc.primary,
+      sendHoverBg: tc.primaryHover,
+      linkColor: tc.primary,
+      inputFocusBorder: tc.primary,
+      inputFocusRing: tc.primaryRing,
+      qrBorder: tc.primaryRing,
+      qrColor: tc.primary,
+      qrBg: tc.primaryLight,
+      qrHoverBg: tc.primary,
       qrRadius: '16px',
       inputRadius: '14px',
       msgBotRadius: '6px 18px 18px 18px',
       msgUserRadius: '18px 18px 6px 18px',
-      chatBg: '#FBF7F0',
-      fabShadow: '0 10px 24px rgba(53, 93, 84, 0.28)',
+      chatBg: tc.bg,
+      fabShadow: `0 10px 24px ${tc.primaryRing}`,
     }, c.quickReplies, c.serviceOptions);
 
     const trustSignals = [
       { label: 'Family-owned service', value: `${escHtml(c.stats.years)}+ years`, note: 'Built on reputation, not volume tactics.' },
-      { label: 'Customer rating', value: `${escHtml(c.stats.rating)}★ average`, note: 'Homeowners come back and recommend the team.' },
+      { label: 'Customer rating', value: `${escHtml(c.stats.rating)} average`, note: 'Homeowners come back and recommend the team.' },
       { label: 'Typical response', value: `${escHtml(c.stats.avgResponse)} min`, note: 'Fast follow-up without the pushy feel.' },
       { label: 'Homes helped', value: `${escHtml(c.stats.jobs)}+ jobs`, note: 'Enough experience to feel established and safe.' },
     ];
@@ -92,20 +92,24 @@ module.exports = {
         ['Trusted technicians', 'Clean work area', 'Transparent recommendations'],
       ];
       const details = detailSets[i % detailSets.length];
+      const icon = t.icons[i % t.icons.length];
       return `
-        <article class="reveal border-b border-stone-200 py-8 md:py-10">
+        <article class="reveal border-b py-8 md:py-10 hover-warm" style="border-color:${tc.border}">
           <div class="grid gap-6 lg:grid-cols-[110px_minmax(0,0.9fr)_minmax(0,1.1fr)] items-start">
-            <div class="font-heading text-4xl md:text-5xl text-stone-300 leading-none">0${i + 1}</div>
-            <div>
-              <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-sage mb-3">Residential service</p>
-              <h3 class="font-heading text-3xl md:text-4xl font-semibold text-ink leading-tight">${escHtml(service.title)}</h3>
+            <div class="flex flex-col items-center gap-3">
+              <div class="w-14 h-14 rounded-2xl flex items-center justify-center" style="background:${tc.primaryLight};color:${tc.primary}">${icon}</div>
+              <span class="font-heading text-2xl font-semibold" style="color:${tc.border}">0${i + 1}</span>
             </div>
             <div>
-              <p class="text-[15px] leading-7 text-stone-600 mb-5">${escHtml(service.desc)}</p>
+              <p class="text-[11px] font-semibold uppercase tracking-[0.16em] mb-3" style="color:${tc.primary}">${escHtml(t.labels.services)}</p>
+              <h3 class="font-heading text-3xl md:text-4xl font-semibold leading-tight" style="color:${tc.ink}">${escHtml(service.title)}</h3>
+            </div>
+            <div>
+              <p class="text-[15px] leading-7 mb-5" style="color:${tc.textMuted}">${escHtml(service.desc)}</p>
               <div class="flex flex-wrap gap-2 mb-5">
-                ${details.map(item => `<span class="rounded-full border border-stone-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">${escHtml(item)}</span>`).join('')}
+                ${details.map(item => `<span class="rounded-full border px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em]" style="border-color:${tc.border};background:${tc.tagBg};color:${tc.tagText}">${escHtml(item)}</span>`).join('')}
               </div>
-              <a href="#contact" class="inline-flex items-center gap-2 text-sm font-semibold text-sage hover:text-ink transition-colors">
+              <a href="#contact" class="inline-flex items-center gap-2 text-sm font-semibold transition-colors" style="color:${tc.primary}">
                 Request service
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 8.25L21 12m0 0l-3.75 3.75M21 12H3"/></svg>
               </a>
@@ -116,7 +120,7 @@ module.exports = {
 
     const founderList = c.whyUs.slice(0, 4).map(item => `
       <div class="flex items-start gap-4">
-        <div class="mt-1 w-8 h-8 rounded-full bg-sage/12 text-sage flex items-center justify-center text-sm font-bold">✓</div>
+        <div class="mt-1 w-8 h-8 rounded-full flex items-center justify-center" style="background:${tc.primaryLight};color:${tc.primary}"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></div>
         <div>
           <p class="text-base font-semibold text-ink mb-1">${escHtml(item.title)}</p>
           <p class="text-sm leading-6 text-stone-600">${escHtml(item.desc)}</p>
@@ -125,7 +129,7 @@ module.exports = {
 
     const featuredReview = c.testimonials[0];
     const sideReviews = c.testimonials.slice(1, 3).map(review => `
-      <article class="reveal rounded-[28px] border border-stone-200 bg-white p-6 shadow-[0_10px_40px_rgba(47,38,30,0.04)]">
+      <article class="reveal rounded-[28px] border border-stone-200 bg-white p-6 shadow-[0_10px_40px_rgba(47,38,30,0.04)] hover-warm">
         <div class="flex items-center gap-1 mb-4">${'<svg class="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>'.repeat(review.rating || 5)}</div>
         <p class="text-[15px] leading-7 text-stone-700 mb-5">“${escHtml(review.text)}”</p>
         <div class="flex items-center justify-between gap-4">
@@ -152,8 +156,12 @@ module.exports = {
 
     const contactOptions = c.serviceOptions.slice(0, 6).map(opt => `<option>${escHtml(opt)}</option>`).join('');
 
+    // Build niche-specific SVG pattern CSS
+    const patternBg = t.pattern(tc.primary, 0.035);
+    const heroDecor = t.heroDecorator(tc.primary);
+
     return `<!DOCTYPE html>
-<!-- DEMO: ${biz} | Family: trust | Generated by Variation Engine -->
+<!-- DEMO: ${biz} | Family: trust | Niche: ${niche} | Generated by Variation Engine -->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -162,22 +170,22 @@ module.exports = {
   <title>${biz} — Trusted ${escHtml(c.nicheLabel)} in ${city}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
       theme: {
         extend: {
           colors: {
-            paper: '#FBF7F0',
-            paper2: '#F4EDE1',
-            ink: '#2F261E',
-            sage: '#355D54',
-            sand: '#B9905A',
+            paper: '${tc.bg}',
+            paper2: '${tc.bgAlt}',
+            ink: '${tc.ink}',
+            sage: '${tc.primary}',
+            sand: '${tc.accent}',
           },
           fontFamily: {
             heading: ['Fraunces', 'serif'],
-            body: ['Manrope', 'sans-serif'],
+            body: ['Instrument Sans', 'sans-serif'],
           },
         },
       },
@@ -185,18 +193,30 @@ module.exports = {
   </script>
   <style>
     html { scroll-behavior: smooth; }
-    body { font-family: 'Manrope', sans-serif; background: #FBF7F0; color: #2F261E; }
+    body { font-family: 'Instrument Sans', sans-serif; background: ${tc.bg}; color: ${tc.ink}; }
     .reveal { opacity: 0; transform: translateY(24px); transition: opacity .55s ease, transform .55s ease; }
     .reveal.visible { opacity: 1; transform: translateY(0); }
     .faq-item.open .faq-content { max-height: 320px; }
-    .faq-item.open .faq-icon { transform: rotate(180deg); border-color: rgba(53,93,84,.35); color: #355D54; background: rgba(53,93,84,.08); }
+    .faq-item.open .faq-icon { transform: rotate(180deg); border-color: ${tc.primaryRing}; color: ${tc.primary}; background: ${tc.primaryLight}; }
     .mobile-panel { transform: translateX(100%); transition: transform .28s ease; }
     .mobile-panel.open { transform: translateX(0); }
-    .toast { position: fixed; top: 22px; left: 50%; transform: translate(-50%,-14px); opacity: 0; pointer-events: none; transition: all .3s ease; z-index: 80; background: #355D54; color: #fff; padding: 14px 22px; border-radius: 999px; font-size: 13px; box-shadow: 0 12px 30px rgba(53,93,84,.22); }
-    .hero-orb { position: absolute; border-radius: 999px; filter: blur(10px); opacity: .55; }
+    .toast { position: fixed; top: 22px; left: 50%; transform: translate(-50%,-14px); opacity: 0; pointer-events: none; transition: all .3s ease; z-index: 80; background: ${tc.primary}; color: #fff; padding: 14px 22px; border-radius: 999px; font-size: 13px; box-shadow: 0 12px 30px ${tc.primaryRing}; }
+    @keyframes warmGlow{0%,100%{opacity:.5}50%{opacity:.8}}
+    @keyframes slideReveal{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+    .paper-texture::before{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;opacity:.025;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
+    .warm-glow{position:relative;overflow:hidden;}
+    .warm-glow>.glow-orb{position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:radial-gradient(circle,${tc.accent}15,transparent 60%);animation:warmGlow 5s ease-in-out infinite;pointer-events:none;z-index:0;}
+    .slide-in{animation:slideReveal .8s ease-out forwards;}
+    .hover-warm{transition:transform .3s ease,box-shadow .3s ease;}
+    .hover-warm:hover{transform:translateY(-3px);box-shadow:0 16px 48px rgba(139,94,60,.12);}
+    .svc-icon-box svg { width: 24px; height: 24px; }
+    .trust-hero { position: relative; background: ${tc.heroBg || tc.ink}; overflow: hidden; }
+    .trust-hero::before { content: ''; position: absolute; inset: 0; background: url('${heroImg}') center/cover no-repeat; opacity: 0.25; }
+    .trust-hero::after { content: ''; position: absolute; inset: 0; background: ${tc.gradientHero || `linear-gradient(135deg, ${tc.ink} 0%, ${tc.ink}dd 100%)`}; }
+    .trust-hero-inner { position: relative; z-index: 1; }
   </style>
 </head>
-<body>
+<body class="paper-texture">
 
 <div class="border-b border-stone-200 bg-paper/95 backdrop-blur-sm">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-11 flex items-center justify-between text-[11px] sm:text-xs text-stone-500">
@@ -241,44 +261,44 @@ module.exports = {
   </div>
 </nav>
 
-<section class="relative overflow-hidden">
-  <div class="hero-orb bg-sage/20 w-72 h-72 -top-16 -left-16"></div>
-  <div class="hero-orb bg-sand/20 w-80 h-80 top-24 right-0"></div>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 md:py-20 lg:py-24 grid gap-10 lg:grid-cols-[minmax(0,1fr)_460px] items-start">
-    <div class="reveal">
-      <div class="inline-flex items-center gap-2 rounded-full border border-stone-200 bg-white/80 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-sage mb-6">
-        <span class="w-1.5 h-1.5 rounded-full bg-sage"></span>${escHtml(c.headlineSub)}
+<section class="trust-hero">
+  <div class="trust-hero-inner max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-28 lg:py-36">
+    <div class="reveal max-w-3xl">
+      <div class="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] mb-6" style="background:rgba(212,168,83,0.12);color:${tc.accent}">
+        <span class="w-1.5 h-1.5 rounded-full" style="background:${tc.accent}"></span>${escHtml(c.headlineSub)}
       </div>
-      <h1 class="font-heading text-ink font-semibold mb-6 max-w-3xl" style="font-size:clamp(3rem,5vw,5.35rem);line-height:0.96;">${escHtml(c.headline)}</h1>
-      <p class="max-w-2xl text-lg leading-8 text-stone-600 mb-8">${escHtml(c.subline)}</p>
+      <h1 class="font-heading font-semibold text-white mb-6 slide-in" style="font-size:clamp(3rem,5.5vw,5.5rem);line-height:0.94;">${escHtml(c.headline)}</h1>
+      <p class="max-w-2xl text-lg leading-8 text-white/70 mb-8">${escHtml(c.subline)}</p>
       <div class="flex flex-col sm:flex-row gap-3 mb-8">
-        <a href="#contact" class="inline-flex items-center justify-center rounded-full bg-sage px-7 py-4 text-sm font-semibold text-white hover:bg-ink transition-colors">${escHtml(c.cta1)}</a>
-        <a href="#reviews" class="inline-flex items-center justify-center rounded-full border border-stone-300 px-7 py-4 text-sm font-semibold text-ink hover:border-sage hover:text-sage transition-colors">${escHtml(c.cta2)}</a>
+        <a href="#contact" class="inline-flex items-center justify-center rounded-full px-7 py-4 text-sm font-semibold transition-colors" style="background:${tc.accent};color:${tc.heroBg || tc.ink}" onmouseover="this.style.background='#E8BC6A'" onmouseout="this.style.background='${tc.accent}'">${escHtml(c.cta1)}</a>
+        <a href="tel:${phoneHref}" class="inline-flex items-center justify-center rounded-full border border-white/20 px-7 py-4 text-sm font-semibold text-white hover:bg-white/10 transition-colors">Call ${phone}</a>
       </div>
-      <div class="flex flex-wrap gap-2 max-w-2xl">
-        <span class="rounded-full border border-stone-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">Licensed & insured</span>
-        <span class="rounded-full border border-stone-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">Upfront pricing</span>
-        <span class="rounded-full border border-stone-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">Warranty-backed work</span>
-        <span class="rounded-full border border-stone-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">Family-owned</span>
+      <div class="flex flex-wrap gap-2">
+        ${t.badges.map(b => `<span class="rounded-full border border-white/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-white/70" style="background:rgba(255,255,255,0.06)">${escHtml(b)}</span>`).join('\n        ')}
       </div>
     </div>
-
-    <aside class="reveal lg:pt-6">
-      <div class="relative rounded-[36px] border border-stone-200 bg-white p-5 shadow-[0_20px_60px_rgba(47,38,30,0.08)]">
-        <img src="${escHtml(heroImg)}" alt="${biz} ${escHtml(c.nicheLabel)}" class="w-full h-[370px] object-cover rounded-[28px]">
-        <div class="absolute left-8 right-8 -bottom-10 rounded-[28px] border border-stone-200 bg-paper px-6 py-5 shadow-[0_14px_48px_rgba(47,38,30,0.10)]">
-          <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-stone-400 mb-2">Homeowner confidence</p>
-          <p class="font-heading text-2xl text-ink leading-tight mb-2">The kind of local brand people feel comfortable inviting into their home.</p>
-          <p class="text-sm leading-6 text-stone-600">That’s the emotional tone this family is designed to sell.</p>
-        </div>
+    <div class="reveal mt-10 grid gap-4 sm:grid-cols-3 max-w-3xl">
+      <div class="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-5 hover-warm">
+        <div class="flex items-center gap-1 mb-2">${fiveStars}</div>
+        <p class="text-white/90 font-heading text-lg leading-snug">"${escHtml(c.testimonials[0].text.substring(0, 60))}..."</p>
+        <p class="text-sm text-white/50 mt-2">— ${escHtml(c.testimonials[0].name)}</p>
       </div>
-    </aside>
+      <div class="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-5 hover-warm">
+        <p class="font-heading text-3xl font-semibold text-white mb-1">${escHtml(c.stats.years)}+</p>
+        <p class="text-sm text-white/50">Years serving ${city}</p>
+      </div>
+      <div class="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-5 hover-warm">
+        <p class="font-heading text-3xl font-semibold text-white mb-1">${escHtml(c.stats.jobs)}+</p>
+        <p class="text-sm text-white/50">Happy homeowners</p>
+      </div>
+    </div>
   </div>
 </section>
 
 <section class="pt-16 md:pt-20 pb-10 md:pb-12">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 rounded-[34px] border border-stone-200 bg-white/80 px-6 py-8 md:px-10 md:py-10 shadow-[0_10px_36px_rgba(47,38,30,0.04)]">
-    <div class="grid gap-8 lg:grid-cols-4">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 rounded-[34px] border px-6 py-8 md:px-10 md:py-10 shadow-[0_10px_36px_rgba(47,38,30,0.06)] warm-glow" style="border-color:${tc.border};background:${tc.bgAlt}">
+    <div class="glow-orb"></div>
+    <div class="relative z-[1] grid gap-8 lg:grid-cols-4">
       ${standardsHtml}
     </div>
   </div>
@@ -287,9 +307,8 @@ module.exports = {
 <section id="services" class="py-16 md:py-20">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="reveal max-w-2xl mb-10 md:mb-14">
-      <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-sage mb-3">Service ledger</p>
-      <h2 class="font-heading text-4xl md:text-5xl font-semibold text-ink mb-5">A cleaner, more premium way to show what the business actually does.</h2>
-      <p class="text-base leading-8 text-stone-600">Instead of generic feature cards, this family uses an editorial service ledger — quieter, more expensive, and less template-coded.</p>
+      <p class="text-[11px] font-semibold uppercase tracking-[0.18em] mb-3" style="color:${tc.primary}">${escHtml(t.labels.services)}</p>
+      <h2 class="font-heading text-4xl md:text-5xl font-semibold mb-5" style="color:${tc.ink}">${escHtml(t.labels.servicesDesc)}</h2>
     </div>
     <div>
       ${serviceLedger}
@@ -297,13 +316,12 @@ module.exports = {
   </div>
 </section>
 
-<section id="story" class="py-16 md:py-20 bg-ink text-white">
+<section id="story" class="py-16 md:py-20 text-white" style="background:${tc.ink}">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid gap-10 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] items-start">
     <div class="reveal rounded-[34px] border border-white/10 bg-white/5 p-8 md:p-10">
-      <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-sand mb-4">Why this feels better</p>
-      <h2 class="font-heading text-4xl md:text-5xl font-semibold mb-5">Trust shown through restraint still converts.</h2>
-      <p class="text-base leading-8 text-white/75 mb-6">This family intentionally avoids the loud, gimmicky feel a lot of home-service demos fall into. It’s warmer, calmer, and more premium — but still built to get calls and requests.</p>
-      <p class="text-base leading-8 text-white/75">That’s exactly the kind of website package that can justify a more serious redesign price.</p>
+      <p class="text-[11px] font-semibold uppercase tracking-[0.18em] mb-4" style="color:${tc.accent}">${escHtml(t.labels.about)}</p>
+      <h2 class="font-heading text-4xl md:text-5xl font-semibold mb-5">${escHtml(c.whyTitle)}</h2>
+      <p class="text-base leading-8 text-white/75 mb-6">${escHtml(c.whySub)}</p>
     </div>
     <div class="reveal grid gap-5 md:grid-cols-2">
       ${founderList}
@@ -319,7 +337,7 @@ module.exports = {
         <h2 class="font-heading text-4xl md:text-5xl font-semibold text-ink mb-4">A review section that feels curated instead of recycled.</h2>
         <p class="text-base leading-8 text-stone-600">One featured testimonial, two support reviews, and less visual repetition.</p>
       </div>
-      <div class="rounded-full border border-stone-200 bg-white px-5 py-3 text-sm font-semibold text-stone-600">${escHtml(c.stats.rating)}★ average rating</div>
+      <div class="rounded-full border border-stone-200 bg-white px-5 py-3 text-sm font-semibold text-stone-600 inline-flex items-center gap-1.5"><svg class="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>${escHtml(c.stats.rating)} average rating</div>
     </div>
     <div class="grid gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] items-start">
       <article class="reveal rounded-[34px] border border-stone-200 bg-white p-8 md:p-10 shadow-[0_14px_52px_rgba(47,38,30,0.05)]">

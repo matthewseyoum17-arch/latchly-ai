@@ -6,16 +6,8 @@
 const { escHtml } = require('../shared/utils');
 const { getCopy } = require('../shared/copy');
 const { generateWidget } = require('../shared/widget');
+const { getTheme } = require('../shared/niche-themes');
 
-const heroImages = {
-  hvac: 'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=1100&q=80',
-  plumbing: 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=1100&q=80',
-  roofing: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?w=1100&q=80',
-};
-const projectImages = [
-  'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80',
-  'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&q=80',
-];
 const designProfile = {
   layout: 'asymmetric-portfolio-studio',
   hero: 'full-bleed-image-with-overlay-card',
@@ -24,7 +16,7 @@ const designProfile = {
   components: 'project-tiles|editorial-service-rows|single-pullquote|process-columns|studio-brief-form',
   personality: 'artisanal-detail-obsessed-premium',
   ctaStrategy: 'portfolio-first-consultation',
-  colorScheme: 'charcoal-gold-warm-stone',
+  colorScheme: 'niche-themed-dark-warm-stone',
   density: 'dramatic-asymmetric',
   navStyle: 'transparent-overlay-minimal',
 };
@@ -36,34 +28,41 @@ module.exports = {
 
   generate(lead, niche) {
     const c = getCopy('craft', niche, lead);
+    const t = getTheme('craft', niche);
+    const tc = t.colors;
     const biz = escHtml(lead.business_name);
     const city = escHtml(lead.city || 'Your City');
     const state = escHtml(lead.state || '');
     const phone = escHtml(lead.phone || '(555) 000-0000');
     const phoneHref = (lead.phone || '5550000000').replace(/[^0-9+]/g, '');
     const cityState = [lead.city, lead.state].filter(Boolean).join(', ');
-    const heroImg = heroImages[niche] || heroImages.hvac;
+    const heroImg = t.heroImages.primary;
+    const projImg1 = t.heroImages.project1;
+    const projImg2 = t.heroImages.project2;
+    const badges = t.badges;
+    const icons = t.icons;
+    const sectionPattern = t.pattern(tc.accent, 0.025);
 
     const widget = generateWidget(lead, {
       emoji: c.emoji,
-      headBg: 'linear-gradient(135deg,#1A1A1A,#2A2A2A)',
-      avatarBg: '#2A2A2A',
-      fabBg: '#1A1A1A',
+      headBg: `linear-gradient(135deg,${tc.primary},${tc.bgAlt})`,
+      avatarBg: tc.bgAlt,
+      fabBg: tc.primary,
       fabRadius: '12px',
       fabSize: '50px',
       panelRadius: '12px',
       bodyFont: "'Montserrat',sans-serif",
       headingFont: "'Cormorant Garamond',serif",
-      userMsgBg: '#C9A84C',
-      sendBg: '#C9A84C',
-      sendHoverBg: '#B8963A',
-      linkColor: '#C9A84C',
-      inputFocusBorder: '#C9A84C',
-      inputFocusRing: 'rgba(201,168,76,.12)',
-      qrBorder: 'rgba(201,168,76,.25)',
-      qrColor: '#C9A84C',
-      qrBg: 'rgba(201,168,76,.06)',
-      qrHoverBg: '#C9A84C',
+      userMsgBg: tc.accent,
+      sendBg: tc.accent,
+      sendHoverBg: tc.accentHover,
+      linkColor: tc.accent,
+      inputFocusBorder: tc.accent,
+      inputFocusRing: tc.accentLight,
+      qrBorder: tc.border,
+      qrColor: tc.accent,
+      qrBg: tc.accentLight,
+      qrHoverBg: tc.accent,
       qrRadius: '6px',
       inputRadius: '8px',
       msgBotRadius: '2px 12px 12px 12px',
@@ -72,17 +71,25 @@ module.exports = {
       fabShadow: '0 4px 20px rgba(0,0,0,.3)',
     }, c.quickReplies, c.serviceOptions);
 
-    // Services as editorial list (NOT card grid — this is key differentiation)
+    // Services as editorial list with niche icons (NOT card grid — this is key differentiation)
     const serviceList = c.services.map((svc, i) => `
           <div class="service-row flex flex-col md:flex-row md:items-baseline gap-2 md:gap-8 py-6 ${i < c.services.length - 1 ? 'border-b border-white/[.06]' : ''} reveal">
-            <h3 class="font-serif text-xl md:text-2xl text-warm font-semibold md:w-72 flex-shrink-0" style="letter-spacing:-0.01em;">${escHtml(svc.title)}</h3>
-            <p class="text-stone-500 text-sm leading-relaxed flex-1">${escHtml(svc.desc)}</p>
+            <div class="md:w-72 flex-shrink-0 flex items-center gap-3">
+              <span class="w-7 h-7 flex-shrink-0" style="color:${tc.accent};">${icons[i % icons.length]}</span>
+              <h3 class="font-serif text-xl md:text-2xl font-semibold" style="letter-spacing:-0.01em;color:${tc.textLight};">${escHtml(svc.title)}</h3>
+            </div>
+            <p class="text-sm leading-relaxed flex-1" style="color:${tc.textMuted};">${escHtml(svc.desc)}</p>
           </div>`).join('\n');
 
     // Single large pull-quote (NOT a grid of testimonials)
     const mainTestimonial = c.testimonials[0];
 
     const serviceOpts = c.serviceOptions.map(o => `              <option>${escHtml(o)}</option>`).join('\n');
+
+    // Niche-specific badge markup
+    const badgeHtml = badges.map(b =>
+      `<span class="border px-3 py-1.5 rounded-full" style="border-color:${tc.border};">${escHtml(b)}</span>`
+    ).join('\n          ');
 
     return `<!-- DEMO: ${biz} | Family: craft | Generated by Variation Engine -->
 <!DOCTYPE html>
@@ -96,14 +103,15 @@ module.exports = {
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
-tailwind.config={theme:{extend:{colors:{charcoal:'#1A1A1A','charcoal-light':'#2A2A2A',warm:'#F5F0EB',gold:'#C9A84C','gold-light':'#D4B866'},fontFamily:{serif:['Cormorant Garamond','Georgia','serif'],sans:['Montserrat','sans-serif']}}}}
+tailwind.config={theme:{extend:{colors:{charcoal:'${tc.primary}','charcoal-light':'${tc.bgAlt}',warm:'${tc.textLight}',gold:'${tc.accent}','gold-light':'${tc.accentHover}'},fontFamily:{serif:['Cormorant Garamond','Georgia','serif'],sans:['Montserrat','sans-serif']}}}}
 </script>
 <style>
-body{font-family:'Montserrat',sans-serif;background:#1A1A1A;color:#F5F0EB;-webkit-font-smoothing:antialiased;}
+body{font-family:'Montserrat',sans-serif;background:${tc.bg};color:${tc.textLight};-webkit-font-smoothing:antialiased;}
 h1,h2,h3{font-family:'Cormorant Garamond',Georgia,serif;}
 .reveal{opacity:0;transform:translateY(16px);transition:opacity .6s cubic-bezier(.25,.46,.45,.94),transform .6s cubic-bezier(.25,.46,.45,.94);}
 .reveal.active{opacity:1;transform:translateY(0);}
 .nav-solid{background:rgba(26,26,26,.97);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.04);}
+.niche-pattern{background-image:${sectionPattern};background-repeat:repeat;}
 </style>
 </head>
 <body>
@@ -112,31 +120,31 @@ h1,h2,h3{font-family:'Cormorant Garamond',Georgia,serif;}
 <nav id="navbar" class="fixed top-0 left-0 right-0 z-40 transition-all duration-300">
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
     <div class="flex items-center justify-between h-20">
-      <a href="#" class="font-serif text-2xl text-warm font-semibold tracking-tight">${biz}</a>
+      <a href="#" class="font-serif text-2xl font-semibold tracking-tight" style="color:${tc.textLight};">${biz}</a>
       <div class="hidden lg:flex items-center gap-10">
-        <a href="#work" class="text-stone-500 hover:text-warm text-xs font-medium uppercase tracking-[0.15em] transition-colors">Our Work</a>
-        <a href="#services" class="text-stone-500 hover:text-warm text-xs font-medium uppercase tracking-[0.15em] transition-colors">Services</a>
-        <a href="#process" class="text-stone-500 hover:text-warm text-xs font-medium uppercase tracking-[0.15em] transition-colors">Process</a>
-        <a href="#contact" class="text-stone-500 hover:text-warm text-xs font-medium uppercase tracking-[0.15em] transition-colors">Contact</a>
+        <a href="#work" class="hover:text-warm text-xs font-medium uppercase tracking-[0.15em] transition-colors" style="color:${tc.textMuted};">Our Work</a>
+        <a href="#services" class="hover:text-warm text-xs font-medium uppercase tracking-[0.15em] transition-colors" style="color:${tc.textMuted};">Services</a>
+        <a href="#process" class="hover:text-warm text-xs font-medium uppercase tracking-[0.15em] transition-colors" style="color:${tc.textMuted};">Process</a>
+        <a href="#contact" class="hover:text-warm text-xs font-medium uppercase tracking-[0.15em] transition-colors" style="color:${tc.textMuted};">Contact</a>
       </div>
       <div class="hidden lg:flex items-center gap-6">
-        <a href="tel:${phoneHref}" class="text-warm text-xs font-semibold uppercase tracking-[0.12em] hover:text-gold transition-colors">Call ${phone}</a>
-        <a href="#contact" class="inline-flex text-gold text-xs font-medium uppercase tracking-[0.12em] border-b border-gold/30 pb-0.5 hover:border-gold transition-colors">
+        <a href="tel:${phoneHref}" class="text-xs font-semibold uppercase tracking-[0.12em] transition-colors" style="color:${tc.textLight};">Call ${phone}</a>
+        <a href="#contact" class="inline-flex text-xs font-medium uppercase tracking-[0.12em] pb-0.5 transition-colors" style="color:${tc.accent};border-bottom:1px solid ${tc.border};">
           ${escHtml(c.cta1)} →
         </a>
       </div>
-      <button id="mobile-toggle" class="lg:hidden text-warm p-2" aria-label="Menu">
+      <button id="mobile-toggle" class="lg:hidden p-2" style="color:${tc.textLight};" aria-label="Menu">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
       </button>
     </div>
   </div>
-  <div id="mobile-menu" class="hidden lg:hidden bg-charcoal border-t border-white/[.04]">
+  <div id="mobile-menu" class="hidden lg:hidden border-t border-white/[.04]" style="background:${tc.primary};">
     <div class="px-6 py-6 space-y-4">
-      <a href="#work" class="mobile-link block text-stone-400 hover:text-warm text-sm font-medium">Our Work</a>
-      <a href="#services" class="mobile-link block text-stone-400 hover:text-warm text-sm font-medium">Services</a>
-      <a href="#process" class="mobile-link block text-stone-400 hover:text-warm text-sm font-medium">Process</a>
-      <a href="tel:${phoneHref}" class="mobile-link block text-warm text-sm font-semibold">Call ${phone}</a>
-      <a href="#contact" class="mobile-link block text-gold text-sm font-medium">${escHtml(c.cta1)} →</a>
+      <a href="#work" class="mobile-link block text-sm font-medium" style="color:${tc.textMuted};">Our Work</a>
+      <a href="#services" class="mobile-link block text-sm font-medium" style="color:${tc.textMuted};">Services</a>
+      <a href="#process" class="mobile-link block text-sm font-medium" style="color:${tc.textMuted};">Process</a>
+      <a href="tel:${phoneHref}" class="mobile-link block text-sm font-semibold" style="color:${tc.textLight};">Call ${phone}</a>
+      <a href="#contact" class="mobile-link block text-sm font-medium" style="color:${tc.accent};">${escHtml(c.cta1)} →</a>
     </div>
   </div>
 </nav>
@@ -147,34 +155,32 @@ h1,h2,h3{font-family:'Cormorant Garamond',Georgia,serif;}
     <img src="${escHtml(heroImg)}" alt="${escHtml(c.nicheLabel)}" class="w-full h-full object-cover" style="filter:brightness(0.5) saturate(0.7);">
     <!-- Overlapping card — positioned bottom-left -->
     <div class="absolute bottom-0 left-0 md:bottom-12 md:left-10 lg:left-16 w-full md:w-auto md:max-w-xl z-10">
-      <div class="bg-charcoal/95 backdrop-blur-md p-8 md:p-12 md:rounded-xl" style="border:1px solid rgba(255,255,255,.05);">
-        <p class="text-gold text-xs font-medium uppercase tracking-[0.2em] mb-4">${escHtml(c.nicheLabel)} · ${city}</p>
-        <h1 class="font-serif text-warm font-semibold mb-4" style="font-size:clamp(2rem,4vw,3.2rem);line-height:1.1;letter-spacing:-0.02em;">
+      <div class="backdrop-blur-md p-8 md:p-12 md:rounded-xl" style="background:rgba(26,26,26,.95);border:1px solid rgba(255,255,255,.05);">
+        <p class="text-xs font-medium uppercase tracking-[0.2em] mb-4" style="color:${tc.accent};">${escHtml(c.nicheLabel)} · ${city}</p>
+        <h1 class="font-serif font-semibold mb-4" style="color:${tc.textLight};font-size:clamp(2rem,4vw,3.2rem);line-height:1.1;letter-spacing:-0.02em;">
           ${escHtml(c.headline)}
         </h1>
-        <p class="text-stone-500 text-sm leading-relaxed mb-6 max-w-md">${escHtml(c.subline)}</p>
+        <p class="text-sm leading-relaxed mb-6 max-w-md" style="color:${tc.textMuted};">${escHtml(c.subline)}</p>
         <div class="flex flex-wrap items-center gap-4">
-          <a href="#contact" class="text-gold text-xs font-semibold uppercase tracking-[0.12em] border-b border-gold pb-0.5 hover:text-gold-light transition-colors">
+          <a href="#contact" class="text-xs font-semibold uppercase tracking-[0.12em] pb-0.5 transition-colors" style="color:${tc.accent};border-bottom:1px solid ${tc.accent};">
             ${escHtml(c.cta1)} →
           </a>
-          <a href="tel:${phoneHref}" class="text-warm text-xs font-semibold uppercase tracking-[0.12em] hover:text-gold transition-colors">
+          <a href="tel:${phoneHref}" class="text-xs font-semibold uppercase tracking-[0.12em] transition-colors" style="color:${tc.textLight};">
             Call ${phone}
           </a>
-          <a href="#work" class="text-stone-500 text-xs font-medium uppercase tracking-[0.12em] hover:text-warm transition-colors">
+          <a href="#work" class="text-xs font-medium uppercase tracking-[0.12em] transition-colors" style="color:${tc.textMuted};">
             ${escHtml(c.cta2)}
           </a>
         </div>
-        <div class="flex flex-wrap items-center gap-2 mt-5 text-[11px] uppercase tracking-[0.14em] text-stone-500">
-          <span class="border border-white/[.08] px-3 py-1.5 rounded-full">Licensed & insured</span>
-          <span class="border border-white/[.08] px-3 py-1.5 rounded-full">Warranty-backed work</span>
-          <span class="border border-white/[.08] px-3 py-1.5 rounded-full">Upfront pricing</span>
+        <div class="flex flex-wrap items-center gap-2 mt-5 text-[11px] uppercase tracking-[0.14em]" style="color:${tc.textMuted};">
+          ${badgeHtml}
         </div>
-        <div class="flex items-center gap-4 mt-6 pt-5 border-t border-white/[.06] text-stone-600 text-xs">
+        <div class="flex items-center gap-4 mt-6 pt-5 border-t border-white/[.06] text-xs" style="color:${tc.textMuted};">
           <span>${escHtml(c.stats.years)} years</span>
           <span class="w-px h-3 bg-white/[.08]"></span>
           <span>${escHtml(c.stats.jobs)}+ projects</span>
           <span class="w-px h-3 bg-white/[.08]"></span>
-          <span>${escHtml(c.stats.rating)}★</span>
+          <span class="inline-flex items-center gap-1">${escHtml(c.stats.rating)}<svg class="w-3.5 h-3.5" style="color:${tc.accent}" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg></span>
         </div>
       </div>
     </div>
@@ -182,13 +188,13 @@ h1,h2,h3{font-family:'Cormorant Garamond',Georgia,serif;}
 </section>
 
 <!-- PHILOSOPHY -->
-<section class="py-24 md:py-32">
+<section class="py-24 md:py-32 niche-pattern">
   <div class="max-w-3xl mx-auto px-6 lg:px-10 text-center reveal">
-    <p class="text-gold text-xs font-medium uppercase tracking-[0.2em] mb-6">Our Philosophy</p>
-    <h2 class="font-serif text-warm font-semibold mb-6" style="font-size:clamp(1.6rem,3vw,2.4rem);line-height:1.2;letter-spacing:-0.02em;">
+    <p class="text-xs font-medium uppercase tracking-[0.2em] mb-6" style="color:${tc.accent};">Our Philosophy</p>
+    <h2 class="font-serif font-semibold mb-6" style="color:${tc.textLight};font-size:clamp(1.6rem,3vw,2.4rem);line-height:1.2;letter-spacing:-0.02em;">
       ${escHtml(c.whyTitle)}
     </h2>
-    <p class="text-stone-500 leading-relaxed text-sm md:text-base max-w-xl mx-auto">${escHtml(c.whySub)} Every detail matters. From the materials we select to the techniques we use, we bring decades of trade mastery to every project. The difference shows — in the work, and in the result.</p>
+    <p class="leading-relaxed text-sm md:text-base max-w-xl mx-auto" style="color:${tc.textMuted};">${escHtml(c.whySub)} Every detail matters. From the materials we select to the techniques we use, we bring decades of trade mastery to every project. The difference shows — in the work, and in the result.</p>
   </div>
 </section>
 
@@ -197,35 +203,35 @@ h1,h2,h3{font-family:'Cormorant Garamond',Georgia,serif;}
   <div class="max-w-6xl mx-auto px-6 lg:px-10">
     <div class="flex items-end justify-between mb-12 reveal">
       <div>
-        <p class="text-gold text-xs font-medium uppercase tracking-[0.2em] mb-3">Recent Projects</p>
-        <h2 class="font-serif text-warm text-3xl md:text-4xl font-semibold" style="letter-spacing:-0.02em;">Our Work</h2>
+        <p class="text-xs font-medium uppercase tracking-[0.2em] mb-3" style="color:${tc.accent};">Recent Projects</p>
+        <h2 class="font-serif text-3xl md:text-4xl font-semibold" style="color:${tc.textLight};letter-spacing:-0.02em;">Our Work</h2>
       </div>
     </div>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-5 reveal">
       <div class="group relative overflow-hidden rounded-lg cursor-pointer" style="aspect-ratio:4/3;">
-        <img src="${escHtml(projectImages[0])}" alt="Recent project" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" style="filter:brightness(0.6);">
+        <img src="${escHtml(projImg1)}" alt="Recent project" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" style="filter:brightness(0.6);">
         <div class="absolute inset-0 flex flex-col justify-end p-8">
-          <p class="text-gold text-xs uppercase tracking-[0.15em] mb-2">${city} Residential</p>
-          <h3 class="font-serif text-warm text-2xl font-semibold">Complete ${c.nicheLabel} Project</h3>
+          <p class="text-xs uppercase tracking-[0.15em] mb-2" style="color:${tc.accent};">${city} Residential</p>
+          <h3 class="font-serif text-2xl font-semibold" style="color:${tc.textLight};">Complete ${c.nicheLabel} Project</h3>
         </div>
       </div>
       <div class="group relative overflow-hidden rounded-lg cursor-pointer" style="aspect-ratio:4/3;">
-        <img src="${escHtml(projectImages[1])}" alt="Recent project" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" style="filter:brightness(0.6);">
+        <img src="${escHtml(projImg2)}" alt="Recent project" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" style="filter:brightness(0.6);">
         <div class="absolute inset-0 flex flex-col justify-end p-8">
-          <p class="text-gold text-xs uppercase tracking-[0.15em] mb-2">${city} Metro Area</p>
-          <h3 class="font-serif text-warm text-2xl font-semibold">Premium Installation</h3>
+          <p class="text-xs uppercase tracking-[0.15em] mb-2" style="color:${tc.accent};">${city} Metro Area</p>
+          <h3 class="font-serif text-2xl font-semibold" style="color:${tc.textLight};">Premium Installation</h3>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- SERVICES — editorial list format (NOT card grid) -->
-<section id="services" class="py-24 md:py-32" style="background:#222;">
+<!-- SERVICES — editorial list format with niche icons (NOT card grid) -->
+<section id="services" class="py-24 md:py-32 niche-pattern" style="background:${tc.bgAlt};">
   <div class="max-w-4xl mx-auto px-6 lg:px-10">
     <div class="mb-12 reveal">
-      <p class="text-gold text-xs font-medium uppercase tracking-[0.2em] mb-3">Services</p>
-      <h2 class="font-serif text-warm text-3xl md:text-4xl font-semibold" style="letter-spacing:-0.02em;">What We Do</h2>
+      <p class="text-xs font-medium uppercase tracking-[0.2em] mb-3" style="color:${tc.accent};">Services</p>
+      <h2 class="font-serif text-3xl md:text-4xl font-semibold" style="color:${tc.textLight};letter-spacing:-0.02em;">What We Do</h2>
     </div>
 ${serviceList}
   </div>
@@ -235,37 +241,37 @@ ${serviceList}
 <section class="py-24 md:py-32">
   <div class="max-w-3xl mx-auto px-6 lg:px-10 text-center reveal">
     <div class="flex justify-center gap-1 mb-8">
-      ${'<svg class="w-5 h-5 text-gold" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>'.repeat(mainTestimonial.rating)}
+      ${'<svg class="w-5 h-5" style="color:' + tc.accent + ';" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>'.repeat(mainTestimonial.rating)}
     </div>
-    <blockquote class="font-serif italic text-warm mb-8" style="font-size:clamp(1.3rem,2.5vw,1.8rem);line-height:1.4;">
+    <blockquote class="font-serif italic mb-8" style="color:${tc.textLight};font-size:clamp(1.3rem,2.5vw,1.8rem);line-height:1.4;">
       "${escHtml(mainTestimonial.text)}"
     </blockquote>
-    <p class="text-stone-500 text-sm font-medium uppercase tracking-[0.1em]">— ${escHtml(mainTestimonial.name)}</p>
+    <p class="text-sm font-medium uppercase tracking-[0.1em]" style="color:${tc.textMuted};">— ${escHtml(mainTestimonial.name)}</p>
   </div>
 </section>
 
 <!-- PROCESS — numbered steps -->
-<section id="process" class="py-24 md:py-32" style="background:#222;">
+<section id="process" class="py-24 md:py-32 niche-pattern" style="background:${tc.bgAlt};">
   <div class="max-w-4xl mx-auto px-6 lg:px-10">
     <div class="text-center mb-16 reveal">
-      <p class="text-gold text-xs font-medium uppercase tracking-[0.2em] mb-3">Our Process</p>
-      <h2 class="font-serif text-warm text-3xl md:text-4xl font-semibold" style="letter-spacing:-0.02em;">How We Work</h2>
+      <p class="text-xs font-medium uppercase tracking-[0.2em] mb-3" style="color:${tc.accent};">Our Process</p>
+      <h2 class="font-serif text-3xl md:text-4xl font-semibold" style="color:${tc.textLight};letter-spacing:-0.02em;">How We Work</h2>
     </div>
     <div class="grid grid-cols-1 md:grid-cols-3 gap-12 reveal">
       <div>
-        <span class="font-serif text-gold text-5xl font-semibold">01</span>
-        <h3 class="font-serif text-warm text-xl font-semibold mt-4 mb-2">Consultation</h3>
-        <p class="text-stone-500 text-sm leading-relaxed">We begin with a thorough assessment of your needs. Every project starts with listening — understanding your home, your goals, and your budget.</p>
+        <span class="font-serif text-5xl font-semibold" style="color:${tc.accent};">01</span>
+        <h3 class="font-serif text-xl font-semibold mt-4 mb-2" style="color:${tc.textLight};">Consultation</h3>
+        <p class="text-sm leading-relaxed" style="color:${tc.textMuted};">We begin with a thorough assessment of your needs. Every project starts with listening — understanding your home, your goals, and your budget.</p>
       </div>
       <div>
-        <span class="font-serif text-gold text-5xl font-semibold">02</span>
-        <h3 class="font-serif text-warm text-xl font-semibold mt-4 mb-2">Execution</h3>
-        <p class="text-stone-500 text-sm leading-relaxed">Our master technicians bring precision and care to every step. Premium materials, proper technique, and meticulous attention to detail throughout.</p>
+        <span class="font-serif text-5xl font-semibold" style="color:${tc.accent};">02</span>
+        <h3 class="font-serif text-xl font-semibold mt-4 mb-2" style="color:${tc.textLight};">Execution</h3>
+        <p class="text-sm leading-relaxed" style="color:${tc.textMuted};">Our master technicians bring precision and care to every step. Premium materials, proper technique, and meticulous attention to detail throughout.</p>
       </div>
       <div>
-        <span class="font-serif text-gold text-5xl font-semibold">03</span>
-        <h3 class="font-serif text-warm text-xl font-semibold mt-4 mb-2">Guarantee</h3>
-        <p class="text-stone-500 text-sm leading-relaxed">We stand behind every project with a comprehensive warranty. Your satisfaction isn't a goal — it's the only acceptable outcome.</p>
+        <span class="font-serif text-5xl font-semibold" style="color:${tc.accent};">03</span>
+        <h3 class="font-serif text-xl font-semibold mt-4 mb-2" style="color:${tc.textLight};">Guarantee</h3>
+        <p class="text-sm leading-relaxed" style="color:${tc.textMuted};">We stand behind every project with a comprehensive warranty. Your satisfaction isn't a goal — it's the only acceptable outcome.</p>
       </div>
     </div>
   </div>
@@ -275,39 +281,37 @@ ${serviceList}
 <section id="contact" class="py-24 md:py-32">
   <div class="max-w-xl mx-auto px-6 lg:px-10">
     <div class="text-center mb-10 reveal">
-      <p class="text-gold text-xs font-medium uppercase tracking-[0.2em] mb-4">Get Started</p>
-      <h2 class="font-serif text-warm text-3xl md:text-4xl font-semibold mb-3" style="letter-spacing:-0.02em;">Start a Conversation</h2>
-      <p class="text-stone-500 text-sm leading-relaxed mb-4">Tell us about your project. We'll schedule a consultation at your convenience.</p>
-      <div class="flex flex-wrap items-center justify-center gap-3 text-[11px] uppercase tracking-[0.14em] text-stone-500">
-        <span class="border border-white/[.08] px-3 py-1.5 rounded-full">Licensed</span>
-        <span class="border border-white/[.08] px-3 py-1.5 rounded-full">Insured</span>
-        <span class="border border-white/[.08] px-3 py-1.5 rounded-full">Workmanship guarantee</span>
-        <a href="tel:${phoneHref}" class="text-gold hover:text-gold-light transition-colors">Call ${phone}</a>
+      <p class="text-xs font-medium uppercase tracking-[0.2em] mb-4" style="color:${tc.accent};">Get Started</p>
+      <h2 class="font-serif text-3xl md:text-4xl font-semibold mb-3" style="color:${tc.textLight};letter-spacing:-0.02em;">Start a Conversation</h2>
+      <p class="text-sm leading-relaxed mb-4" style="color:${tc.textMuted};">Tell us about your project. We'll schedule a consultation at your convenience.</p>
+      <div class="flex flex-wrap items-center justify-center gap-3 text-[11px] uppercase tracking-[0.14em]" style="color:${tc.textMuted};">
+        ${badges.slice(0, 3).map(b => `<span class="border px-3 py-1.5 rounded-full" style="border-color:${tc.border};">${escHtml(b)}</span>`).join('\n        ')}
+        <a href="tel:${phoneHref}" class="transition-colors" style="color:${tc.accent};">Call ${phone}</a>
       </div>
     </div>
-    <form id="contact-form" class="reveal" style="background:#222;border:1px solid rgba(255,255,255,.05);border-radius:12px;padding:32px;">
+    <form id="contact-form" class="reveal" style="background:${tc.bgAlt};border:1px solid rgba(255,255,255,.05);border-radius:12px;padding:32px;">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div>
-          <label class="block text-xs font-medium text-stone-500 mb-1.5 uppercase tracking-wider">Name</label>
-          <input type="text" name="name" required placeholder="John Smith" class="w-full px-4 py-3 rounded-lg text-sm text-warm outline-none transition-all" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);" onfocus="this.style.borderColor='#C9A84C'" onblur="this.style.borderColor='rgba(255,255,255,.08)'">
+          <label class="block text-xs font-medium mb-1.5 uppercase tracking-wider" style="color:${tc.textMuted};">Name</label>
+          <input type="text" name="name" required placeholder="John Smith" class="w-full px-4 py-3 rounded-lg text-sm outline-none transition-all" style="color:${tc.textLight};background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);" onfocus="this.style.borderColor='${tc.accent}'" onblur="this.style.borderColor='rgba(255,255,255,.08)'">
         </div>
         <div>
-          <label class="block text-xs font-medium text-stone-500 mb-1.5 uppercase tracking-wider">Phone</label>
-          <input type="tel" name="phone" required placeholder="(555) 123-4567" class="w-full px-4 py-3 rounded-lg text-sm text-warm outline-none transition-all" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);" onfocus="this.style.borderColor='#C9A84C'" onblur="this.style.borderColor='rgba(255,255,255,.08)'">
+          <label class="block text-xs font-medium mb-1.5 uppercase tracking-wider" style="color:${tc.textMuted};">Phone</label>
+          <input type="tel" name="phone" required placeholder="(555) 123-4567" class="w-full px-4 py-3 rounded-lg text-sm outline-none transition-all" style="color:${tc.textLight};background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);" onfocus="this.style.borderColor='${tc.accent}'" onblur="this.style.borderColor='rgba(255,255,255,.08)'">
         </div>
       </div>
       <div class="mb-4">
-        <label class="block text-xs font-medium text-stone-500 mb-1.5 uppercase tracking-wider">Service</label>
-        <select name="service" required class="w-full px-4 py-3 rounded-lg text-sm text-warm outline-none transition-all" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);">
+        <label class="block text-xs font-medium mb-1.5 uppercase tracking-wider" style="color:${tc.textMuted};">Service</label>
+        <select name="service" required class="w-full px-4 py-3 rounded-lg text-sm outline-none transition-all" style="color:${tc.textLight};background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);">
           <option value="" disabled selected style="color:#666;">Select a service...</option>
 ${serviceOpts}
         </select>
       </div>
       <div class="mb-5">
-        <label class="block text-xs font-medium text-stone-500 mb-1.5 uppercase tracking-wider">About Your Project</label>
-        <textarea name="message" rows="3" placeholder="Tell us about the scope of work..." class="w-full px-4 py-3 rounded-lg text-sm text-warm outline-none resize-none transition-all" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);" onfocus="this.style.borderColor='#C9A84C'" onblur="this.style.borderColor='rgba(255,255,255,.08)'"></textarea>
+        <label class="block text-xs font-medium mb-1.5 uppercase tracking-wider" style="color:${tc.textMuted};">About Your Project</label>
+        <textarea name="message" rows="3" placeholder="Tell us about the scope of work..." class="w-full px-4 py-3 rounded-lg text-sm outline-none resize-none transition-all" style="color:${tc.textLight};background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);" onfocus="this.style.borderColor='${tc.accent}'" onblur="this.style.borderColor='rgba(255,255,255,.08)'"></textarea>
       </div>
-      <button type="submit" class="w-full py-3.5 rounded-lg font-medium text-sm uppercase tracking-[0.08em] transition-all" style="background:#C9A84C;color:#1A1A1A;" onmouseover="this.style.background='#D4B866'" onmouseout="this.style.background='#C9A84C'">
+      <button type="submit" class="w-full py-3.5 rounded-lg font-medium text-sm uppercase tracking-[0.08em] transition-all" style="background:${tc.accent};color:${tc.primary};" onmouseover="this.style.background='${tc.accentHover}'" onmouseout="this.style.background='${tc.accent}'">
         ${escHtml(c.cta1)}
       </button>
     </form>
@@ -319,23 +323,23 @@ ${serviceOpts}
   <div class="max-w-6xl mx-auto px-6 lg:px-10">
     <div class="flex flex-col md:flex-row items-center justify-between gap-6">
       <div>
-        <p class="font-serif text-warm text-lg font-semibold">${biz}</p>
-        <p class="text-stone-600 text-xs mt-1">${c.nicheLabel} · ${escHtml(cityState)}</p>
+        <p class="font-serif text-lg font-semibold" style="color:${tc.textLight};">${biz}</p>
+        <p class="text-xs mt-1" style="color:${tc.textMuted};">${c.nicheLabel} · ${escHtml(cityState)}</p>
       </div>
-      <div class="flex items-center gap-6 text-stone-600 text-xs">
-        <a href="tel:${phoneHref}" class="hover:text-gold transition-colors">${phone}</a>
+      <div class="flex items-center gap-6 text-xs" style="color:${tc.textMuted};">
+        <a href="tel:${phoneHref}" class="transition-colors" style="color:${tc.textMuted};">${phone}</a>
         <span class="w-px h-3 bg-white/[.06]"></span>
         <span>Mon–Sat · 24/7 Emergency</span>
       </div>
     </div>
     <div class="mt-8 pt-6 text-center" style="border-top:1px solid rgba(255,255,255,.04);">
-      <p class="text-stone-700 text-xs">&copy; 2026 ${biz}. All rights reserved.</p>
+      <p class="text-xs" style="color:${tc.textMuted};">&copy; 2026 ${biz}. All rights reserved.</p>
     </div>
   </div>
 </footer>
 
 <!-- Toast -->
-<div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 px-5 py-3 rounded-lg z-50 flex items-center gap-2 opacity-0 translate-y-4 transition-all duration-300 pointer-events-none" style="background:#C9A84C;color:#1A1A1A;">
+<div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 px-5 py-3 rounded-lg z-50 flex items-center gap-2 opacity-0 translate-y-4 transition-all duration-300 pointer-events-none" style="background:${tc.accent};color:${tc.primary};">
   <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
   <span class="font-medium text-sm">We'll be in touch to schedule your consultation.</span>
 </div>

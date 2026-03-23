@@ -195,7 +195,7 @@ const familyCopy = {
     hvac: {
       headline: '#1 Rated HVAC in {city}',
       headlineSub: 'Serving the Entire {city} Metro',
-      subline: '{jobs}+ jobs completed. {rating}★ on Google. Licensed, bonded, and trusted by more {city} homeowners than any other HVAC company.',
+      subline: '{jobs}+ jobs completed. {rating}-star on Google. Licensed, bonded, and trusted by more {city} homeowners than any other HVAC company.',
       cta1: 'Request Service',
       cta2: 'See Service Areas',
       whyTitle: '{city}\'s HVAC Leader',
@@ -203,7 +203,7 @@ const familyCopy = {
     },
     plumbing: {
       headline: '{city}\'s Top-Rated Plumber',
-      headlineSub: '{jobs}+ Jobs. {rating}★ Google Rating.',
+      headlineSub: '{jobs}+ Jobs. {rating}-star Google Rating.',
       subline: 'More {city} homeowners trust us than any other plumber. See why we\'re the area\'s highest-rated plumbing service.',
       cta1: 'Schedule Service',
       cta2: 'View Service Area',
@@ -212,7 +212,7 @@ const familyCopy = {
     },
     roofing: {
       headline: '{city}\'s Roofing Authority',
-      headlineSub: '{jobs}+ Roofs. {rating}★ Rating.',
+      headlineSub: '{jobs}+ Roofs. {rating}-star Rating.',
       subline: 'The most experienced roofing team in the {city} metro. Insurance-approved, BBB accredited, and backed by {years} years of local work.',
       cta1: 'Get Your Free Quote',
       cta2: 'See Our Coverage Area',
