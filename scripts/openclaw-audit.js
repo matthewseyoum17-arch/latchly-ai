@@ -67,28 +67,41 @@ const AFFORDABILITY_SIGNALS = {
 // ── Site quality audit ───────────────────────────────────────────────────────
 
 const SITE_ISSUES = {
-  no_mobile:      { label: 'No mobile viewport', weight: 2, test: html => !/meta name="viewport"/i.test(html) },
-  no_https:       { label: 'Not using HTTPS', weight: 1, test: (html, url) => !/^https/i.test(url || '') },
-  thin_content:   { label: 'Very thin content', weight: 2, test: html => {
+  no_mobile:      { label: 'No mobile viewport', weight: 3, test: html => !/meta name="viewport"/i.test(html) },
+  no_https:       { label: 'Not using HTTPS', weight: 2, test: (html, url) => !/^https/i.test(url || '') },
+  thin_content:   { label: 'Very thin content', weight: 3, test: html => {
     // Strip JS/CSS bloat before measuring — Wix outputs 70K+ of framework code
     const visible = html.replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<style[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
     return visible.length < 3000;
   }},
   no_phone_cta:   { label: 'No phone CTA', weight: 2, test: html => !/tel:|call.*now|call.*us/i.test(html) },
   no_form:        { label: 'No contact form', weight: 2, test: html => !/<form\b/i.test(html) },
-  table_layout:   { label: 'Table-based layout', weight: 1, test: html => /<table\b[^>]*>[\s\S]*<table/i.test(html) },
-  no_reviews:     { label: 'No reviews/testimonials', weight: 1, test: html => !/reviews?|testimonials?/i.test(html) },
-  no_ssl:         { label: 'SSL issues', weight: 1, test: (html, url) => /http:\/\//i.test(url || '') },
-  builder_site:   { label: 'Generic builder site', weight: 3, test: html => /wix\.com|squarespace\.com|weebly\.com|godaddy\.com\/websites|websitebuilder\.com/i.test(html) },
+  table_layout:   { label: 'Table-based layout', weight: 2, test: html => /<table\b[^>]*>[\s\S]*<table/i.test(html) },
+  no_reviews:     { label: 'No reviews/testimonials', weight: 2, test: html => !/reviews?|testimonials?/i.test(html) },
+  no_ssl:         { label: 'SSL issues', weight: 2, test: (html, url) => /http:\/\//i.test(url || '') },
+  // Cheap/outdated builders — the exact kind of site we want to replace
+  weebly:         { label: 'Weebly site', weight: 4, test: html => /weebly\.com/i.test(html) },
+  godaddy_builder:{ label: 'GoDaddy builder', weight: 4, test: html => /godaddy\.com\/websites|secureserver\.net.*website-builder/i.test(html) },
+  old_wix:        { label: 'Old Wix template', weight: 3, test: html => /wix\.com/i.test(html) && !/wix-thunderbolt|wixpress\.com\/pages-css/i.test(html) },
+  old_squarespace:{ label: 'Old Squarespace', weight: 3, test: html => /squarespace\.com/i.test(html) && !/squarespace-cdn.*fluid-engine/i.test(html) },
+  // Modern Wix/Squarespace with current responsive patterns = NOT a target
+  // (no weight — these are decent sites that don't need a redesign)
   no_schema:      { label: 'No structured data', weight: 1, test: html => !/application\/ld\+json/i.test(html) },
-  outdated_tech:  { label: 'Outdated technology', weight: 2, test: html => /revolution\.?slider|revslider|jquery\.cycle|jquery\.bx|ga\.js|swfobject|flash/i.test(html) },
-  stale_copyright:{ label: 'Stale copyright year', weight: 2, test: html => {
+  outdated_tech:  { label: 'Outdated technology', weight: 3, test: html => /revolution\.?slider|revslider|jquery\.cycle|jquery\.bx|ga\.js|swfobject|flash|mootools/i.test(html) },
+  stale_copyright:{ label: 'Stale copyright year', weight: 3, test: html => {
     const m = html.match(/©\s*(20\d{2})|copyright\s*(20\d{2})/i);
     if (!m) return false;
     const year = parseInt(m[1] || m[2], 10);
     return year > 0 && year < 2023;
   }},
-  old_framework:  { label: 'Legacy framework', weight: 2, test: html => /jquery-1\.|jquery\/1\.|prototype\.js|mootools|yui\/build/i.test(html) },
+  old_framework:  { label: 'Legacy framework', weight: 3, test: html => /jquery-1\.|jquery\/1\.|prototype\.js|yui\/build|bootstrap\/3\.|bootstrap@3/i.test(html) },
+  old_wordpress:  { label: 'Outdated WordPress theme', weight: 3, test: html => /wp-content/i.test(html) && /theme.*flavor|theme.*flavor|flavor|flavor/i.test(html) === false && (/developer|flavor|flavor/i.test(html) === false) && /jquery-1\.|jquery\/1\.|revslider|revolution\.?slider|ga\.js/i.test(html) },
+  few_pages:      { label: 'Very few pages', weight: 2, test: html => {
+    // Count internal nav links — sites with <5 pages are tiny/neglected
+    const navLinks = (html.match(/<a[^>]+href=["'][^"']*["'][^>]*>/gi) || [])
+      .filter(a => !a.includes('tel:') && !a.includes('mailto:') && !a.includes('#') && !a.includes('facebook') && !a.includes('instagram') && !a.includes('google'));
+    return navLinks.length < 8;
+  }},
 };
 
 // ── Scoring functions ────────────────────────────────────────────────────────
@@ -105,6 +118,22 @@ function scoreChatbot(html) {
   return Math.min(score, 10);
 }
 
+// Signs that a site is modern/well-built — each one subtracts from redesign score
+const MODERN_SIGNALS = {
+  modern_css:       { sub: 2, test: html => /css-grid|display:\s*grid|display:\s*flex|--[a-z]+-color|:root\s*\{/i.test(html) },
+  modern_framework: { sub: 4, test: html => /react|vue\.js|next\.js|nuxt|svelte|wix-thunderbolt|fluid-engine/i.test(html) },
+  rich_content:     { sub: 3, test: html => {
+    const visible = html.replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<style[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    return visible.length > 8000;
+  }},
+  many_pages:       { sub: 4, test: html => {
+    const navLinks = (html.match(/<a[^>]+href=["']\/[^"']*["'][^>]*>/gi) || []).length;
+    return navLinks > 15;
+  }},
+  modern_images:    { sub: 2, test: html => /srcset=|loading="lazy"|\.webp|picture>/i.test(html) },
+  trust_badges:     { sub: 3, test: html => /bbb.*accredited|epa.*certified|nari|nahb|home.*advisor.*screened|angi.*certified/i.test(html) },
+};
+
 function scoreRedesign(html, url) {
   if (!html) return { score: 10, issues: [{ key: 'no_website', label: 'No website', weight: 10 }] };
   let score = 0;
@@ -117,7 +146,14 @@ function scoreRedesign(html, url) {
     }
   }
 
-  return { score: Math.min(score, 10), issues };
+  // Subtract points for modern/well-built signals
+  for (const [key, { sub, test }] of Object.entries(MODERN_SIGNALS)) {
+    if (test(html)) {
+      score -= sub;
+    }
+  }
+
+  return { score: Math.max(0, Math.min(score, 10)), issues };
 }
 
 function detectMarketingSignals(html) {
@@ -419,8 +455,10 @@ async function main() {
       affordability: lead.affordability_signals,
     };
 
-    // Filter by score
-    if (lead.combined_score < minCombined) {
+    // Filter by score — combined >= 7 AND redesign >= 5
+    // The redesign floor ensures we only send truly crappy sites, not
+    // decent sites that just happen to lack a chatbot.
+    if (lead.combined_score < minCombined || lead.redesign_score < 5) {
       skipped++;
       continue;
     }
