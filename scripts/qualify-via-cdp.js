@@ -274,7 +274,7 @@ function scorePackageFit(lead, noChatResult, redesign, buyer, gaps, desktop) {
 function buildComboReason(lead, redesign, buyer, gaps) {
   const topProblems = redesign.problems.slice(0, 2).join('; ');
   const topGaps = gaps.slice(0, 2).join('; ');
-  return `${lead.businessName} looks legitimate enough to buy, still has clear redesign pain (${topProblems || 'dated conversion experience'}), and is leaving money on the table through lead-capture gaps (${topGaps || 'no instant response path'}) — which makes the redesign + AI lead capture package a strong combo offer.`;
+  return `${lead.businessName} is the right kind of target because the website itself is clearly subpar (${topProblems || 'dated conversion experience'}), there is still no chatbot/live-chat layer in place, and the business is leaving money on the table through lead-capture gaps (${topGaps || 'no instant response path'}) — which makes the redesign + AI lead capture package a strong combo offer.`;
 }
 
 function getOwnerNameIfPublic(name, title) {
