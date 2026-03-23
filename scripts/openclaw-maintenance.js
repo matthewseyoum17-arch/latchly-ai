@@ -18,20 +18,11 @@
 
 const fs   = require('fs');
 const path = require('path');
+const config = require('./openclaw.config');
+const { createLogger } = require('./openclaw-logger');
 
-const ROOT = path.join(__dirname, '..');
-
-// Load .env
-const envFile = path.join(ROOT, '.env');
-if (fs.existsSync(envFile)) {
-  fs.readFileSync(envFile, 'utf8').split(/\r?\n/).forEach(line => {
-    const m = line.match(/^([^#=\s][^=]*)=(.*)$/);
-    if (m && !process.env[m[1]]) process.env[m[1]] = m[2].trim();
-  });
-}
-
-const DRY_RUN     = process.env.DRY_RUN === 'true';
-const NOTIFY_EMAIL = process.env.NOTIFY_EMAIL || 'matt@latchlyai.com';
+const log = createLogger('maintenance');
+const { ROOT, DRY_RUN, NOTIFY_EMAIL } = config;
 
 const HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
@@ -133,6 +124,46 @@ ${alertSection}
   };
 }
 
+// ── Demo cleanup ──────────────────────────────────────────────────────────────
+
+async function cleanupStaleDemos() {
+  const maxAgeDays = config.DEMO_MAX_AGE_DAYS;
+  const demosDir = config.DEMOS_DIR;
+  let deleted = 0;
+
+  // Delete old demo HTML files
+  if (fs.existsSync(demosDir)) {
+    const now = Date.now();
+    const maxAgeMs = maxAgeDays * 24 * 60 * 60 * 1000;
+    const files = fs.readdirSync(demosDir).filter(f => f.endsWith('.html'));
+
+    for (const file of files) {
+      const filePath = path.join(demosDir, file);
+      const stat = fs.statSync(filePath);
+      if (now - stat.mtimeMs > maxAgeMs) {
+        fs.unlinkSync(filePath);
+        deleted++;
+      }
+    }
+  }
+
+  // Clear demo_url in DB for expired demos
+  if (process.env.DATABASE_URL && deleted > 0) {
+    try {
+      const { neon } = require('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL);
+      await sql`UPDATE prospects SET demo_url = NULL, demo_html = NULL, updated_at = NOW()
+        WHERE demo_url IS NOT NULL
+          AND updated_at < NOW() - INTERVAL '${maxAgeDays} days'
+          AND status NOT IN ('active', 'subscribed', 'onboarded')`;
+    } catch (err) {
+      console.error(`Demo DB cleanup failed: ${err.message}`);
+    }
+  }
+
+  return deleted;
+}
+
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -224,8 +255,12 @@ async function main() {
     }
   }
 
+  // Cleanup stale demos
+  const demosDeleted = await cleanupStaleDemos();
+  if (demosDeleted > 0) console.log(`Cleaned up ${demosDeleted} stale demo files`);
+
   console.log('\nMaintenance complete');
-  return { clients: clients.length, report: report.subject };
+  return { clients: clients.length, report: report.subject, demos_cleaned: demosDeleted };
 }
 
 module.exports = { main, checkWidget, buildReport };

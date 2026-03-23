@@ -26,6 +26,227 @@ const log = createLogger('demo-builder');
 const { ROOT, DEMOS_DIR, TEMPLATES_DIR, DRY_RUN, SITE_BASE, BOOKING_LINK } = config;
 const VARIANCE = JSON.parse(fs.readFileSync(path.join(TEMPLATES_DIR, 'variance.json'), 'utf8'));
 
+// ── Site content scraper — extract real data from prospect's site ──────────
+
+const SCRAPE_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Accept': 'text/html,application/xhtml+xml',
+};
+
+/**
+ * Scrape the prospect's actual website and extract their branding,
+ * services, testimonials, and content for a tailored demo.
+ */
+async function scrapeSiteContent(url) {
+  if (!url) return null;
+
+  try {
+    const resp = await fetch(url, { headers: SCRAPE_HEADERS, signal: AbortSignal.timeout(12000), redirect: 'follow' });
+    if (!resp.ok) return null;
+    const html = await resp.text();
+
+    const result = {
+      scraped: true,
+      logoUrl: null,
+      ogImage: null,
+      colors: [],
+      services: [],
+      testimonials: [],
+      aboutText: '',
+      tagline: '',
+      yearsInBusiness: null,
+      certifications: [],
+    };
+
+    // ── Extract logo ──
+    const logoM = html.match(/<img[^>]+(?:class|id|alt)="[^"]*logo[^"]*"[^>]*src="([^"]+)"/i)
+      || html.match(/<img[^>]*src="([^"]+)"[^>]*(?:class|id|alt)="[^"]*logo[^"]*"/i)
+      || html.match(/<link[^>]+rel="icon"[^>]+href="([^"]+)"/i);
+    if (logoM) {
+      try {
+        result.logoUrl = new URL(logoM[1], url).href;
+      } catch { result.logoUrl = logoM[1]; }
+    }
+
+    // ── Extract og:image ──
+    const ogM = html.match(/<meta[^>]+property="og:image"[^>]+content="([^"]+)"/i);
+    if (ogM) result.ogImage = ogM[1];
+
+    // ── Extract brand colors from inline CSS ──
+    const colorMatches = html.match(/#[0-9a-f]{6}/gi) || [];
+    const colorCounts = {};
+    colorMatches.forEach(c => {
+      const cl = c.toLowerCase();
+      if (cl !== '#000000' && cl !== '#ffffff' && cl !== '#333333' && cl !== '#666666' && cl !== '#999999') {
+        colorCounts[cl] = (colorCounts[cl] || 0) + 1;
+      }
+    });
+    result.colors = Object.entries(colorCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([color]) => color);
+
+    // ── Extract services from headings and list items ──
+    const stripped = html.replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[\s\S]*?<\/style>/gi, '');
+
+    // Look for service-like headings (h2, h3 near service keywords)
+    const serviceMatches = stripped.match(/<h[2-3][^>]*>([^<]{3,60})<\/h[2-3]>/gi) || [];
+    const serviceKeywords = /repair|install|replace|maintain|service|clean|inspect|emergency|drain|leak|heat|cool|roof|gutter|siding|insulation|water heater|duct|furnace|ac\b|a\/c|plumb/i;
+    for (const match of serviceMatches) {
+      const text = match.replace(/<[^>]+>/g, '').trim();
+      if (serviceKeywords.test(text) && text.length < 60 && result.services.length < 8) {
+        result.services.push(text);
+      }
+    }
+
+    // Fallback: nav links that look like services
+    if (result.services.length < 3) {
+      const navLinks = stripped.match(/<a[^>]+href="[^"]*(?:service|what-we-do)[^"]*"[^>]*>([^<]+)</gi) || [];
+      for (const link of navLinks) {
+        const text = link.replace(/<[^>]+>/g, '').trim();
+        if (text.length > 2 && text.length < 50 && result.services.length < 8) {
+          result.services.push(text);
+        }
+      }
+    }
+
+    // ── Extract testimonials / reviews ──
+    const reviewBlocks = stripped.match(/"[^"]{30,300}"\s*[-–—]\s*[A-Z][a-z]+/g) || [];
+    for (const block of reviewBlocks.slice(0, 3)) {
+      const parts = block.match(/"([^"]+)"\s*[-–—]\s*([A-Z][a-zA-Z\s.]+)/);
+      if (parts) {
+        result.testimonials.push({ text: parts[1].trim(), name: parts[2].trim(), rating: 5 });
+      }
+    }
+
+    // Also look for blockquote/review-class content
+    if (result.testimonials.length === 0) {
+      const quoteMatches = stripped.match(/<(?:blockquote|div[^>]+(?:review|testimonial))[^>]*>([\s\S]{20,300}?)<\//gi) || [];
+      for (const q of quoteMatches.slice(0, 3)) {
+        const text = q.replace(/<[^>]+>/g, '').trim();
+        if (text.length > 20 && text.length < 300) {
+          result.testimonials.push({ text, name: 'Customer', rating: 5 });
+        }
+      }
+    }
+
+    // ── Extract about/tagline text ──
+    const descM = html.match(/<meta[^>]+name="description"[^>]+content="([^"]+)"/i);
+    if (descM) result.aboutText = descM[1].trim();
+
+    const titleM = html.match(/<title>([^<]+)<\/title>/i);
+    if (titleM) result.tagline = titleM[1].replace(/\s*[-|–].*$/, '').trim();
+
+    // ── Extract years in business ──
+    const yearM = stripped.match(/(?:since|established|serving.*since)\s*((?:19|20)\d{2})/i)
+      || stripped.match(/([\d]+)\+?\s*years?\s*(?:of\s+)?(?:experience|in business|serving)/i);
+    if (yearM) {
+      const num = parseInt(yearM[1], 10);
+      result.yearsInBusiness = num > 100 ? new Date().getFullYear() - num : num;
+    }
+
+    // ── Extract certifications ──
+    const certPatterns = [
+      /licensed/i, /bonded/i, /insured/i, /bbb.*accredited/i,
+      /epa.*certified/i, /nate.*certified/i, /home.*advisor/i,
+    ];
+    for (const pat of certPatterns) {
+      if (pat.test(stripped) && result.certifications.length < 4) {
+        const label = pat.source.replace(/\.\*/g, ' ').replace(/\\s\*/g, ' ').replace(/\/i/g, '')
+          .replace(/[\\^$]/g, '').trim();
+        result.certifications.push(label.charAt(0).toUpperCase() + label.slice(1));
+      }
+    }
+
+    log.info('site_scraped', {
+      url,
+      services: result.services.length,
+      testimonials: result.testimonials.length,
+      hasLogo: !!result.logoUrl,
+      hasColors: result.colors.length,
+      yearsInBusiness: result.yearsInBusiness,
+    });
+
+    return result;
+  } catch (err) {
+    log.catch('scrape_failed', err, { url });
+    return null;
+  }
+}
+
+/**
+ * Merge scraped site content into template data.
+ * Scraped data takes priority — template fills gaps.
+ */
+function mergeScrapedContent(template, scraped, lead) {
+  if (!scraped || !scraped.scraped) return template;
+
+  // Override services with real ones from their site
+  if (scraped.services.length >= 2) {
+    template.services = scraped.services.slice(0, 6).map(s => ({
+      title: s,
+      desc: `Professional ${s.toLowerCase()} services for ${lead.city || 'your area'}. Fast response, upfront pricing, satisfaction guaranteed.`,
+    }));
+  }
+
+  // Override testimonials with real ones
+  if (scraped.testimonials.length > 0) {
+    template.testimonials = scraped.testimonials;
+  }
+
+  // Inject brand colors if found
+  if (scraped.colors.length > 0) {
+    const primary = scraped.colors[0];
+    // Darken the primary for hover states
+    const darken = (hex) => {
+      const r = Math.max(0, parseInt(hex.slice(1, 3), 16) - 30);
+      const g = Math.max(0, parseInt(hex.slice(3, 5), 16) - 30);
+      const b = Math.max(0, parseInt(hex.slice(5, 7), 16) - 30);
+      return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+    };
+    template.colors = {
+      ...template.colors,
+      primary,
+      primaryDark: scraped.colors.length > 1 ? scraped.colors[1] : darken(primary),
+      starColor: '#f59e0b',
+      name: 'scraped-brand',
+    };
+  }
+
+  // Override stats with real data
+  if (scraped.yearsInBusiness) {
+    const yrs = scraped.yearsInBusiness;
+    if (template.stats) {
+      template.stats = template.stats.map(s => {
+        if (/year/i.test(s.label)) return { ...s, value: `${yrs}+` };
+        return s;
+      });
+    }
+  }
+
+  // Add certifications to about/why-us
+  if (scraped.certifications.length > 0 && template.whyUs) {
+    const certItem = {
+      title: scraped.certifications.join(' • '),
+      desc: `Verified credentials you can trust — we stand behind every job.`,
+    };
+    if (template.whyUs.length < 5) {
+      template.whyUs.push(certItem);
+    }
+  }
+
+  // Use their tagline if available
+  if (scraped.tagline && scraped.tagline.length > 5 && scraped.tagline.length < 80) {
+    template.originalTagline = scraped.tagline;
+  }
+
+  // Store logo for use in HTML
+  template.scrapedLogo = scraped.logoUrl || scraped.ogImage || null;
+
+  return template;
+}
+
 function loadTemplate(niche) {
   const nicheRaw = niche.toLowerCase().replace(/[^a-z\s]/g, '').trim();
   const nicheWords = nicheRaw.split(/\s+/);
@@ -67,9 +288,11 @@ function applyVariance(template, lead) {
   // Pick stats
   const stats = pick(VARIANCE.stats, seed + 2);
 
-  // Pick headline
+  // Pick headline — use original tagline if scraped, otherwise template
   const headlines = VARIANCE.heroHeadlines[nicheKey] || VARIANCE.heroHeadlines.hvac;
-  const headline = pick(headlines, seed + 3).replace('{city}', lead.city || 'Your City');
+  const headline = template.originalTagline
+    ? template.originalTagline
+    : pick(headlines, seed + 3).replace('{city}', lead.city || 'Your City');
 
   // Pick subline
   const sublines = VARIANCE.sublines[nicheKey] || VARIANCE.sublines.hvac;
@@ -218,7 +441,7 @@ function buildPersonalizationBanner(lead) {
   if (issues.length === 0) return '';
 
   const fixes = issues
-    .slice(0, 3)
+    .slice(0, 4)
     .map(i => ISSUE_MESSAGING[i.key])
     .filter(Boolean);
 
@@ -233,16 +456,21 @@ function buildPersonalizationBanner(lead) {
         <p style="color:#7a8ba6;font-size:13px;line-height:1.6;margin:0;">${escHtml(f.desc)}</p>
       </div>`).join('\n');
 
+  const websiteNote = lead.website
+    ? `<p style="color:#7a8ba6;font-size:13px;max-width:520px;margin:8px auto 0;">We looked at <a href="${escHtml(lead.website)}" style="color:#93b4d9;text-decoration:underline;" target="_blank">${escHtml(lead.website.replace(/^https?:\/\/(?:www\.)?/, '').replace(/\/$/, ''))}</a> and rebuilt it from the ground up with these upgrades.</p>`
+    : '';
+
   return `
-<!-- ===== PERSONALIZED: ISSUES WE FIXED ===== -->
+<!-- ===== PERSONALIZED: YOUR SITE, UPGRADED ===== -->
 <section style="background:linear-gradient(180deg,#0a0f1c 0%,#0f1628 100%);border-bottom:1px solid rgba(255,255,255,0.04);" class="py-12">
   <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
     <div style="text-align:center;margin-bottom:24px;">
       <div style="display:flex;justify-content:center;margin-bottom:12px;">
-        <span style="display:inline-block;background:rgba(16,185,129,0.1);color:#10b981;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;padding:6px 14px;border-radius:6px;border:1px solid rgba(16,185,129,0.2);">Built for you</span>
+        <span style="display:inline-block;background:rgba(16,185,129,0.1);color:#10b981;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;padding:6px 14px;border-radius:6px;border:1px solid rgba(16,185,129,0.2);">Your site, reimagined</span>
       </div>
-      <h2 style="color:#e2e8f0;font-size:22px;font-weight:800;margin:0 0 6px;letter-spacing:-0.02em;">What we improved in this demo</h2>
-      <p style="color:#7a8ba6;font-size:14px;max-width:480px;margin:0 auto;">We analyzed your current site and built this demo to address the gaps we found.</p>
+      <h2 style="color:#e2e8f0;font-size:22px;font-weight:800;margin:0 0 6px;letter-spacing:-0.02em;">What's different about this version</h2>
+      <p style="color:#7a8ba6;font-size:14px;max-width:480px;margin:0 auto;">Same business, same services — but a site that actually converts visitors into booked jobs.</p>
+      ${websiteNote}
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;">
 ${fixCards}
@@ -436,9 +664,14 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Outfit', sans-serif; letter-spacing: -0.0
   <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="flex items-center justify-between h-16 md:h-[68px]">
       <a href="#" class="flex items-center gap-2.5">
-        <div class="w-7 h-7 bg-orange rounded-lg flex items-center justify-center flex-shrink-0">
+        ${template.scrapedLogo
+          ? `<img src="${escHtml(template.scrapedLogo)}" alt="${biz}" style="height:32px;max-width:140px;object-fit:contain;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+        <div class="w-7 h-7 bg-orange rounded-lg items-center justify-center flex-shrink-0" style="display:none;">
           <svg class="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
-        </div>
+        </div>`
+          : `<div class="w-7 h-7 bg-orange rounded-lg flex items-center justify-center flex-shrink-0">
+          <svg class="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+        </div>`}
         <span class="font-display font-bold text-[17px] text-white" style="letter-spacing:-0.02em;">${biz}<span class="text-orange font-black">.</span></span>
       </a>
       <div class="hidden lg:flex items-center gap-9">
@@ -1071,18 +1304,24 @@ async function main() {
     lead.demo_slug = slug;
     lead.demo_url = `${SITE_BASE}/demo/${slug}`;
 
-    const template = loadTemplate(lead.niche || '');
+    let template = loadTemplate(lead.niche || '');
     if (!template) {
       log.warn('skipped_unsupported_niche', { business: lead.business_name, niche: lead.niche });
       continue;
     }
+
+    // Scrape their actual site and merge real content into template
+    const scraped = await scrapeSiteContent(lead.website);
+    if (scraped) {
+      template = mergeScrapedContent(template, scraped, lead);
+    }
+
     const html = generateDemo(lead, template);
     const outPath = path.join(DEMOS_DIR, `${slug}.html`);
 
-    // Track which variant was generated (personalized vs generic)
-    const issueCount = (lead.report_card?.issues || []).length;
-    lead.demo_variant = issueCount > 0 ? 'personalized' : 'generic';
-    if (lead.demo_variant === 'personalized') personalized++;
+    // Track which variant was generated
+    lead.demo_variant = scraped ? 'tailored' : (lead.report_card?.issues || []).length > 0 ? 'personalized' : 'generic';
+    if (lead.demo_variant === 'tailored' || lead.demo_variant === 'personalized') personalized++;
 
     if (DRY_RUN) {
       lead.demo_persisted = false;
@@ -1098,6 +1337,9 @@ async function main() {
 
     results.push({ slug, demo_url: lead.demo_url, business_name: lead.business_name, variant: lead.demo_variant, persisted: !!lead.demo_persisted });
     built++;
+
+    // Rate limit between demo builds (site scraping)
+    await new Promise(r => setTimeout(r, 500));
   }
 
   // Update audited.json with demo URLs
@@ -1116,7 +1358,7 @@ async function main() {
 }
 
 // Allow require() for pipeline use
-module.exports = { main, makeSlug, generateDemo, loadTemplate };
+module.exports = { main, makeSlug, generateDemo, loadTemplate, scrapeSiteContent, mergeScrapedContent };
 
 if (require.main === module) {
   main().catch(err => { log.catch('fatal', err); process.exit(1); });

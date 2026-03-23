@@ -74,8 +74,19 @@ const CITIES = (process.env.SCOUT_CITIES || '').split(';').filter(Boolean).lengt
   ];
 
 const FRANCHISE_BLACKLIST = [
+  // National franchises
   '1-hour', 'one hour', 'mr. rooter', 'roto-rooter', 'servicemaster',
   'servpro', '1-800', 'terminix', 'orkin', 'home depot',
+  // Plumbing/HVAC franchises
+  'benjamin franklin', 'mr. electric', 'ars rescue rooter', 'horizon services',
+  'len the plumber', 'michael & son', 'rescue air', 'coolray',
+  'hiller plumbing', 'bonney plumbing', 'chas roberts',
+  // Roofing franchises
+  'power home remodeling', 'leaf home', 'erie home', 'long roofing',
+  // General home services
+  'handy', 'homeadvisor', 'angi', 'thumbtack',
+  'comfort zone', 'service experts', 'morris-jenkins', 'david gray',
+  'goettl', 'bell brothers', 'baker brothers',
 ];
 
 // ── Rate limits ─────────────────────────────────────────────────────────────

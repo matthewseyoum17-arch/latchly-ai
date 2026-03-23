@@ -400,6 +400,20 @@ async function main() {
       continue;
     }
 
+    // Fresh bounce/unsub check right before send (guards against race with webhook)
+    if (useDB && lead.id) {
+      try {
+        const { neon } = require('@neondatabase/serverless');
+        const sql = neon(process.env.DATABASE_URL);
+        const [fresh] = await sql`SELECT bounce_type, unsubscribed, closer_responses, escalated
+          FROM prospects WHERE id = ${lead.id}`;
+        if (fresh && (fresh.bounce_type || fresh.unsubscribed || fresh.escalated || (fresh.closer_responses || 0) > 0)) {
+          log.info('skipped_stale', { business: lead.business_name, reason: fresh.bounce_type ? 'bounced' : fresh.unsubscribed ? 'unsubscribed' : 'replied' });
+          continue;
+        }
+      } catch {} // Non-critical — proceed with original data
+    }
+
     const demoCheck = await demoReachable(lead);
     if (!demoCheck.ok) {
       skipped_demo++;

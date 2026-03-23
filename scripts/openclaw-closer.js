@@ -16,58 +16,59 @@
 
 const fs   = require('fs');
 const path = require('path');
+const config = require('./openclaw.config');
+const { createLogger } = require('./openclaw-logger');
 
-const ROOT = path.join(__dirname, '..');
-
-// Load .env
-const envFile = path.join(ROOT, '.env');
-if (fs.existsSync(envFile)) {
-  fs.readFileSync(envFile, 'utf8').split(/\r?\n/).forEach(line => {
-    const m = line.match(/^([^#=\s][^=]*)=(.*)$/);
-    if (m && !process.env[m[1]]) process.env[m[1]] = m[2].trim();
-  });
-}
-
-const DRY_RUN      = process.env.DRY_RUN === 'true';
-const MAX_MESSAGES = parseInt(process.env.MAX_MESSAGES || '200', 10);
-const ESCALATE_TO  = process.env.NOTIFY_EMAIL || 'matt@latchlyai.com';
-const SITE_BASE    = process.env.SITE_BASE || 'https://latchlyai.com';
-const BOOKING_LINK = process.env.BOOKING_LINK || 'https://calendly.com/latchlyai/demo';
+const log = createLogger('closer');
+const { ROOT, DRY_RUN, MAX_MESSAGES, BOOKING_LINK } = config;
+const ESCALATE_TO = config.NOTIFY_EMAIL;
 
 // ── Objection playbook ───────────────────────────────────────────────────────
 
-const SYSTEM_PROMPT = `You are Matthew's AI sales assistant for Latchly AI. You're following up on a personalized demo website and AI chatbot that was built for a home service business.
+const SYSTEM_PROMPT = `You are replying to prospect emails on behalf of Matt, founder of Latchly AI. Matt sent a custom homepage concept to a local service business owner. They replied. Your job is to write Matt's response.
 
-BOOKING LINK (include this when suggesting a call): ${BOOKING_LINK}
+BOOKING LINK (only include when they ask for a call or show clear interest): ${BOOKING_LINK}
 
-Your job is to:
-1. Classify the reply intent: "interested", "objection", "question", "not_interested"
-2. Generate a natural, warm response (1-3 short paragraphs max)
+CLASSIFY the reply as one of: "interested", "objection", "question", "not_interested"
+Then write a short, plain-text reply (1-2 paragraphs max).
 
-Context about the prospect will be provided. Use their specific audit data in your response.
+VOICE RULES:
+- Write like a sharp, plainspoken founder. Not a sales rep, not an SDR, not an AI.
+- Short sentences. No buzzwords. No exclamation points. No fake enthusiasm.
+- Sign off as "Matt" only.
+- Never say "game changer", "revolutionize", "AI-powered", or any hype language.
+- The website/demo is the main value. The AI assistant is a secondary benefit. Do not lead with AI.
+- Never fabricate stats, lead counts, or ROI claims.
+- Never insult their current website.
+- One CTA max per reply. If they seem interested, suggest a call. If they have a question, answer it. Do not stack CTAs.
 
-OBJECTION PLAYBOOK:
-- "Too expensive" / "What's the price?" → "Totally fair question. Most of our clients see 5-15 extra leads per month from the AI chat alone — the site + chatbot usually pays for itself in the first week. Want me to walk you through the pricing on a quick call? [BOOKING_LINK]"
-- "Already have a website" → "I noticed your current site has [specific issues from audit]. This doesn't replace what you have — it adds an AI assistant that captures leads 24/7. Want to see how it works? [BOOKING_LINK]"
-- "Not now" / "Bad timing" → "Totally understand! Your demo stays live at [URL]. When the time is right, grab 10 minutes here and I'll walk you through it: [BOOKING_LINK]"
-- "Need to think about it" → "Of course! Would a quick 10-minute walkthrough help? Sometimes seeing it live makes the decision easier: [BOOKING_LINK]"
-- "How does it work?" → Brief explanation: "The AI chatbot sits on your website 24/7, answers customer questions using your business info, and captures their name + phone. You get notified instantly. Want to see it in action? [BOOKING_LINK]"
-- "Unsubscribe" / "Stop emailing" → "Done! You've been removed. Apologies for the inconvenience."
+OBJECTION HANDLING:
+- "What's the price?" / "How much?" → Give a straight answer: "The site build is a one-time fee, and the monthly is for hosting and the assistant. Happy to walk through the numbers on a quick call if that's easier." Include booking link.
+- "Already have a website" → "The concept I sent is more about the conversion structure and how visitors turn into booked jobs. Worth a look even as a reference point for what a refresh could look like."
+- "Not now" / "Bad timing" → "No problem. The concept is yours to reference whenever it makes sense." No booking link. No pressure.
+- "Need to think about it" → "Take your time. The demo stays live. If you want a walkthrough later, I'm around."
+- "How does it work?" → Answer plainly. The site is built to convert more visitors into calls and booked jobs. It includes an assistant that can handle common questions and capture leads after hours. Keep it brief.
+- "Unsubscribe" / "Stop emailing" → "Done. You've been removed. Sorry for the noise."
 
-RULES:
-- Never be pushy or salesy. Be helpful and genuine.
-- Keep responses short and conversational.
-- Sign off as "Matthew" (not "AI" or "assistant").
-- If the intent is clearly "interested", suggest a call/walkthrough.
-- If they ask to unsubscribe, respect it immediately.
+HARD RULES:
+- Never mention "report card", "audit", or "issues we found".
+- Never say "just checking in" or "circling back".
+- If you don't have enough context to give a good answer, keep it short and offer a call.
+- Plain text only. No markdown. No bullet points. No HTML.
 
-Output format (JSON):
+Output JSON only:
 {
   "intent": "interested|objection|question|not_interested",
+  "confidence": 0.0-1.0,
   "response": "Your reply text here",
   "should_escalate": true/false,
   "should_unsubscribe": true/false
-}`;
+}
+
+CONFIDENCE GUIDE:
+- 0.9+ = Crystal clear intent (e.g., "yes I want a call" or "stop emailing me")
+- 0.7-0.9 = Fairly clear but some ambiguity
+- Below 0.7 = Unclear intent, mixed signals, sarcasm, or hard to parse — set should_escalate: true`;
 
 // ── Claude API ───────────────────────────────────────────────────────────────
 
@@ -75,15 +76,31 @@ async function classifyAndRespond(incomingEmail, prospectContext) {
   const Anthropic = require('@anthropic-ai/sdk');
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-  const userMessage = `PROSPECT CONTEXT:
+  // Determine which outreach step they're replying to
+  const stepNum = prospectContext.outreach_step || 0;
+  const stepLabels = {
+    0: 'Before any outreach was sent',
+    1: 'Day 0 — initial email (sent custom homepage concept + demo link)',
+    2: 'Day 3 — follow-up (short reminder about the concept)',
+    3: 'Day 7 — breakup email (left the door open, no pressure)',
+  };
+  const lastStepLabel = stepLabels[stepNum] || `Step ${stepNum}`;
+
+  // Try to detect which step from the reply subject line
+  const subj = (incomingEmail.subject || '').toLowerCase();
+  let triggeredBy = lastStepLabel;
+  if (subj.includes('site concept for')) triggeredBy = 'Day 0 — initial email with custom concept';
+  else if (subj.includes('re: site concept')) triggeredBy = 'Day 3 — follow-up';
+  else if (subj.includes('last note')) triggeredBy = 'Day 7 — breakup email';
+
+  const userMessage = `PROSPECT:
 - Business: ${prospectContext.business_name}
 - Niche: ${prospectContext.niche || 'home services'}
 - City: ${prospectContext.city || 'unknown'}, ${prospectContext.state || ''}
 - Demo URL: ${prospectContext.demo_url || 'N/A'}
-- Chatbot Score: ${prospectContext.chatbot_score || '?'}/10
-- Redesign Score: ${prospectContext.redesign_score || '?'}/10
-- Site Issues: ${(prospectContext.report_card?.issues || []).map(i => i.label).join(', ') || 'none detected'}
-- Previous outreach step: ${prospectContext.outreach_step || 0}
+- Lead type: ${prospectContext.lead_type || 'package'}
+- Last completed outreach step: ${lastStepLabel}
+- They are replying to: ${triggeredBy}
 - Auto-responses so far: ${prospectContext.closer_responses || 0}
 
 THEIR REPLY:
@@ -91,7 +108,7 @@ Subject: ${incomingEmail.subject || ''}
 Body: ${incomingEmail.body || incomingEmail.text || ''}`;
 
   const response = await anthropic.messages.create({
-    model: 'claude-3-haiku-20240307',
+    model: 'claude-haiku-4-5-20251001',
     max_tokens: 500,
     temperature: 0.3,
     system: SYSTEM_PROMPT,
@@ -135,7 +152,7 @@ async function pollInbox() {
       return age < 24 * 60 * 60 * 1000; // Last 24 hours
     });
   } catch (err) {
-    console.error(`Inbox poll error: ${err.message}`);
+    log.catch('inbox_poll_error', err);
     return [];
   }
 }
@@ -144,7 +161,7 @@ async function pollInbox() {
 
 async function sendReply(toEmail, subject, body) {
   if (DRY_RUN) {
-    console.log(`  [DRY RUN] Would reply to ${toEmail}: "${subject}"`);
+    log.info('dry_run_reply', { email: toEmail, subject });
     return true;
   }
 
@@ -159,7 +176,7 @@ async function sendReply(toEmail, subject, body) {
     });
     return true;
   } catch (err) {
-    console.error(`  Reply send error: ${err.message}`);
+    log.catch('reply_send_error', err, { email: toEmail });
     return false;
   }
 }
@@ -168,7 +185,7 @@ async function sendReply(toEmail, subject, body) {
 
 async function escalateToMatthew(prospect, incomingEmail, classification) {
   if (DRY_RUN) {
-    console.log(`  [DRY RUN] Would escalate ${prospect.business_name} to Matthew`);
+    log.info('dry_run_escalate', { business: prospect.business_name, intent: classification.intent });
     return;
   }
 
@@ -188,6 +205,7 @@ async function escalateToMatthew(prospect, incomingEmail, classification) {
 <p><strong>Email:</strong> ${prospect.email}</p>
 <p><strong>Phone:</strong> ${prospect.phone || 'N/A'}</p>
 <p><strong>Intent:</strong> ${classification.intent}</p>
+<p><strong>Replying to:</strong> Step ${prospect.outreach_step || '?'} (${prospect.outreach_step === 1 ? 'Day 0 initial' : prospect.outreach_step === 2 ? 'Day 3 follow-up' : prospect.outreach_step === 3 ? 'Day 7 final' : 'unknown'})</p>
 <p><strong>Demo:</strong> <a href="${prospect.demo_url}">${prospect.demo_url}</a></p>
 <hr style="border:none;border-top:1px solid #e2e8f0;margin:16px 0;">
 <p><strong>Their reply:</strong></p>
@@ -208,7 +226,9 @@ async function findProspect(fromEmail) {
       const sql = neon(process.env.DATABASE_URL);
       const [row] = await sql`SELECT * FROM prospects WHERE email = ${fromEmail} LIMIT 1`;
       if (row) return row;
-    } catch {}
+    } catch (err) {
+      log.catch('prospect_lookup_failed', err, { email: fromEmail });
+    }
   }
 
   // Fall back to file
@@ -224,13 +244,16 @@ async function findProspect(fromEmail) {
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
-  console.log('OpenClaw Closer starting...');
+  log.startRun({ dry_run: DRY_RUN, max_messages: MAX_MESSAGES });
 
   const messages = await pollInbox();
-  console.log(`Found ${messages.length} recent messages`);
+  log.info('inbox_polled', { count: messages.length });
 
   let processed = 0;
   let escalated = 0;
+
+  // Track processed message IDs this run to prevent duplicate processing
+  const processedMsgIds = new Set();
 
   for (const msg of messages) {
     if (processed >= MAX_MESSAGES) break;
@@ -238,39 +261,71 @@ async function main() {
     const fromEmail = msg.from_email || msg.from?.email || msg.from || '';
     if (!fromEmail) continue;
 
+    // Dedup: skip if we've already processed this message ID
+    const msgId = msg.id || msg.message_id || `${fromEmail}-${msg.created_at || msg.date}`;
+    if (processedMsgIds.has(msgId)) continue;
+    processedMsgIds.add(msgId);
+
     // Skip system/notification emails
     if (fromEmail.includes('noreply') || fromEmail.includes('mailer-daemon')) continue;
 
     // Find matching prospect
     const prospect = await findProspect(fromEmail);
     if (!prospect) {
-      console.log(`  No prospect match for ${fromEmail}, skipping`);
+      log.info('no_prospect_match', { email: fromEmail });
+      continue;
+    }
+
+    // Check if this message was already processed (DB-level idempotency)
+    if (prospect.last_closer_msg_id === msgId) {
+      log.info('already_processed', { business: prospect.business_name, msg_id: msgId });
       continue;
     }
 
     // Check auto-response cap
     if ((prospect.closer_responses || 0) >= 2 && !prospect.escalated) {
-      console.log(`  ${prospect.business_name}: auto-response cap reached, escalating`);
+      log.lead('cap_reached_escalating', prospect);
       await escalateToMatthew(prospect, msg, { intent: 'question', response: 'Escalated after 2 auto-responses' });
       escalated++;
       continue;
     }
 
-    console.log(`  Processing reply from ${prospect.business_name}...`);
+    log.lead('processing', prospect, { msg_id: msgId });
 
     // Classify + generate response
     const classification = await classifyAndRespond(msg, prospect);
-    console.log(`    Intent: ${classification.intent}`);
+    const confidence = classification.confidence || 0;
+    log.lead('classified', prospect, { intent: classification.intent, confidence, should_escalate: classification.should_escalate });
+
+    // Low confidence → escalate immediately, don't auto-respond
+    if (confidence < 0.7 && !classification.should_unsubscribe) {
+      log.lead('low_confidence_escalate', prospect, { confidence, intent: classification.intent });
+      await escalateToMatthew(prospect, msg, { ...classification, response: `[LOW CONFIDENCE ${confidence}] AI draft: ${classification.response}` });
+      escalated++;
+      if (!DRY_RUN && process.env.DATABASE_URL) {
+        try {
+          const { neon } = require('@neondatabase/serverless');
+          const sql = neon(process.env.DATABASE_URL);
+          await sql`UPDATE prospects SET escalated = TRUE, last_closer_msg_id = ${msgId}, updated_at = NOW() WHERE email = ${fromEmail}`;
+        } catch {}
+      }
+      processed++;
+      continue;
+    }
 
     // Handle unsubscribe
     if (classification.should_unsubscribe) {
       if (!DRY_RUN && process.env.DATABASE_URL) {
         const { neon } = require('@neondatabase/serverless');
         const sql = neon(process.env.DATABASE_URL);
-        await sql`UPDATE prospects SET unsubscribed = TRUE, updated_at = NOW() WHERE email = ${fromEmail}`;
+        await sql`UPDATE prospects SET
+          unsubscribed = TRUE,
+          last_closer_msg_id = ${msgId},
+          updated_at = NOW()
+        WHERE email = ${fromEmail}`;
       }
       await sendReply(fromEmail, msg.subject || 'Re: Latchly', classification.response);
-      console.log(`    Unsubscribed ${fromEmail}`);
+      log.lead('unsubscribed', prospect);
       processed++;
       continue;
     }
@@ -281,39 +336,36 @@ async function main() {
       processed++;
     }
 
-    // Update closer_responses count
+    // Update closer_responses + escalation in single DB call
     if (!DRY_RUN && process.env.DATABASE_URL) {
       try {
+        const shouldEscalate = classification.should_escalate || classification.intent === 'interested';
         const { neon } = require('@neondatabase/serverless');
         const sql = neon(process.env.DATABASE_URL);
         await sql`UPDATE prospects SET
           closer_responses = COALESCE(closer_responses, 0) + 1,
+          escalated = CASE WHEN ${shouldEscalate} THEN TRUE ELSE escalated END,
+          last_closer_msg_id = ${msgId},
           updated_at = NOW()
         WHERE email = ${fromEmail}`;
-      } catch {}
+      } catch (err) {
+        log.catch('db_update_failed', err, { email: fromEmail });
+      }
     }
 
     // Escalate if needed
     if (classification.should_escalate || classification.intent === 'interested') {
       await escalateToMatthew(prospect, msg, classification);
       escalated++;
-
-      if (!DRY_RUN && process.env.DATABASE_URL) {
-        try {
-          const { neon } = require('@neondatabase/serverless');
-          const sql = neon(process.env.DATABASE_URL);
-          await sql`UPDATE prospects SET escalated = TRUE, updated_at = NOW() WHERE email = ${fromEmail}`;
-        } catch {}
-      }
     }
   }
 
-  console.log(`\nCloser complete: ${processed} messages processed, ${escalated} escalated`);
+  log.endRun({ processed, escalated });
   return { processed, escalated };
 }
 
 module.exports = { main, classifyAndRespond };
 
 if (require.main === module) {
-  main().catch(err => { console.error('Closer failed:', err); process.exit(1); });
+  main().catch(err => { log.catch('fatal', err); process.exit(1); });
 }

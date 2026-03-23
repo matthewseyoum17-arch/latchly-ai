@@ -293,19 +293,44 @@ function classifyLeadType(lead, siteCheck) {
 
 // ── Main ─────────────────────────────────────────────────────────────────────
 
+/**
+ * Load already-known prospects from DB to avoid re-scouting them.
+ * Returns a Set of "business_name-city" keys.
+ */
+async function loadExistingFromDB() {
+  const existing = new Set();
+  if (config.SKIP_DB || !process.env.DATABASE_URL) return existing;
+
+  try {
+    const { neon } = require('@neondatabase/serverless');
+    const sql = neon(process.env.DATABASE_URL);
+    const rows = await sql`SELECT LOWER(business_name) AS bn, LOWER(city) AS c FROM prospects WHERE business_name IS NOT NULL AND city IS NOT NULL`;
+    for (const r of rows) {
+      existing.add(`${r.bn}-${r.c}`);
+    }
+    log.info('dedup_loaded', { existing_count: existing.size });
+  } catch (err) {
+    log.catch('dedup_load_failed', err);
+  }
+  return existing;
+}
+
 async function main() {
   if (!fs.existsSync(LEADS_DIR)) fs.mkdirSync(LEADS_DIR, { recursive: true });
 
-  const seen = new Set();
+  // Load existing prospects from DB for cross-run dedup
+  const dbSeen = await loadExistingFromDB();
+  const seen = new Set([...dbSeen]);
   const scouted = [];
   let total = 0;
+  let dupSkipped = 0;
 
   // Limit scope per run to avoid rate limits
   const maxPerNiche = config.SCOUT_MAX_PER_NICHE;
   const maxTotal = config.SCOUT_MAX_TOTAL;
   const skipSiteCheck = SKIP_SITE_CHECK;
 
-  log.startRun({ niches: NICHES.length, cities: CITIES.length, max_per_niche: maxPerNiche, max_total: maxTotal });
+  log.startRun({ niches: NICHES.length, cities: CITIES.length, max_per_niche: maxPerNiche, max_total: maxTotal, existing_in_db: dbSeen.size });
 
   for (const niche of NICHES) {
     if (scouted.length >= maxTotal) break;
@@ -320,9 +345,9 @@ async function main() {
       for (const lead of results) {
         if (nicheCount >= maxPerNiche) break;
 
-        // Dedup by business name + city
+        // Dedup by business name + city (includes DB existing)
         const key = `${lead.business_name.toLowerCase()}-${lead.city.toLowerCase()}`;
-        if (seen.has(key)) continue;
+        if (seen.has(key)) { dupSkipped++; continue; }
         seen.add(key);
 
         if (!lead.phone) continue;
@@ -343,6 +368,7 @@ async function main() {
         lead.lead_type = classifyLeadType(lead, siteCheck);
         lead.site_issues = siteCheck.issues || [];
         lead.has_chatbot = siteCheck.hasChatbot || false;
+        lead.cached_html = siteCheck.html || null; // Pass to audit to avoid re-fetch
         lead.status = 'scouted';
         lead.scouted_at = new Date().toISOString();
 
@@ -364,7 +390,7 @@ async function main() {
   const byType = { package: 0, chatbot_only: 0, redesign_only: 0 };
   scouted.forEach(l => { byType[l.lead_type] = (byType[l.lead_type] || 0) + 1; });
 
-  log.endRun({ total_scraped: total, after_dedup: scouted.length, ...byType });
+  log.endRun({ total_scraped: total, after_dedup: scouted.length, dup_skipped: dupSkipped, ...byType });
 
   return scouted;
 }

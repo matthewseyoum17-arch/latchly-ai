@@ -422,12 +422,13 @@ async function main() {
     const lead = leads[i];
     log.lead('auditing', lead, { progress: `${i + 1}/${leads.length}` });
 
-    // Fetch site HTML if we don't already have it
-    let html = null;
-    if (lead.website) {
+    // Use cached HTML from scout if available, otherwise fetch
+    let html = lead.cached_html || null;
+    if (!html && lead.website) {
       html = await fetchSiteHTML(lead.website);
       await sleep(500);
     }
+    delete lead.cached_html; // Don't persist the HTML blob
 
     // Score
     lead.chatbot_score = scoreChatbot(html);
