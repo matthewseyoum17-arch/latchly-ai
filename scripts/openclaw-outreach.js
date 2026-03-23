@@ -137,7 +137,7 @@ function buildEmail(lead, step) {
       {
         subject: `quick site concept for ${biz}`,
         opener: `I built a quick homepage concept for ${biz} after looking through the current site${cityLine ? cityLine : ''}.`,
-        body: `It’s meant to show what a cleaner, higher-converting version could look like — better structure, stronger mobile flow, and an after-hours assistant baked in.`,
+        body: `It’s meant to show what a cleaner, higher-converting version could look like — better structure, stronger mobile flow, and better lead capture for visitors who land after hours or aren’t ready to call.`,
         close: `Take a look when you have a minute. Happy to break it down if you want.`
       },
     ]);
@@ -224,6 +224,29 @@ Matthew${footer}`,
     },
   ]);
   return variant;
+}
+
+async function demoReachable(lead) {
+  const demoUrl = lead.demo_url || `${SITE_BASE}/demo/${lead.demo_slug || ''}`;
+  if (!lead.demo_slug || !demoUrl) {
+    return { ok: false, reason: 'missing_demo_slug' };
+  }
+
+  try {
+    const resp = await fetch(demoUrl, {
+      method: 'GET',
+      redirect: 'follow',
+      signal: AbortSignal.timeout(10000),
+      headers: { 'User-Agent': 'Mozilla/5.0 LatchlyOutreachCheck' },
+    });
+
+    if (!resp.ok) return { ok: false, reason: `http_${resp.status}` };
+    const text = await resp.text();
+    if (/Demo not found|Demo Expired/i.test(text)) return { ok: false, reason: 'demo_unavailable' };
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, reason: err.message };
+  }
 }
 
 // ── Sending ──────────────────────────────────────────────────────────────────
@@ -360,6 +383,7 @@ async function main() {
 
   let sent = 0;
   let skipped_tz = 0;
+  let skipped_demo = 0;
   const results = [];
 
   for (const lead of leads) {
@@ -372,6 +396,13 @@ async function main() {
     if (!isLocalSendWindow(lead.state)) {
       skipped_tz++;
       log.info('skipped_timezone', { business: lead.business_name, state: lead.state });
+      continue;
+    }
+
+    const demoCheck = await demoReachable(lead);
+    if (!demoCheck.ok) {
+      skipped_demo++;
+      log.info('skipped_demo_unreachable', { business: lead.business_name, slug: lead.demo_slug, reason: demoCheck.reason });
       continue;
     }
 
@@ -426,7 +457,7 @@ async function main() {
     fs.writeFileSync(inputFile, JSON.stringify(leads, null, 2), 'utf8');
   }
 
-  log.endRun({ sent, skipped_tz, total_leads: leads.length });
+  log.endRun({ sent, skipped_tz, skipped_demo, total_leads: leads.length });
   return results;
 }
 

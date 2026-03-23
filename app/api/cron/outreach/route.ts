@@ -120,7 +120,7 @@ function buildEmail(lead: Prospect, step: number) {
       {
         subject: `quick site concept for ${biz}`,
         opener: `I built a quick homepage concept for ${biz} after looking through the current site${cityLine ? cityLine : ""}.`,
-        body: `It’s meant to show what a cleaner, higher-converting version could look like — better structure, stronger mobile flow, and an after-hours assistant baked in.`,
+        body: `It’s meant to show what a cleaner, higher-converting version could look like — better structure, stronger mobile flow, and better lead capture for visitors who land after hours or aren’t ready to call.`,
         close: `Take a look when you have a minute. Happy to break it down if you want.`
       },
     ]);
@@ -158,6 +158,28 @@ function buildEmail(lead: Prospect, step: number) {
       text: `${greeting}\n\nLast note from me on this. Keeping the concept link here in case it’s useful later:\n\n${demoUrl}\n\nBest,\n\nMatthew${footer}`,
     },
   ]);
+}
+
+async function demoReachable(lead: Prospect): Promise<{ ok: boolean; reason?: string }> {
+  const siteBase = process.env.SITE_BASE || "https://latchlyai.com";
+  const demoUrl = lead.demo_url || `${siteBase}/demo/${lead.demo_slug || ""}`;
+  if (!lead.demo_slug || !demoUrl) return { ok: false, reason: "missing_demo_slug" };
+
+  try {
+    const resp = await fetch(demoUrl, {
+      method: "GET",
+      redirect: "follow",
+      signal: AbortSignal.timeout(10000),
+      headers: { "User-Agent": "Mozilla/5.0 LatchlyOutreachCheck" },
+    });
+
+    if (!resp.ok) return { ok: false, reason: `http_${resp.status}` };
+    const text = await resp.text();
+    if (/Demo not found|Demo Expired/i.test(text)) return { ok: false, reason: "demo_unavailable" };
+    return { ok: true };
+  } catch (err: any) {
+    return { ok: false, reason: err?.message || "fetch_failed" };
+  }
 }
 
 // ── Drip logic ──────────────────────────────────────────────────────────────
@@ -229,6 +251,7 @@ export async function GET(request: NextRequest) {
   let sent = 0;
   let skippedTz = 0;
   let skippedDrip = 0;
+  let skippedDemo = 0;
   const sentList: { business: string; step: number }[] = [];
 
   for (const lead of leads) {
@@ -242,6 +265,12 @@ export async function GET(request: NextRequest) {
 
     if (!isLocalSendWindow(lead.state || "")) {
       skippedTz++;
+      continue;
+    }
+
+    const demoCheck = await demoReachable(lead);
+    if (!demoCheck.ok) {
+      skippedDemo++;
       continue;
     }
 
@@ -286,7 +315,7 @@ export async function GET(request: NextRequest) {
     await sql`INSERT INTO pipeline_runs
       (agent, emails_sent, metadata)
       VALUES ('outreach-cron', ${sent},
-              ${JSON.stringify({ skipped_tz: skippedTz, skipped_drip: skippedDrip, max: maxEmails, sent: sentList })}::jsonb)`;
+              ${JSON.stringify({ skipped_tz: skippedTz, skipped_drip: skippedDrip, skipped_demo: skippedDemo, max: maxEmails, sent: sentList })}::jsonb)`;
   } catch {
     // Non-critical
   }
@@ -296,6 +325,7 @@ export async function GET(request: NextRequest) {
     sent,
     skippedTz,
     skippedDrip,
+    skippedDemo,
     maxEmails,
     warmupDay: process.env.WARMUP_START
       ? Math.floor((Date.now() - new Date(process.env.WARMUP_START).getTime()) / 86400000)

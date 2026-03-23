@@ -19,35 +19,24 @@
 
 const fs   = require('fs');
 const path = require('path');
+const config = require('./openclaw.config');
+const { createLogger } = require('./openclaw-logger');
 
-const ROOT      = path.join(__dirname, '..');
-const DEMOS_DIR = path.join(ROOT, 'demos', 'prospects');
-
-// Load .env
-const envFile = path.join(ROOT, '.env');
-if (fs.existsSync(envFile)) {
-  fs.readFileSync(envFile, 'utf8').split(/\r?\n/).forEach(line => {
-    const m = line.match(/^([^#=\s][^=]*)=(.*)$/);
-    if (m && !process.env[m[1]]) process.env[m[1]] = m[2].trim();
-  });
-}
-
-const DRY_RUN = process.env.DRY_RUN === 'true';
-const SITE_BASE = process.env.SITE_BASE || 'https://latchlyai.com';
-
-// ── Template loading ─────────────────────────────────────────────────────────
-
-const TEMPLATES_DIR = path.join(__dirname, 'templates');
+const log = createLogger('demo-builder');
+const { ROOT, DEMOS_DIR, TEMPLATES_DIR, DRY_RUN, SITE_BASE, BOOKING_LINK } = config;
 const VARIANCE = JSON.parse(fs.readFileSync(path.join(TEMPLATES_DIR, 'variance.json'), 'utf8'));
 
 function loadTemplate(niche) {
-  const nicheKey = niche.toLowerCase().replace(/[^a-z]/g, '');
+  const nicheRaw = niche.toLowerCase().replace(/[^a-z\s]/g, '').trim();
+  const nicheWords = nicheRaw.split(/\s+/);
   const mapping = {
     hvac: 'hvac', heating: 'hvac', cooling: 'hvac', airconditioning: 'hvac',
     plumbing: 'plumbing', plumber: 'plumbing',
     roofing: 'roofing', roofer: 'roofing', roof: 'roofing',
   };
-  const templateName = mapping[nicheKey] || 'hvac'; // default to HVAC
+  // Match on any word in the niche string (e.g. "roofing contractor" matches "roofing")
+  const templateName = nicheWords.reduce((found, w) => found || mapping[w], null);
+  if (!templateName) return null;
   const file = path.join(TEMPLATES_DIR, `${templateName}.json`);
   return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
@@ -207,6 +196,58 @@ function buildTestimonialCards(testimonials, colors) {
         <p style="color:#94a3b8;font-size:13.5px;line-height:1.6;margin:0 0 14px;">"${escHtml(t.text)}"</p>
         <p style="color:#e2e8f0;font-weight:700;font-size:13px;margin:0;">${escHtml(t.name)}</p>
       </div>`).join('\n');
+}
+
+// ── Audit-based personalization ────────────────────────────────────────────
+
+const ISSUE_MESSAGING = {
+  no_mobile:    { fix: 'Mobile-First Design', desc: 'This site is built to look perfect on every phone and tablet — so you never lose a customer who\'s searching on the go.' },
+  thin_content: { fix: 'Rich, Detailed Content', desc: 'Every page is loaded with the info your customers need — services, pricing context, and trust signals that convert visitors into calls.' },
+  no_phone_cta: { fix: 'Click-to-Call Everywhere', desc: 'Your phone number is front and center on every page, with tap-to-call buttons so mobile visitors can reach you instantly.' },
+  no_form:      { fix: 'Smart Lead Capture Forms', desc: 'Built-in contact forms on every key page — plus an AI chat assistant that captures leads 24/7, even while you sleep.' },
+  no_reviews:   { fix: 'Social Proof Built In', desc: 'Customer testimonials and ratings are showcased prominently — building trust before a prospect even picks up the phone.' },
+  no_schema:    { fix: 'SEO-Ready Structured Data', desc: 'Search engines can read your business info, services, and reviews — helping you rank higher in local searches.' },
+  table_layout: { fix: 'Modern, Clean Layout', desc: 'A fresh, professional design that loads fast and looks great — no outdated table layouts or clunky formatting.' },
+  slow_builder: { fix: 'Custom-Built (No Cookie Cutter)', desc: 'This isn\'t a Wix or Squarespace template. It\'s a custom site built specifically for your business and your market.' },
+  no_https:     { fix: 'Secure HTTPS', desc: 'Full SSL encryption so your visitors see the padlock icon — builds trust and helps with Google rankings.' },
+  no_ssl:       { fix: 'Secure Connection', desc: 'Your site runs on HTTPS — no browser warnings scaring off potential customers.' },
+};
+
+function buildPersonalizationBanner(lead) {
+  const issues = lead.report_card?.issues || [];
+  if (issues.length === 0) return '';
+
+  const fixes = issues
+    .slice(0, 3)
+    .map(i => ISSUE_MESSAGING[i.key])
+    .filter(Boolean);
+
+  if (fixes.length === 0) return '';
+
+  const fixCards = fixes.map(f => `
+      <div style="flex:1;min-width:200px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:20px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <span style="color:#10b981;font-size:16px;">&#10003;</span>
+          <span style="color:#e2e8f0;font-weight:700;font-size:14px;">${escHtml(f.fix)}</span>
+        </div>
+        <p style="color:#7a8ba6;font-size:13px;line-height:1.6;margin:0;">${escHtml(f.desc)}</p>
+      </div>`).join('\n');
+
+  return `
+<!-- ===== PERSONALIZED: ISSUES WE FIXED ===== -->
+<section style="background:linear-gradient(180deg,#0a0f1c 0%,#0f1628 100%);border-bottom:1px solid rgba(255,255,255,0.04);" class="py-12">
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div style="text-align:center;margin-bottom:24px;">
+      <span style="display:inline-block;background:rgba(16,185,129,0.1);color:#10b981;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;padding:6px 14px;border-radius:6px;border:1px solid rgba(16,185,129,0.2);">Built for you</span>
+      <h2 style="color:#e2e8f0;font-size:22px;font-weight:800;margin:12px 0 6px;letter-spacing:-0.02em;">What we improved in this demo</h2>
+      <p style="color:#7a8ba6;font-size:14px;max-width:480px;margin:0 auto;">We analyzed your current site and built this demo to address the gaps we found.</p>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;">
+${fixCards}
+    </div>
+  </div>
+</section>
+`;
 }
 
 function generateDemo(lead, template) {
@@ -500,6 +541,8 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Outfit', sans-serif; letter-spacing: -0.0
     </div>
   </div>
 </section>
+
+${buildPersonalizationBanner(lead)}
 
 <!-- ===== SERVICES ===== -->
 <section id="services" class="py-16 md:py-20" style="background:#0f1628;">
@@ -958,6 +1001,54 @@ ${buildServiceOptions(template.serviceOptions)}
   return html;
 }
 
+async function persistDemoToDb(lead, html) {
+  if (!process.env.DATABASE_URL) {
+    return { ok: false, reason: 'no_database_url' };
+  }
+
+  try {
+    const { neon } = require('@neondatabase/serverless');
+    const sql = neon(process.env.DATABASE_URL);
+
+    let rows = [];
+    if (lead.id) {
+      rows = await sql`
+        UPDATE prospects
+        SET demo_slug = ${lead.demo_slug},
+            demo_url = ${lead.demo_url},
+            demo_html = ${html},
+            demo_persisted_at = NOW(),
+            updated_at = NOW()
+        WHERE id = ${lead.id}
+        RETURNING id
+      `;
+    }
+
+    if (rows.length === 0) {
+      rows = await sql`
+        UPDATE prospects
+        SET demo_slug = ${lead.demo_slug},
+            demo_url = ${lead.demo_url},
+            demo_html = ${html},
+            demo_persisted_at = NOW(),
+            updated_at = NOW()
+        WHERE business_name = ${lead.business_name}
+          AND COALESCE(city, '') = ${lead.city || ''}
+          AND COALESCE(state, '') = ${lead.state || ''}
+        RETURNING id
+      `;
+    }
+
+    if (rows.length === 0) {
+      return { ok: false, reason: 'no_matching_prospect' };
+    }
+
+    return { ok: true, count: rows.length };
+  } catch (err) {
+    return { ok: false, reason: err.message };
+  }
+}
+
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -966,22 +1057,22 @@ async function main() {
     : path.join(ROOT, 'leads', 'openclaw', 'audited.json');
 
   if (!fs.existsSync(inputFile)) {
-    console.error(`Input file not found: ${inputFile}`);
-    console.log('Tip: Run openclaw-audit.js first, or pass --input <file>');
+    log.error('input_not_found', { file: inputFile, detail: 'Run openclaw-audit.js first' });
     process.exit(1);
   }
 
   const leads = JSON.parse(fs.readFileSync(inputFile, 'utf8'));
-  console.log(`Loaded ${leads.length} audited leads`);
+  log.startRun({ count: leads.length, dry_run: DRY_RUN });
 
   if (!fs.existsSync(DEMOS_DIR)) fs.mkdirSync(DEMOS_DIR, { recursive: true });
 
   let built = 0;
+  let personalized = 0;
   const results = [];
 
   for (const lead of leads) {
     if (!lead.business_name) {
-      console.log(`  Skipping lead with no business name`);
+      log.warn('skipped_no_name', { lead_id: lead.id || null });
       continue;
     }
 
@@ -989,37 +1080,47 @@ async function main() {
     lead.demo_slug = slug;
     lead.demo_url = `${SITE_BASE}/demo/${slug}`;
 
-    const template = loadTemplate(lead.niche || 'hvac');
+    const template = loadTemplate(lead.niche || '');
+    if (!template) {
+      log.warn('skipped_unsupported_niche', { business: lead.business_name, niche: lead.niche });
+      continue;
+    }
     const html = generateDemo(lead, template);
     const outPath = path.join(DEMOS_DIR, `${slug}.html`);
 
+    // Track which variant was generated (personalized vs generic)
+    const issueCount = (lead.report_card?.issues || []).length;
+    lead.demo_variant = issueCount > 0 ? 'personalized' : 'generic';
+    if (lead.demo_variant === 'personalized') personalized++;
+
     if (DRY_RUN) {
-      console.log(`  [DRY RUN] Would write: ${outPath}`);
-      console.log(`  Demo URL: ${lead.demo_url}`);
+      lead.demo_persisted = false;
+      lead.demo_persist_reason = 'dry_run';
+      log.lead('dry_run_build', lead, { slug, variant: lead.demo_variant });
     } else {
       fs.writeFileSync(outPath, html, 'utf8');
-      console.log(`  Built: ${slug} → ${outPath}`);
+      const persisted = await persistDemoToDb(lead, html);
+      lead.demo_persisted = persisted.ok;
+      lead.demo_persist_reason = persisted.ok ? 'db' : persisted.reason;
+      log.lead('built', lead, { slug, variant: lead.demo_variant, persisted: persisted.ok, reason: lead.demo_persist_reason });
     }
 
-    results.push({ slug, demo_url: lead.demo_url, business_name: lead.business_name });
+    results.push({ slug, demo_url: lead.demo_url, business_name: lead.business_name, variant: lead.demo_variant, persisted: !!lead.demo_persisted });
     built++;
   }
 
   // Update audited.json with demo URLs
   if (!DRY_RUN) {
     fs.writeFileSync(inputFile, JSON.stringify(leads, null, 2), 'utf8');
-    console.log(`Updated ${inputFile} with demo URLs`);
   }
-
-  console.log(`\nDemo Builder complete: ${built} demos ${DRY_RUN ? 'would be ' : ''}built`);
 
   // Write manifest for quick reference
   if (!DRY_RUN && results.length > 0) {
     const manifestPath = path.join(ROOT, 'leads', 'openclaw', 'demo-manifest.json');
     fs.writeFileSync(manifestPath, JSON.stringify(results, null, 2), 'utf8');
-    console.log(`Manifest: ${manifestPath}`);
   }
 
+  log.endRun({ built, personalized, generic: built - personalized });
   return results;
 }
 
@@ -1027,5 +1128,5 @@ async function main() {
 module.exports = { main, makeSlug, generateDemo, loadTemplate };
 
 if (require.main === module) {
-  main().catch(err => { console.error('Demo builder failed:', err); process.exit(1); });
+  main().catch(err => { log.catch('fatal', err); process.exit(1); });
 }

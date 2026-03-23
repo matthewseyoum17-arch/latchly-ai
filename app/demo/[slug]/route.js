@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { neon } from '@neondatabase/serverless';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,27 +37,59 @@ ${urgency.icon} ${urgency.label} &mdash; <a href="${BOOKING_LINK}" style="color:
 <style>#latchly-freshness~*{margin-top:40px!important}</style>`;
 }
 
+async function loadDemoFromDb(safeSlug) {
+  if (!process.env.DATABASE_URL) return null;
+
+  try {
+    const sql = neon(process.env.DATABASE_URL);
+    const rows = await sql`
+      SELECT demo_html, demo_persisted_at, updated_at, created_at
+      FROM prospects
+      WHERE demo_slug = ${safeSlug}
+        AND demo_html IS NOT NULL
+      ORDER BY demo_persisted_at DESC NULLS LAST, updated_at DESC NULLS LAST
+      LIMIT 1
+    `;
+
+    if (!rows.length || !rows[0].demo_html) return null;
+
+    return {
+      html: rows[0].demo_html,
+      createdAt: rows[0].demo_persisted_at || rows[0].updated_at || rows[0].created_at,
+      source: 'db',
+    };
+  } catch {
+    return null;
+  }
+}
+
+function loadDemoFromFile(safeSlug) {
+  const demoPath = path.join(process.cwd(), 'demos', 'prospects', `${safeSlug}.html`);
+  if (!fs.existsSync(demoPath)) return null;
+
+  const stat = fs.statSync(demoPath);
+  return {
+    html: fs.readFileSync(demoPath, 'utf8'),
+    createdAt: stat.birthtime || stat.mtime,
+    source: 'file',
+  };
+}
+
 export async function GET(request, { params }) {
   const { slug } = await params;
 
-  // Sanitize slug to prevent path traversal
   const safeSlug = slug.replace(/[^a-z0-9-]/gi, '');
   if (!safeSlug || safeSlug !== slug) {
     return new Response('Not found', { status: 404 });
   }
 
-  const demoPath = path.join(process.cwd(), 'demos', 'prospects', `${safeSlug}.html`);
-
-  if (!fs.existsSync(demoPath)) {
+  const demoRecord = (await loadDemoFromDb(safeSlug)) || loadDemoFromFile(safeSlug);
+  if (!demoRecord) {
     return new Response('Demo not found', { status: 404 });
   }
 
-  // Check demo age from file creation time
-  const stat = fs.statSync(demoPath);
-  const createdAt = stat.birthtime || stat.mtime;
+  const createdAt = new Date(demoRecord.createdAt || Date.now());
   const daysAgo = Math.floor((Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
-
-  // Expired — show expiration page
   if (daysAgo > DEMO_MAX_AGE_DAYS) {
     return new Response(expiredPage(safeSlug), {
       headers: {
@@ -66,26 +99,20 @@ export async function GET(request, { params }) {
     });
   }
 
-  let html = fs.readFileSync(demoPath, 'utf8');
-
-  // Inject freshness banner after <body>
+  let html = demoRecord.html;
   const banner = freshnessBanner(daysAgo);
   html = html.replace(/<body[^>]*>/i, (match) => match + '\n' + banner);
 
-  // Inject tracking + alert snippet before </body>
   const trackingSnippet = `
 <script>
 (function(){
   var slug = ${JSON.stringify(safeSlug)};
-  // Track page visit
   new Image().src = '/api/demo-track?slug=' + encodeURIComponent(slug);
-  // Alert on 2nd+ visit
   fetch('/api/demo-alert', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ slug: slug, event: 'visit' })
   }).catch(function(){});
-  // Track chat widget open
   var fab = document.getElementById('lw-fab');
   if (fab) {
     fab.addEventListener('click', function() {
@@ -105,6 +132,7 @@ export async function GET(request, { params }) {
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
       'X-Robots-Tag': 'noindex, nofollow',
+      'X-Demo-Source': demoRecord.source,
     },
   });
 }
