@@ -14,21 +14,11 @@
 
 const fs   = require('fs');
 const path = require('path');
+const config = require('./openclaw.config');
+const { createLogger } = require('./openclaw-logger');
 
-const ROOT      = path.join(__dirname, '..');
-const LEADS_DIR = path.join(ROOT, 'leads', 'openclaw');
-
-// Load .env
-const envFile = path.join(ROOT, '.env');
-if (fs.existsSync(envFile)) {
-  fs.readFileSync(envFile, 'utf8').split(/\r?\n/).forEach(line => {
-    const m = line.match(/^([^#=\s][^=]*)=(.*)$/);
-    if (m && !process.env[m[1]]) process.env[m[1]] = m[2].trim();
-  });
-}
-
-const DRY_RUN = process.env.DRY_RUN === 'true';
-const SKIP_DB = process.env.SKIP_DB === 'true';
+const log = createLogger('audit');
+const { ROOT, LEADS_DIR, DRY_RUN, SKIP_DB, AUDIT_MIN_SCORE } = config;
 
 // ── Chatbot detection signatures ─────────────────────────────────────────────
 
@@ -62,19 +52,43 @@ const MARKETING_SIGNALS = {
   scheduling:      [/service titan|servicetitan|book online|schedule service/i],
 };
 
+// ── Affordability signals — can this business actually pay? ─────────────────
+// Each detected signal = +1 to an affordability bonus applied to combined score
+
+const AFFORDABILITY_SIGNALS = {
+  paidAds:        [/gads|google.*ads|adwords|gclid|gtag.*conversion|google.*local.*service|google.*guarantee/i],
+  multiplePages:  [/\/services|\/about|\/contact|\/gallery|\/projects|\/areas/i],
+  financing:      [/financing|payment.*plan|we.*finance|approved.*credit/i],
+  bbbAccredited:  [/bbb.*accredited|better business bureau/i],
+  licensing:      [/licensed|bonded|insured|license.*#|lic.*#/i],
+  established:    [/since\s+\d{4}|established\s+\d{4}|years.*experience|\d+\+?\s*years/i],
+};
+
 // ── Site quality audit ───────────────────────────────────────────────────────
 
 const SITE_ISSUES = {
   no_mobile:      { label: 'No mobile viewport', weight: 2, test: html => !/meta name="viewport"/i.test(html) },
   no_https:       { label: 'Not using HTTPS', weight: 1, test: (html, url) => !/^https/i.test(url || '') },
-  thin_content:   { label: 'Very thin content', weight: 2, test: html => html.length < 8000 },
+  thin_content:   { label: 'Very thin content', weight: 2, test: html => {
+    // Strip JS/CSS bloat before measuring — Wix outputs 70K+ of framework code
+    const visible = html.replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<style[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    return visible.length < 3000;
+  }},
   no_phone_cta:   { label: 'No phone CTA', weight: 2, test: html => !/tel:|call.*now|call.*us/i.test(html) },
   no_form:        { label: 'No contact form', weight: 2, test: html => !/<form\b/i.test(html) },
   table_layout:   { label: 'Table-based layout', weight: 1, test: html => /<table\b[^>]*>[\s\S]*<table/i.test(html) },
   no_reviews:     { label: 'No reviews/testimonials', weight: 1, test: html => !/reviews?|testimonials?/i.test(html) },
   no_ssl:         { label: 'SSL issues', weight: 1, test: (html, url) => /http:\/\//i.test(url || '') },
-  slow_builder:   { label: 'Generic builder site', weight: 1, test: html => /wix\.com|squarespace|weebly|godaddy\.com\/websites/i.test(html) },
+  builder_site:   { label: 'Generic builder site', weight: 3, test: html => /wix\.com|squarespace\.com|weebly\.com|godaddy\.com\/websites|websitebuilder\.com/i.test(html) },
   no_schema:      { label: 'No structured data', weight: 1, test: html => !/application\/ld\+json/i.test(html) },
+  outdated_tech:  { label: 'Outdated technology', weight: 2, test: html => /revolution\.?slider|revslider|jquery\.cycle|jquery\.bx|ga\.js|swfobject|flash/i.test(html) },
+  stale_copyright:{ label: 'Stale copyright year', weight: 2, test: html => {
+    const m = html.match(/©\s*(20\d{2})|copyright\s*(20\d{2})/i);
+    if (!m) return false;
+    const year = parseInt(m[1] || m[2], 10);
+    return year > 0 && year < 2023;
+  }},
+  old_framework:  { label: 'Legacy framework', weight: 2, test: html => /jquery-1\.|jquery\/1\.|prototype\.js|mootools|yui\/build/i.test(html) },
 };
 
 // ── Scoring functions ────────────────────────────────────────────────────────
@@ -92,7 +106,7 @@ function scoreChatbot(html) {
 }
 
 function scoreRedesign(html, url) {
-  if (!html) return 10; // No website → needs full build
+  if (!html) return { score: 10, issues: [{ key: 'no_website', label: 'No website', weight: 10 }] };
   let score = 0;
   const issues = [];
 
@@ -120,41 +134,20 @@ function detectMarketingSignals(html) {
   return found;
 }
 
-// ── Report Card HTML ─────────────────────────────────────────────────────────
-
-function generateReportCard(lead) {
-  const issues = lead.report_card?.issues || [];
-  const topIssues = issues.slice(0, 3);
-
-  const issueRows = topIssues.map(i =>
-    `<tr><td style="padding:6px 12px;font-size:13px;color:#ef4444;">&#10007;</td><td style="padding:6px 12px;font-size:13px;color:#334155;">${i.label}</td></tr>`
-  ).join('');
-
-  const signals = lead.marketing_signals || [];
-  const signalText = signals.length > 0
-    ? `<p style="font-size:12px;color:#64748b;margin:8px 0 0;">Marketing signals detected: ${signals.join(', ')}</p>`
-    : '';
-
-  return `<div style="font-family:system-ui,sans-serif;max-width:400px;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;">
-<div style="background:linear-gradient(135deg,#0f172a,#1e293b);padding:16px 20px;">
-<h3 style="margin:0;color:#fff;font-size:16px;font-weight:700;">Site Report Card</h3>
-<p style="margin:4px 0 0;color:rgba(255,255,255,.6);font-size:12px;">${lead.business_name} &middot; ${lead.city || ''}, ${lead.state || ''}</p>
-</div>
-<div style="padding:16px 20px;">
-<div style="display:flex;gap:12px;margin-bottom:12px;">
-<div style="flex:1;text-align:center;padding:12px;background:#f8fafc;border-radius:8px;">
-<div style="font-size:24px;font-weight:900;color:${lead.chatbot_score >= 7 ? '#ef4444' : lead.chatbot_score >= 4 ? '#f59e0b' : '#10b981'};">${lead.chatbot_score}/10</div>
-<div style="font-size:10px;color:#94a3b8;text-transform:uppercase;font-weight:600;">Chatbot Need</div>
-</div>
-<div style="flex:1;text-align:center;padding:12px;background:#f8fafc;border-radius:8px;">
-<div style="font-size:24px;font-weight:900;color:${lead.redesign_score >= 7 ? '#ef4444' : lead.redesign_score >= 4 ? '#f59e0b' : '#10b981'};">${lead.redesign_score}/10</div>
-<div style="font-size:10px;color:#94a3b8;text-transform:uppercase;font-weight:600;">Redesign Need</div>
-</div>
-</div>
-${topIssues.length > 0 ? `<table style="width:100%;border-collapse:collapse;">${issueRows}</table>` : '<p style="font-size:13px;color:#10b981;">No major issues found</p>'}
-${signalText}
-</div></div>`;
+function detectAffordability(html) {
+  if (!html) return [];
+  const found = [];
+  for (const [name, patterns] of Object.entries(AFFORDABILITY_SIGNALS)) {
+    for (const pat of patterns) {
+      if (pat.test(html)) {
+        found.push(name);
+        break;
+      }
+    }
+  }
+  return found;
 }
+
 
 // ── Fetch site HTML ──────────────────────────────────────────────────────────
 
@@ -176,6 +169,199 @@ async function fetchSiteHTML(url) {
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+function makeSlug(lead) {
+  return [lead.business_name, lead.city]
+    .filter(Boolean).join('-')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80);
+}
+
+// ── Email enrichment (free — no paid APIs) ──────────────────────────────────
+
+/**
+ * Extract emails from website HTML.
+ * Looks for mailto: links, plain-text emails, and contact page patterns.
+ */
+function extractEmailsFromHTML(html) {
+  if (!html) return [];
+  const found = new Set();
+
+  // mailto: links
+  const mailtoPattern = /mailto:([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/gi;
+  let m;
+  while ((m = mailtoPattern.exec(html)) !== null) {
+    found.add(m[1].toLowerCase());
+  }
+
+  // Plain-text emails in visible content (not in scripts/styles)
+  const stripped = html.replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<style[\s\S]*?<\/style>/gi, '');
+  const emailPattern = /\b([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})\b/g;
+  while ((m = emailPattern.exec(stripped)) !== null) {
+    const email = m[1].toLowerCase();
+    // Filter out common false positives
+    if (!email.includes('example.com') &&
+        !email.includes('sentry.io') &&
+        !email.includes('schema.org') &&
+        !email.includes('googleapis.com') &&
+        !email.includes('w3.org') &&
+        !email.endsWith('.png') &&
+        !email.endsWith('.jpg') &&
+        !email.endsWith('.js') &&
+        !email.endsWith('.css')) {
+      found.add(email);
+    }
+  }
+
+  return [...found];
+}
+
+/**
+ * Extract domain from a website URL.
+ */
+function extractDomain(url) {
+  if (!url) return '';
+  try {
+    const parsed = new URL(url.startsWith('http') ? url : `https://${url}`);
+    return parsed.hostname.replace(/^www\./, '');
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Score an extracted email for quality. Higher = more likely a real decision-maker.
+ * Returns { email, score, reason }
+ */
+function scoreEmail(email, domain) {
+  const local = email.split('@')[0].toLowerCase();
+  const emailDomain = email.split('@')[1]?.toLowerCase() || '';
+
+  // Prefer emails on the business's own domain
+  const onDomain = domain && emailDomain === domain;
+
+  // Priority list (higher = better for cold outreach)
+  if (onDomain && /^(owner|ceo|president|founder)/.test(local)) return { email, score: 10, reason: 'owner_role' };
+  if (onDomain && /^[a-z]+$/.test(local) && local.length >= 3 && local.length <= 15) return { email, score: 9, reason: 'first_name' };
+  if (onDomain && /^[a-z]+\.[a-z]+$/.test(local)) return { email, score: 9, reason: 'first_last' };
+  if (onDomain && /^(info|contact|hello|office|admin)$/.test(local)) return { email, score: 7, reason: 'generic_business' };
+  if (onDomain && /^(service|support|help|sales)$/.test(local)) return { email, score: 5, reason: 'department' };
+  if (onDomain) return { email, score: 6, reason: 'on_domain' };
+
+  // Off-domain (gmail, yahoo, etc.) — still usable for small businesses
+  if (/gmail\.com|yahoo\.com|hotmail\.com|outlook\.com|aol\.com/.test(emailDomain)) {
+    return { email, score: 4, reason: 'personal_email' };
+  }
+
+  return { email, score: 2, reason: 'unknown' };
+}
+
+/**
+ * Generate common email patterns to try for a domain.
+ */
+function generatePatterns(domain, ownerName) {
+  if (!domain) return [];
+  const patterns = [
+    `info@${domain}`,
+    `contact@${domain}`,
+    `hello@${domain}`,
+    `office@${domain}`,
+  ];
+
+  if (ownerName) {
+    const parts = ownerName.toLowerCase().trim().split(/\s+/);
+    const first = parts[0]?.replace(/[^a-z]/g, '');
+    const last = parts[parts.length - 1]?.replace(/[^a-z]/g, '');
+    if (first) {
+      patterns.unshift(`${first}@${domain}`);
+      if (last && last !== first) {
+        patterns.unshift(`${first}.${last}@${domain}`);
+        patterns.push(`${first[0]}${last}@${domain}`);
+      }
+    }
+  }
+
+  return patterns;
+}
+
+/**
+ * Check if a domain has valid MX records (can receive email).
+ * Does NOT verify specific addresses — leaves that to Resend bounce handling.
+ * Port 25 SMTP checks are unreliable from cloud hosts (blocked by most providers).
+ */
+async function domainAcceptsMail(domain) {
+  if (!domain) return false;
+  const dns = require('dns').promises;
+  try {
+    const mx = await dns.resolveMx(domain);
+    return mx && mx.length > 0;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Full email enrichment for a lead.
+ * 1. Extract from website HTML (most reliable)
+ * 2. If none found, generate pattern guesses for domains with valid MX
+ * Returns the best email or empty string.
+ *
+ * Address-level validation is handled by Resend bounce tracking —
+ * bad addresses get flagged via the email-webhook and stop future sends.
+ */
+async function enrichEmail(lead, html) {
+  // Already has email? Keep it.
+  if (lead.email) return lead.email;
+
+  const domain = extractDomain(lead.website);
+
+  // Step 1: Extract from HTML
+  const extracted = extractEmailsFromHTML(html);
+  if (extracted.length > 0) {
+    // Score and pick the best one
+    const scored = extracted.map(e => scoreEmail(e, domain));
+    scored.sort((a, b) => b.score - a.score);
+    const best = scored[0];
+    log.info('email_extracted', { business: lead.business_name, email: best.email, score: best.score, reason: best.reason });
+    return best.email;
+  }
+
+  // Step 2: Pattern guess — only if domain has MX records
+  if (domain && await domainAcceptsMail(domain)) {
+    const patterns = generatePatterns(domain, lead.owner_name);
+    // Use the highest-confidence pattern (first name or info@)
+    if (patterns.length > 0) {
+      const best = patterns[0];
+      log.info('email_pattern_guess', { business: lead.business_name, email: best, method: 'mx_verified_pattern' });
+      return best;
+    }
+    log.info('email_not_found', { business: lead.business_name, domain });
+  }
+
+  return '';
+}
+
+// ── Contact page fetcher ────────────────────────────────────────────────────
+
+/**
+ * Try to fetch the contact page for more email addresses.
+ * Many local businesses hide their email on /contact or /about.
+ */
+async function fetchContactPage(baseUrl) {
+  if (!baseUrl) return '';
+  const contactPaths = ['/contact', '/contact-us', '/about', '/about-us'];
+
+  for (const p of contactPaths) {
+    try {
+      const url = new URL(p, baseUrl.startsWith('http') ? baseUrl : `https://${baseUrl}`).href;
+      const resp = await fetch(url, { headers: HEADERS, signal: AbortSignal.timeout(8000), redirect: 'follow' });
+      if (resp.ok) {
+        const html = await resp.text();
+        if (html.length > 500) return html; // Got a real page
+      }
+    } catch {}
+  }
+  return '';
+}
+
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -184,20 +370,21 @@ async function main() {
     : path.join(LEADS_DIR, 'scouted.json');
 
   if (!fs.existsSync(inputFile)) {
-    console.error(`Input not found: ${inputFile}`);
-    process.exit(1);
+    log.warn('no_input', { file: inputFile, detail: 'Run scout first' });
+    return [];
   }
 
   const leads = JSON.parse(fs.readFileSync(inputFile, 'utf8'));
-  console.log(`Loaded ${leads.length} scouted leads for audit`);
+  log.startRun({ count: leads.length, min_score: AUDIT_MIN_SCORE });
 
-  const minCombined = parseInt(process.env.AUDIT_MIN_SCORE || '8', 10);
+  const minCombined = AUDIT_MIN_SCORE;
   const audited = [];
+  const noEmail = [];
   let skipped = 0;
 
   for (let i = 0; i < leads.length; i++) {
     const lead = leads[i];
-    console.log(`  [${i + 1}/${leads.length}] ${lead.business_name}...`);
+    log.lead('auditing', lead, { progress: `${i + 1}/${leads.length}` });
 
     // Fetch site HTML if we don't already have it
     let html = null;
@@ -210,77 +397,131 @@ async function main() {
     lead.chatbot_score = scoreChatbot(html);
     const redesign = scoreRedesign(html, lead.website);
     lead.redesign_score = redesign.score;
-    lead.combined_score = Math.round((lead.chatbot_score + lead.redesign_score) / 2 * 1.3); // Weighted up
-    lead.combined_score = Math.min(lead.combined_score, 10);
 
     // Marketing signals
     lead.marketing_signals = detectMarketingSignals(html);
 
-    // Report card
+    // Affordability — can they pay for the service?
+    lead.affordability_signals = detectAffordability(html);
+    const affordBonus = Math.min(lead.affordability_signals.length * 0.5, 2);
+
+    // Combined: redesign need (60%) + chatbot opportunity (40%) + affordability bonus
+    // Capped at 10
+    lead.combined_score = Math.min(10,
+      Math.round((lead.redesign_score * 0.6 + lead.chatbot_score * 0.4 + affordBonus) * 10) / 10
+    );
+
+    // Report card (internal use only — not shown to prospects)
     lead.report_card = {
       issues: redesign.issues,
       chatbot_detected: lead.chatbot_score === 0,
       signals_count: lead.marketing_signals.length,
+      affordability: lead.affordability_signals,
     };
-    lead.report_card_html = generateReportCard(lead);
 
-    // Filter
+    // Filter by score
     if (lead.combined_score < minCombined) {
       skipped++;
       continue;
     }
 
+    // Email enrichment — try homepage HTML first, then contact page
+    if (!lead.email) {
+      let combinedHtml = html || '';
+      const contactHtml = await fetchContactPage(lead.website);
+      if (contactHtml) combinedHtml += '\n' + contactHtml;
+      lead.email = await enrichEmail(lead, combinedHtml);
+      await sleep(300);
+    }
+
+    lead.demo_slug = lead.demo_slug || makeSlug(lead);
     lead.status = 'audited';
     lead.audited_at = new Date().toISOString();
-    audited.push(lead);
+
+    if (lead.email) {
+      audited.push(lead);
+    } else {
+      noEmail.push(lead);
+      log.info('qualified_no_email', { business: lead.business_name, city: lead.city });
+    }
   }
 
   // Save
   const outPath = path.join(LEADS_DIR, 'audited.json');
   fs.writeFileSync(outPath, JSON.stringify(audited, null, 2), 'utf8');
 
-  console.log(`\nAudit complete:`);
-  console.log(`  Audited: ${leads.length}`);
-  console.log(`  Qualified (score >= ${minCombined}): ${audited.length}`);
-  console.log(`  Skipped: ${skipped}`);
+  // Save qualified leads without emails for manual enrichment
+  if (noEmail.length > 0) {
+    const noEmailPath = path.join(LEADS_DIR, 'needs-email.json');
+    fs.writeFileSync(noEmailPath, JSON.stringify(noEmail, null, 2), 'utf8');
+  }
 
-  // Insert into DB
+  log.info('audit_summary', {
+    total: leads.length,
+    qualified: audited.length,
+    qualified_no_email: noEmail.length,
+    skipped,
+    min_score: minCombined,
+    enrichment_rate: leads.length > 0
+      ? Math.round(audited.length / (audited.length + noEmail.length) * 100) + '%'
+      : '0%',
+  });
+
+  // Insert into DB (batched in transaction for atomicity)
   if (!SKIP_DB && !DRY_RUN && audited.length > 0) {
     try {
       const { neon } = require('@neondatabase/serverless');
       const sql = neon(process.env.DATABASE_URL);
 
+      // Process in batches of 25 within transactions
+      const BATCH_SIZE = 25;
       let inserted = 0;
-      for (const lead of audited) {
+      for (let i = 0; i < audited.length; i += BATCH_SIZE) {
+        const batch = audited.slice(i, i + BATCH_SIZE);
         try {
-          await sql`INSERT INTO prospects (
-            business_name, website, phone, email, owner_name, niche,
-            city, state, lead_type, chatbot_score, redesign_score,
-            combined_score, report_card, status
-          ) VALUES (
-            ${lead.business_name}, ${lead.website || null}, ${lead.phone || null},
-            ${lead.email || null}, ${lead.owner_name || null}, ${lead.niche || null},
-            ${lead.city || null}, ${lead.state || null}, ${lead.lead_type || null},
-            ${lead.chatbot_score}, ${lead.redesign_score}, ${lead.combined_score},
-            ${JSON.stringify(lead.report_card)}::jsonb, 'audited'
-          ) ON CONFLICT DO NOTHING`;
-          inserted++;
+          await sql`BEGIN`;
+          for (const lead of batch) {
+            await sql`INSERT INTO prospects (
+              business_name, website, phone, email, owner_name, niche,
+              city, state, lead_type, chatbot_score, redesign_score,
+              combined_score, report_card, status
+            ) VALUES (
+              ${lead.business_name}, ${lead.website || null}, ${lead.phone || null},
+              ${lead.email || null}, ${lead.owner_name || null}, ${lead.niche || null},
+              ${lead.city || null}, ${lead.state || null}, ${lead.lead_type || null},
+              ${lead.chatbot_score}, ${lead.redesign_score}, ${lead.combined_score},
+              ${JSON.stringify(lead.report_card)}::jsonb, 'audited'
+            ) ON CONFLICT (business_name, city, state)
+              WHERE business_name IS NOT NULL AND city IS NOT NULL
+              DO UPDATE SET
+                chatbot_score = EXCLUDED.chatbot_score,
+                redesign_score = EXCLUDED.redesign_score,
+                combined_score = EXCLUDED.combined_score,
+                report_card = EXCLUDED.report_card,
+                email = COALESCE(EXCLUDED.email, prospects.email),
+                phone = COALESCE(EXCLUDED.phone, prospects.phone),
+                updated_at = NOW()`;
+            inserted++;
+          }
+          await sql`COMMIT`;
         } catch (err) {
-          console.error(`  DB insert failed for ${lead.business_name}: ${err.message}`);
+          await sql`ROLLBACK`.catch(() => {});
+          log.catch('db_batch_insert_failed', err, { batch_start: i, batch_size: batch.length });
+          inserted -= batch.length;
         }
       }
-      console.log(`  DB: ${inserted} prospects inserted`);
+      log.info('db_insert_complete', { inserted });
     } catch (err) {
-      console.error(`  DB connection failed: ${err.message}`);
+      log.catch('db_connection_failed', err);
     }
   }
 
-  console.log(`  Output: ${outPath}`);
+  log.endRun({ qualified: audited.length, qualified_no_email: noEmail.length, skipped });
   return audited;
 }
 
-module.exports = { main, scoreChatbot, scoreRedesign, generateReportCard, detectMarketingSignals };
+module.exports = { main, scoreChatbot, scoreRedesign, detectMarketingSignals, detectAffordability };
 
 if (require.main === module) {
-  main().catch(err => { console.error('Audit failed:', err); process.exit(1); });
+  main().catch(err => { log.catch('fatal', err); process.exit(1); });
 }

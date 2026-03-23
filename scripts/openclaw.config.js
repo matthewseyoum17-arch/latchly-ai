@@ -38,17 +38,39 @@ const CITIES = (process.env.SCOUT_CITIES || '').split(';').filter(Boolean).lengt
       return { city, state };
     })
   : [
+    // Texas
     { city: 'Dallas', state: 'TX' }, { city: 'Houston', state: 'TX' },
     { city: 'San Antonio', state: 'TX' }, { city: 'Austin', state: 'TX' },
-    { city: 'Fort Worth', state: 'TX' },
+    { city: 'Fort Worth', state: 'TX' }, { city: 'El Paso', state: 'TX' },
+    { city: 'Arlington', state: 'TX' }, { city: 'Plano', state: 'TX' },
+    // Florida
     { city: 'Jacksonville', state: 'FL' }, { city: 'Miami', state: 'FL' },
     { city: 'Tampa', state: 'FL' }, { city: 'Orlando', state: 'FL' },
+    { city: 'Fort Lauderdale', state: 'FL' }, { city: 'St Petersburg', state: 'FL' },
+    // Arizona
     { city: 'Phoenix', state: 'AZ' }, { city: 'Tucson', state: 'AZ' },
-    { city: 'Atlanta', state: 'GA' },
+    { city: 'Mesa', state: 'AZ' }, { city: 'Scottsdale', state: 'AZ' },
+    // Southeast
+    { city: 'Atlanta', state: 'GA' }, { city: 'Savannah', state: 'GA' },
     { city: 'Charlotte', state: 'NC' }, { city: 'Raleigh', state: 'NC' },
     { city: 'Nashville', state: 'TN' }, { city: 'Memphis', state: 'TN' },
-    { city: 'Denver', state: 'CO' },
-    { city: 'Las Vegas', state: 'NV' },
+    { city: 'Knoxville', state: 'TN' }, { city: 'Chattanooga', state: 'TN' },
+    // South
+    { city: 'New Orleans', state: 'LA' }, { city: 'Baton Rouge', state: 'LA' },
+    { city: 'Birmingham', state: 'AL' }, { city: 'Mobile', state: 'AL' },
+    { city: 'Jackson', state: 'MS' }, { city: 'Little Rock', state: 'AR' },
+    { city: 'Oklahoma City', state: 'OK' }, { city: 'Tulsa', state: 'OK' },
+    // West
+    { city: 'Denver', state: 'CO' }, { city: 'Colorado Springs', state: 'CO' },
+    { city: 'Las Vegas', state: 'NV' }, { city: 'Reno', state: 'NV' },
+    { city: 'Salt Lake City', state: 'UT' }, { city: 'Albuquerque', state: 'NM' },
+    // Midwest
+    { city: 'Indianapolis', state: 'IN' }, { city: 'Columbus', state: 'OH' },
+    { city: 'Cincinnati', state: 'OH' }, { city: 'Kansas City', state: 'MO' },
+    { city: 'St Louis', state: 'MO' }, { city: 'Louisville', state: 'KY' },
+    // Mid-Atlantic
+    { city: 'Richmond', state: 'VA' }, { city: 'Virginia Beach', state: 'VA' },
+    { city: 'Wilmington', state: 'DE' }, { city: 'Charleston', state: 'SC' },
   ];
 
 const FRANCHISE_BLACKLIST = [
@@ -58,9 +80,9 @@ const FRANCHISE_BLACKLIST = [
 
 // ── Rate limits ─────────────────────────────────────────────────────────────
 
-const SCOUT_MAX_PER_NICHE = parseInt(process.env.SCOUT_MAX_PER_NICHE || '20', 10);
-const SCOUT_MAX_TOTAL     = parseInt(process.env.SCOUT_MAX_TOTAL || '200', 10);
-const AUDIT_MIN_SCORE     = parseInt(process.env.AUDIT_MIN_SCORE || '8', 10);
+const SCOUT_MAX_PER_NICHE = parseInt(process.env.SCOUT_MAX_PER_NICHE || '150', 10);
+const SCOUT_MAX_TOTAL     = parseInt(process.env.SCOUT_MAX_TOTAL || '500', 10);
+const AUDIT_MIN_SCORE     = parseInt(process.env.AUDIT_MIN_SCORE || '7', 10);
 const MAX_EMAILS          = parseInt(process.env.MAX_EMAILS || '20', 10);
 const MAX_MESSAGES        = parseInt(process.env.MAX_MESSAGES || '200', 10);
 const DEMO_MAX_AGE_DAYS   = parseInt(process.env.DEMO_MAX_AGE_DAYS || '30', 10);
