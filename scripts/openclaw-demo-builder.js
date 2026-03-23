@@ -238,8 +238,10 @@ function buildPersonalizationBanner(lead) {
 <section style="background:linear-gradient(180deg,#0a0f1c 0%,#0f1628 100%);border-bottom:1px solid rgba(255,255,255,0.04);" class="py-12">
   <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
     <div style="text-align:center;margin-bottom:24px;">
-      <span style="display:inline-block;background:rgba(16,185,129,0.1);color:#10b981;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;padding:6px 14px;border-radius:6px;border:1px solid rgba(16,185,129,0.2);">Built for you</span>
-      <h2 style="color:#e2e8f0;font-size:22px;font-weight:800;margin:12px 0 6px;letter-spacing:-0.02em;">What we improved in this demo</h2>
+      <div style="display:flex;justify-content:center;margin-bottom:12px;">
+        <span style="display:inline-block;background:rgba(16,185,129,0.1);color:#10b981;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;padding:6px 14px;border-radius:6px;border:1px solid rgba(16,185,129,0.2);">Built for you</span>
+      </div>
+      <h2 style="color:#e2e8f0;font-size:22px;font-weight:800;margin:0 0 6px;letter-spacing:-0.02em;">What we improved in this demo</h2>
       <p style="color:#7a8ba6;font-size:14px;max-width:480px;margin:0 auto;">We analyzed your current site and built this demo to address the gaps we found.</p>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;">
@@ -498,20 +500,9 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Outfit', sans-serif; letter-spacing: -0.0
       <a href="#contact" class="btn-primary text-[15px] justify-center">${escHtml(template.ctas.primary)}</a>
       <a href="#services" class="btn-outline-white text-[15px] justify-center">${escHtml(template.ctas.secondary)}</a>
     </div>
-    <div class="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-      <div class="flex items-center gap-1.5 text-[11px] font-medium" style="color:rgba(255,255,255,0.35);">
-        <svg class="w-3 h-3 flex-shrink-0" style="color:rgba(255,255,255,0.3);" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
-        Licensed &amp; Insured
-      </div>
-      <div class="flex items-center gap-1.5 text-[11px] font-medium" style="color:rgba(255,255,255,0.35);">
-        <svg class="w-3 h-3 flex-shrink-0" style="color:rgba(255,255,255,0.3);" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
-        A+ BBB Rated
-      </div>
-      <div class="flex items-center gap-1.5 text-[11px] font-medium" style="color:rgba(255,255,255,0.35);">
-        <span style="color:#d4a843; font-size:10px;">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
-        <span>${escHtml(template.stats.googleRating)} on Google</span>
-      </div>
-    </div>
+    <p class="mx-auto" style="max-width:520px;font-size:12px;line-height:1.7;color:rgba(255,255,255,0.42);">
+      Cleaner mobile flow, stronger lead capture, and a clearer path to calls and booked jobs.
+    </p>
   </div>
 </section>
 
