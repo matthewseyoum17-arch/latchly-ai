@@ -1228,6 +1228,19 @@ async function persistDemoToDb(lead, html) {
     const { neon } = require('@neondatabase/serverless');
     const sql = neon(process.env.DATABASE_URL);
 
+    // Always upsert into demo_pages — this is the primary lookup table
+    await sql`
+      INSERT INTO demo_pages (slug, business_name, city, state, niche, family, source, demo_url, html)
+      VALUES (${lead.demo_slug}, ${lead.business_name || null}, ${lead.city || null},
+              ${lead.state || null}, ${lead.niche || null}, ${lead.demo_variant || null},
+              'openclaw', ${lead.demo_url || null}, ${html})
+      ON CONFLICT (slug) DO UPDATE SET
+        html = EXCLUDED.html,
+        demo_url = EXCLUDED.demo_url,
+        updated_at = NOW()
+    `;
+
+    // Also update prospects table if we can match
     let rows = [];
     if (lead.id) {
       rows = await sql`
@@ -1257,11 +1270,7 @@ async function persistDemoToDb(lead, html) {
       `;
     }
 
-    if (rows.length === 0) {
-      return { ok: false, reason: 'no_matching_prospect' };
-    }
-
-    return { ok: true, count: rows.length };
+    return { ok: true, count: rows.length, demo_pages: true };
   } catch (err) {
     return { ok: false, reason: err.message };
   }
