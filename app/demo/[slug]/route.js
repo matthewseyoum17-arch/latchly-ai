@@ -75,7 +75,8 @@ async function loadDemoFromDb(safeSlug) {
       createdAt: rows[0].demo_persisted_at || rows[0].updated_at || rows[0].created_at,
       source: 'db',
     };
-  } catch {
+  } catch (err) {
+    console.error('[demo-route] DB lookup failed:', err.message || err);
     return null;
   }
 }
@@ -100,9 +101,12 @@ export async function GET(request, { params }) {
     return new Response('Not found', { status: 404 });
   }
 
-  const demoRecord = (await loadDemoFromDb(safeSlug)) || loadDemoFromFile(safeSlug);
+  const dbResult = await loadDemoFromDb(safeSlug);
+  const demoRecord = dbResult || loadDemoFromFile(safeSlug);
   if (!demoRecord) {
-    return new Response('Demo not found', { status: 404 });
+    const hasDbUrl = !!process.env.DATABASE_URL;
+    console.error(`[demo-route] Not found: slug=${safeSlug}, DATABASE_URL=${hasDbUrl ? 'set' : 'MISSING'}`);
+    return new Response('Demo not found', { status: 404, headers: { 'X-Debug-DB': hasDbUrl ? 'set' : 'missing' } });
   }
 
   const createdAt = new Date(demoRecord.createdAt || Date.now());
