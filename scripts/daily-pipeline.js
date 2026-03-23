@@ -1,28 +1,18 @@
 #!/usr/bin/env node
 /**
  * daily-pipeline.js
- * Runs the full automated daily lead pipeline:
- *   1. Scrape raw leads from YellowPages/BBB (autonomous, no browser session needed)
- *   2. Qualify + dedupe against master list (website check, chatbot detection, fit scoring)
- *   3. Build a strict clean batch of BATCH_SIZE leads (target: 300 for 3 SCOs × 100)
- *   4. Email each SCO their 100-lead slice via AgentMail
+ * Exact-profile SCO pipeline using a rolling verified inventory reservoir.
  *
- * Exact-profile standard for dispatch:
- *   - clearly bad / outdated website
- *   - opens cleanly
- *   - verified no chatbot / live chat / AI chat
- *   - real local service business
- *   - setter-worthy redesign + Latchly pitch
+ * Flow:
+ *   1. Optional scrape raw leads
+ *   2. Qualify strict exact-profile candidates
+ *   3. Replenish durable inventory from newly-qualified rows
+ *   4. Dispatch exactly 300 inventory-backed leads (100 each SCO) when available
+ *   5. Email each SCO their assigned slice unless SKIP_EMAIL=1
  *
- * Env vars required:
- *   AGENTMAIL_API_KEY
- *   AGENTMAIL_INBOX_ID
- *
- * Optional:
- *   BATCH_SIZE           (default 200)
- *   APOLLO_MODE          (set to "cdp" to use Apollo CDP scraper instead of auto-scrape)
- *   SKIP_SCRAPE          (set to "1" to skip all scraping, use newest existing CSV)
- *   SKIP_EMAIL           (set to "1" to skip email dispatch — dry run)
+ * Safety thresholds:
+ *   INVENTORY_MIN_DISPATCH (default 300)
+ *   INVENTORY_LOW_WATER    (default 600)
  */
 
 const fs = require('fs');
@@ -30,8 +20,6 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
-
-// Load .env if present
 const envFile = path.join(ROOT, '.env');
 if (fs.existsSync(envFile)) {
   fs.readFileSync(envFile, 'utf8').split(/\r?\n/).forEach(line => {
@@ -39,23 +27,23 @@ if (fs.existsSync(envFile)) {
     if (m && !process.env[m[1]]) process.env[m[1]] = m[2].trim();
   });
 }
+
 const LEADS_DIR = path.join(ROOT, 'leads');
-const DAILY_DIR = path.join(LEADS_DIR, 'daily');
-const MASTER_CSV = path.join(LEADS_DIR, 'qualified-leads.csv');
-const BATCH_SIZE = parseInt(process.env.BATCH_SIZE || '300', 10);
+const QUALIFIED_CSV = path.join(LEADS_DIR, 'qualified-leads.csv');
+const DISPATCH_CSV = path.join(LEADS_DIR, 'latchly-clean-batch.csv');
+const BATCH_SIZE = parseInt(process.env.BATCH_SIZE || process.env.INVENTORY_MIN_DISPATCH || '300', 10);
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-function run(label, command, args, env = {}) {
+function run(label, command, args, env = {}, allowedExitCodes = [0]) {
   console.log(`\n=== ${label} ===`);
   const result = spawnSync(command, args, {
     cwd: ROOT,
     stdio: 'inherit',
     env: { ...process.env, ...env },
   });
-  if (result.status !== 0) {
+  if (!allowedExitCodes.includes(result.status)) {
     throw new Error(`${label} failed (exit ${result.status})`);
   }
+  return result.status;
 }
 
 function exists(p) {
@@ -76,46 +64,30 @@ function countCSVRows(file) {
   try {
     const text = fs.readFileSync(file, 'utf8').trim();
     const lines = text.split(/\r?\n/).filter(Boolean);
-    return Math.max(0, lines.length - 1); // subtract header
+    return Math.max(0, lines.length - 1);
   } catch { return 0; }
 }
-
-function archiveToDaily(label) {
-  const date = new Date().toISOString().slice(0, 10);
-  fs.mkdirSync(DAILY_DIR, { recursive: true });
-  const dest = path.join(DAILY_DIR, `${date}-${label}`);
-  if (exists(MASTER_CSV)) {
-    fs.copyFileSync(MASTER_CSV, dest);
-    console.log(`📁 Archived to ${path.relative(ROOT, dest)}`);
-  }
-}
-
-// ── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
   const startTime = Date.now();
   const runDate = new Date().toLocaleDateString('en-US', {
-    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-    timeZone: 'America/New_York',
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/New_York',
   });
-
   console.log('');
   console.log('═══════════════════════════════════════════════════════');
-  console.log(` LATCHLY DAILY LEAD PIPELINE — ${runDate}`);
-  console.log(` Target: ${BATCH_SIZE} exact-profile leads → 3 SCOs (100 each)`);
+  console.log(` LATCHLY DAILY INVENTORY PIPELINE — ${runDate}`);
+  console.log(` Target: ${BATCH_SIZE} exact-profile leads from reservoir`);
   console.log('═══════════════════════════════════════════════════════');
 
   fs.mkdirSync(LEADS_DIR, { recursive: true });
 
-  // ── Step 1: Scrape raw leads ──────────────────────────────────────────────
   const rawCsv = path.join(LEADS_DIR, 'apollo-leads.csv');
   const skipScrape = process.env.SKIP_SCRAPE === '1';
   const apolloMode = process.env.APOLLO_MODE === 'cdp';
-  const rawNeeded = BATCH_SIZE * 4; // stricter exact-profile filter needs more raw volume upstream
+  const rawNeeded = BATCH_SIZE * 4;
 
   if (!skipScrape) {
     if (apolloMode) {
-      // CDP mode: requires Chrome open with Apollo logged in
       try {
         run('Apollo scrape (live Chrome session)', 'node', ['scripts/apollo-scrape.js'], {
           APOLLO_OUTPUT: rawCsv,
@@ -124,73 +96,61 @@ async function main() {
       } catch (err) {
         console.warn(`\n⚠️  Apollo CDP scrape failed: ${err.message}`);
         console.warn('Falling back to autonomous YP scraper.');
-        try {
-          run('Auto-scrape (YellowPages)', 'node', ['scripts/auto-scrape.js'], {
-            APOLLO_OUTPUT: rawCsv,
-            RAW_TARGET: String(rawNeeded),
-            MASTER_CSV: MASTER_CSV,
-          });
-        } catch (e2) {
-          console.warn(`⚠️  Auto-scrape also failed: ${e2.message}`);
-        }
+        run('Auto-scrape (YellowPages)', 'node', ['scripts/auto-scrape.js'], {
+          APOLLO_OUTPUT: rawCsv,
+          RAW_TARGET: String(rawNeeded),
+          MASTER_CSV: QUALIFIED_CSV,
+        });
       }
     } else {
-      // Default: BBB curl-based scraper (no browser needed)
       run('BBB lead scrape', 'node', ['scripts/source-leads.js'], {
         APOLLO_OUTPUT: rawCsv,
         RAW_TARGET: String(rawNeeded),
-        MASTER_CSV: MASTER_CSV,
+        MASTER_CSV: QUALIFIED_CSV,
       });
     }
   }
 
-  let rawInput = exists(rawCsv) ? rawCsv : newestApolloCsv();
+  const rawInput = exists(rawCsv) ? rawCsv : newestApolloCsv();
   if (!rawInput) {
-    console.error('\n❌ No raw leads available. Run auto-scrape or place a CSV at leads/apollo-leads.csv');
+    console.error('\n❌ No raw leads available. Run scrape/top-up first or place a CSV at leads/apollo-leads.csv');
     process.exit(1);
   }
-
   console.log(`\n✅ Using raw input: ${path.relative(ROOT, rawInput)} (${countCSVRows(rawInput)} rows)`);
 
-  // ── Step 3: Qualify ───────────────────────────────────────────────────────
   const qualifier = process.env.QUALIFIER || 'cdp';
   const qualifierScript = qualifier === 'cdp' ? 'scripts/qualify-via-cdp.js' : 'scripts/qualify-leads.js';
+  run(`Qualify leads (${qualifier})`, 'node', [qualifierScript], { APOLLO_INPUT: rawInput });
 
-  run(`Qualify leads (${qualifier})`, 'node', [qualifierScript], {
-    APOLLO_INPUT: rawInput,
-  });
-
-  if (!exists(MASTER_CSV)) {
+  if (!exists(QUALIFIED_CSV)) {
     console.error('\n❌ Qualification did not produce leads/qualified-leads.csv');
     process.exit(1);
   }
+  console.log(`\n✅ Qualified leads this run: ${countCSVRows(QUALIFIED_CSV)}`);
 
-  const qualifiedRows = countCSVRows(MASTER_CSV);
-  console.log(`\n✅ Qualified leads: ${qualifiedRows}`);
+  run('Replenish exact-profile inventory', 'node', ['scripts/replenish-inventory.js'], {
+    QUALIFIED_INPUT: QUALIFIED_CSV,
+  });
 
-  if (qualifiedRows < 10) {
-    console.error(`❌ Only ${qualifiedRows} qualified leads — too few to dispatch. Pipeline aborted.`);
+  const dispatchExit = run('Dispatch from inventory reservoir', 'node', ['scripts/dispatch-inventory.js'], {
+    DISPATCH_OUTPUT: DISPATCH_CSV,
+  }, [0, 2]);
+
+  if (dispatchExit === 2) {
+    console.error('\n❌ Daily pipeline stopped: inventory reservoir is below the exact dispatch requirement.');
+    process.exit(2);
+  }
+
+  if (!exists(DISPATCH_CSV)) {
+    console.error('\n❌ Inventory dispatch did not produce leads/latchly-clean-batch.csv');
     process.exit(1);
   }
 
-  // ── Step 4: Build clean batch ─────────────────────────────────────────────
-  run('Build clean batch', 'node', ['scripts/build-clean-batch.js', String(BATCH_SIZE)], {
-    QUALIFIED_INPUT: MASTER_CSV,
-    BATCH_SIZE: String(BATCH_SIZE),
-  });
-
-  // ── Step 5: Archive today's batch ─────────────────────────────────────────
-  archiveToDaily('qualified-leads.csv');
-
-  // ── Step 6: Email SCOs ───────────────────────────────────────────────────
-  const cleanBatchCsv = path.join(LEADS_DIR, 'latchly-clean-batch.csv');
-  const emailInput = exists(cleanBatchCsv) ? cleanBatchCsv : MASTER_CSV;
-
   if (process.env.SKIP_EMAIL === '1') {
-    console.log('\n📧 SKIP_EMAIL=1 — skipping email dispatch (dry run)');
+    console.log('\n📧 SKIP_EMAIL=1 — skipping email dispatch (inventory-backed dry run)');
   } else {
     run('Email SCOs', 'node', ['scripts/email-setters.js'], {
-      QUALIFIED_INPUT: emailInput,
+      QUALIFIED_INPUT: DISPATCH_CSV,
       BATCH_SIZE: String(BATCH_SIZE),
     });
   }
@@ -199,7 +159,7 @@ async function main() {
   console.log('');
   console.log('═══════════════════════════════════════════════════════');
   console.log(` ✅ PIPELINE COMPLETE — ${elapsed}s`);
-  console.log(` ${qualifiedRows} qualified → ${Math.min(qualifiedRows, BATCH_SIZE)} dispatched to 3 SCOs`);
+  console.log(` ${countCSVRows(DISPATCH_CSV)} inventory-backed leads prepared for SCO dispatch`);
   console.log('═══════════════════════════════════════════════════════');
   console.log('');
 }
