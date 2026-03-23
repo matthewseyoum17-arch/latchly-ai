@@ -2,17 +2,22 @@
 /**
  * openclaw-outreach.js  (Agent 4 — Outreach)
  *
- * Sends personalized cold emails with:
- *   - Report card highlights (top 2-3 issues from audit)
+ * Sends plain-text cold emails with:
+ *   - Custom homepage concept as the hook
  *   - Live demo link
- *   - Stripe payment link
- *   - 3-step drip: Day 0 (initial) → Day 3 (follow-up) → Day 7 (final)
+ *   - 3-step drip: Day 0 (concept) → Day 3 (reminder) → Day 7 (breakup)
  *   - CAN-SPAM compliant (physical address + unsubscribe link)
+ *   - Reply detection: stops drip if prospect replies or bounces
  *
  * Uses Resend for email delivery (outreach@latchlyai.com).
  * Tracks sequence state in prospects table.
  *
  * Input:  leads/openclaw/audited.json (or DB query)
+ * Timezone-aware: only sends when it's 7:00–9:30 AM in the prospect's
+ * local timezone. Run via cron every 30 min from 7 AM–1 PM ET to catch
+ * all US timezone windows (PT 7 AM = ET 10 AM):
+ *   0,30 7-12 * * 1-5 node /path/to/scripts/openclaw-outreach.js
+ *
  * Usage:
  *   node scripts/openclaw-outreach.js
  *   DRY_RUN=true node scripts/openclaw-outreach.js
@@ -21,27 +26,70 @@
 
 const fs   = require('fs');
 const path = require('path');
+const config = require('./openclaw.config');
+const { createLogger } = require('./openclaw-logger');
 
-const ROOT = path.join(__dirname, '..');
+const log = createLogger('outreach');
+const { ROOT, SITE_BASE, FROM_EMAIL, PHYSICAL_ADDRESS,
+        DRY_RUN } = config;
 
-// Load .env
-const envFile = path.join(ROOT, '.env');
-if (fs.existsSync(envFile)) {
-  fs.readFileSync(envFile, 'utf8').split(/\r?\n/).forEach(line => {
-    const m = line.match(/^([^#=\s][^=]*)=(.*)$/);
-    if (m && !process.env[m[1]]) process.env[m[1]] = m[2].trim();
-  });
+// ── Warm-up mode ────────────────────────────────────────────────────────────
+// Fresh sending domains land in spam if you blast 20+ emails on day 1.
+// Set WARMUP_START=2026-03-23 (your first send date) and we auto-ramp:
+//   Week 1: 5/day, Week 2: 10/day, Week 3: 20/day, Week 4+: MAX_EMAILS
+function getEffectiveMaxEmails() {
+  const warmupStart = process.env.WARMUP_START;
+  if (!warmupStart) return config.MAX_EMAILS;
+
+  const start = new Date(warmupStart);
+  const now = new Date();
+  const daysSince = Math.floor((now - start) / (1000 * 60 * 60 * 24));
+
+  if (daysSince < 0) return 0; // Not started yet
+  if (daysSince < 7) return 5;
+  if (daysSince < 14) return 10;
+  if (daysSince < 21) return 20;
+  return config.MAX_EMAILS; // Full volume after 3 weeks
 }
 
-const DRY_RUN   = process.env.DRY_RUN === 'true';
-const MAX_EMAILS = parseInt(process.env.MAX_EMAILS || '20', 10);
-const SITE_BASE  = process.env.SITE_BASE || 'https://latchlyai.com';
-const FROM_EMAIL = process.env.OUTREACH_FROM || 'outreach@latchlyai.com';
-const STRIPE_LINK = process.env.STRIPE_PAYMENT_LINK || 'https://buy.stripe.com/your-link';
-const BOOKING_LINK = process.env.BOOKING_LINK || 'https://calendly.com/latchlyai/demo';
+const MAX_EMAILS = getEffectiveMaxEmails();
 
-// Physical address for CAN-SPAM
-const PHYSICAL_ADDRESS = 'Latchly AI · 123 Main St · Austin, TX 78701';
+// ── Timezone lookup ─────────────────────────────────────────────────────────
+// Maps US state abbreviations to IANA timezone (most common per state)
+const STATE_TZ = {
+  AL:'America/Chicago',AK:'America/Anchorage',AZ:'America/Phoenix',AR:'America/Chicago',
+  CA:'America/Los_Angeles',CO:'America/Denver',CT:'America/New_York',DE:'America/New_York',
+  FL:'America/New_York',GA:'America/New_York',HI:'Pacific/Honolulu',ID:'America/Boise',
+  IL:'America/Chicago',IN:'America/Indiana/Indianapolis',IA:'America/Chicago',KS:'America/Chicago',
+  KY:'America/New_York',LA:'America/Chicago',ME:'America/New_York',MD:'America/New_York',
+  MA:'America/New_York',MI:'America/Detroit',MN:'America/Chicago',MS:'America/Chicago',
+  MO:'America/Chicago',MT:'America/Denver',NE:'America/Chicago',NV:'America/Los_Angeles',
+  NH:'America/New_York',NJ:'America/New_York',NM:'America/Denver',NY:'America/New_York',
+  NC:'America/New_York',ND:'America/Chicago',OH:'America/New_York',OK:'America/Chicago',
+  OR:'America/Los_Angeles',PA:'America/New_York',RI:'America/New_York',SC:'America/New_York',
+  SD:'America/Chicago',TN:'America/Chicago',TX:'America/Chicago',UT:'America/Denver',
+  VT:'America/New_York',VA:'America/New_York',WA:'America/Los_Angeles',WV:'America/New_York',
+  WI:'America/Chicago',WY:'America/Denver',DC:'America/New_York',
+};
+
+/**
+ * Returns true if it's currently between 7:00–9:30 AM in the prospect's
+ * local timezone. Falls back to true (send anyway) if state is unknown.
+ */
+function isLocalSendWindow(state) {
+  const abbr = (state || '').trim().toUpperCase();
+  const tz = STATE_TZ[abbr];
+  if (!tz) return true; // Unknown state — don't block the send
+
+  const now = new Date();
+  const localTime = new Date(now.toLocaleString('en-US', { timeZone: tz }));
+  const h = localTime.getHours();
+  const m = localTime.getMinutes();
+  const minuteOfDay = h * 60 + m;
+
+  // 7:00 AM (420) to 9:30 AM (570)
+  return minuteOfDay >= 420 && minuteOfDay <= 570;
+}
 
 // ── Email templates ──────────────────────────────────────────────────────────
 
@@ -50,180 +98,188 @@ function unsubLink(email) {
   return `${SITE_BASE}/api/unsubscribe?email=${encodeURIComponent(email)}&token=${token}`;
 }
 
+function hashLead(value) {
+  let h = 0;
+  const s = String(value || '');
+  for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+function pickVariant(lead, step, options) {
+  const seed = `${lead.demo_slug || lead.business_name || ''}|${lead.email || ''}|${step}`;
+  return options[hashLead(seed) % options.length];
+}
+
 function buildEmail(lead, step) {
   const biz = lead.business_name;
   const city = lead.city || '';
+  const firstName = lead.owner_name ? lead.owner_name.split(' ')[0] : '';
+  const greeting = firstName ? `${firstName},` : 'Hi,';
   const demoUrl = lead.demo_url || `${SITE_BASE}/demo/${lead.demo_slug}`;
-  const issues = lead.report_card?.issues || [];
-  const topIssues = issues.slice(0, 3);
   const unsub = unsubLink(lead.email);
-
-  const issueList = topIssues.length > 0
-    ? topIssues.map(i => `  - ${i.label}`).join('\n')
-    : '  - Your site could benefit from modern lead capture';
-
-  const footer = `\n\n---\n${PHYSICAL_ADDRESS}\n[Unsubscribe](${unsub})`;
+  const cityLine = city ? ` and the ${city} market` : '';
+  const footer = `\n\n---\n${PHYSICAL_ADDRESS}\nUnsubscribe: ${unsub}`;
 
   if (step === 0) {
-    // Initial outreach — lead with the demo, soft CTA to book a call
+    const variant = pickVariant(lead, step, [
+      {
+        subject: `homepage concept for ${biz}`,
+        opener: `I put together a custom homepage concept for ${biz}. Not a pitch deck — an actual working design built around your services${cityLine}.`,
+        body: `The goal was to tighten up the conversion flow so more of your existing visitors turn into calls and booked jobs, especially on mobile and after hours. There’s also a built-in assistant to handle common questions when your team is off the clock.`,
+        close: `No strings. If it sparks any ideas, I’m happy to walk you through it.`
+      },
+      {
+        subject: `built this for ${biz}`,
+        opener: `I spent a little time mocking up a live homepage concept for ${biz}. It’s tailored to the services you already offer${cityLine}.`,
+        body: `Main idea was simple: make the site feel more current, make the next step clearer, and give you a better shot at turning traffic into real jobs without relying on people to call during business hours.`,
+        close: `If it’s useful, I can show you what I changed and why.`
+      },
+      {
+        subject: `quick site concept for ${biz}`,
+        opener: `I built a quick homepage concept for ${biz} after looking through the current site${cityLine ? cityLine : ''}.`,
+        body: `It’s meant to show what a cleaner, higher-converting version could look like — better structure, stronger mobile flow, and an after-hours assistant baked in.`,
+        close: `Take a look when you have a minute. Happy to break it down if you want.`
+      },
+    ]);
+
     return {
-      subject: `${biz} — I built something for you`,
-      html: buildInitialHtml(lead, demoUrl, issueList, topIssues, unsub),
-      text: `Hi${lead.owner_name ? ' ' + lead.owner_name.split(' ')[0] : ''},
+      subject: variant.subject,
+      text: `${greeting}
 
-I checked out ${biz}'s website and noticed a few things that might be costing you leads:
+${variant.opener}
 
-${issueList}
-
-Instead of just pointing that out, I built a free demo of what a modern site could look like for ${biz} — with an AI assistant that answers customer questions and captures leads 24/7:
+${variant.body}
 
 ${demoUrl}
 
-Try the chat widget in the bottom right — it works live.
+${variant.close}
 
-If you want, I can walk you through it in 10 minutes: ${BOOKING_LINK}
-
-Either way, the demo is yours to keep. No strings.
-
-Best,
 Matthew
-Latchly AI${footer}`,
+Latchly${footer}`,
     };
   }
 
   if (step === 1) {
-    // Day 3 follow-up — reference the demo, push toward a call
-    return {
-      subject: `Re: ${biz} — did you see the demo?`,
-      html: buildFollowUpHtml(lead, demoUrl, unsub),
-      text: `Hi${lead.owner_name ? ' ' + lead.owner_name.split(' ')[0] : ''},
+    const variant = pickVariant(lead, step, [
+      {
+        subject: `Re: homepage concept for ${biz}`,
+        text: `${greeting}
 
-Just circling back — did you get a chance to check out the demo I built for ${biz}?
+Wanted to make sure the ${biz} concept I sent over didn’t get buried.
+
+It’s here if you want to take a quick look:
+${demoUrl}
+
+Matthew${footer}`,
+      },
+      {
+        subject: `Re: built this for ${biz}`,
+        text: `${greeting}
+
+Following up once on the homepage concept I put together for ${biz}.
+
+Here’s the link again:
+${demoUrl}
+
+Matthew${footer}`,
+      },
+      {
+        subject: `Re: quick site concept for ${biz}`,
+        text: `${greeting}
+
+Just resurfacing the concept I built for ${biz} in case it got missed.
 
 ${demoUrl}
 
-The AI chat assistant on there typically captures 5-15 extra leads per month that would otherwise bounce off your site. And it works while you sleep.
-
-Happy to do a quick 10-minute walkthrough if that's easier: ${BOOKING_LINK}
-
-Best,
 Matthew${footer}`,
-    };
+      },
+    ]);
+    return variant;
   }
 
-  // Step 2: Day 7 final — low pressure, leave the door open
-  return {
-    subject: `${biz} demo — last note`,
-    html: buildFinalHtml(lead, demoUrl, unsub),
-    text: `Hi${lead.owner_name ? ' ' + lead.owner_name.split(' ')[0] : ''},
+  const variant = pickVariant(lead, step, [
+    {
+      subject: `${biz} concept — last note`,
+      text: `${greeting}
 
-Last follow-up from me. Your demo is still live:
+I won’t keep bugging you about this. If a stronger web presence for ${biz} ever moves up the list, the concept I built is here:
 
 ${demoUrl}
 
-If the timing isn't right, no worries at all. When you're ready, grab 10 minutes here and I'll show you how it works: ${BOOKING_LINK}
-
-Have a good one!
+All the best,
 
 Matthew${footer}`,
-  };
-}
+    },
+    {
+      subject: `${biz} homepage concept`,
+      text: `${greeting}
 
-// ── HTML email builders ──────────────────────────────────────────────────────
+Last note from me on this. Keeping the concept link here in case it’s useful later:
 
-function escHtml(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+${demoUrl}
 
-function emailWrapper(content, unsub) {
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;font-family:system-ui,-apple-system,sans-serif;background:#f8fafc;">
-<div style="max-width:580px;margin:0 auto;padding:24px;">
-${content}
-<div style="margin-top:32px;padding-top:16px;border-top:1px solid #e2e8f0;text-align:center;">
-<p style="font-size:11px;color:#94a3b8;margin:0;">${PHYSICAL_ADDRESS}</p>
-<p style="font-size:11px;color:#94a3b8;margin:4px 0 0;"><a href="${unsub}" style="color:#94a3b8;">Unsubscribe</a></p>
-</div>
-</div></body></html>`;
-}
+Best,
 
-function buildInitialHtml(lead, demoUrl, issueList, topIssues, unsub) {
-  const firstName = lead.owner_name ? lead.owner_name.split(' ')[0] : '';
-  const greeting = firstName ? `Hi ${escHtml(firstName)},` : 'Hi,';
-
-  const issueRows = topIssues.map(i =>
-    `<tr><td style="padding:4px 8px;font-size:14px;color:#ef4444;">&#10007;</td><td style="padding:4px 8px;font-size:14px;color:#334155;">${escHtml(i.label)}</td></tr>`
-  ).join('');
-
-  return emailWrapper(`
-<p style="font-size:15px;color:#334155;line-height:1.7;margin:0 0 16px;">${greeting}</p>
-<p style="font-size:15px;color:#334155;line-height:1.7;margin:0 0 16px;">I was looking at <strong>${escHtml(lead.business_name)}</strong>'s online presence and noticed a few things that could be costing you leads:</p>
-${topIssues.length > 0 ? `<table style="margin:0 0 16px;border-collapse:collapse;">${issueRows}</table>` : ''}
-<p style="font-size:15px;color:#334155;line-height:1.7;margin:0 0 16px;">Instead of just pointing that out, I built a free demo of what a modern site could look like for ${escHtml(lead.business_name)} — with an AI assistant that answers customer questions and captures leads 24/7:</p>
-<div style="text-align:center;margin:24px 0;">
-<a href="${demoUrl}" style="display:inline-block;background:#1B5FA8;color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">See Your Demo</a>
-</div>
-<p style="font-size:15px;color:#334155;line-height:1.7;margin:0 0 8px;">Try the chat widget in the bottom right — it works live.</p>
-<p style="font-size:15px;color:#334155;line-height:1.7;margin:0 0 16px;">Want me to walk you through it? <a href="${BOOKING_LINK}" style="color:#1B5FA8;font-weight:600;">Grab 10 minutes here</a> — no pressure.</p>
-<p style="font-size:15px;color:#334155;line-height:1.7;margin:0 0 4px;">Best,</p>
-<p style="font-size:15px;color:#334155;font-weight:600;margin:0;">Matthew</p>
-<p style="font-size:13px;color:#64748b;margin:2px 0 0;">Latchly AI</p>`, unsub);
-}
-
-function buildFollowUpHtml(lead, demoUrl, unsub) {
-  const firstName = lead.owner_name ? lead.owner_name.split(' ')[0] : '';
-  const greeting = firstName ? `Hi ${escHtml(firstName)},` : 'Hi,';
-
-  return emailWrapper(`
-<p style="font-size:15px;color:#334155;line-height:1.7;margin:0 0 16px;">${greeting}</p>
-<p style="font-size:15px;color:#334155;line-height:1.7;margin:0 0 16px;">Just following up on the demo I built for <strong>${escHtml(lead.business_name)}</strong>:</p>
-<div style="text-align:center;margin:24px 0;">
-<a href="${demoUrl}" style="display:inline-block;background:#1B5FA8;color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">View Your Demo</a>
-</div>
-<p style="font-size:15px;color:#334155;line-height:1.7;margin:0 0 16px;">The AI chat on there typically captures <strong>5-15 extra leads per month</strong> that would otherwise bounce off your site. And it works while you sleep.</p>
-<p style="font-size:15px;color:#334155;line-height:1.7;margin:0 0 16px;">Want a quick walkthrough? <a href="${BOOKING_LINK}" style="color:#1B5FA8;font-weight:600;">Grab 10 minutes here</a>.</p>
-<p style="font-size:15px;color:#334155;line-height:1.7;margin:0 0 4px;">Best,</p>
-<p style="font-size:15px;color:#334155;font-weight:600;margin:0;">Matthew</p>`, unsub);
-}
-
-function buildFinalHtml(lead, demoUrl, unsub) {
-  const firstName = lead.owner_name ? lead.owner_name.split(' ')[0] : '';
-  const greeting = firstName ? `Hi ${escHtml(firstName)},` : 'Hi,';
-
-  return emailWrapper(`
-<p style="font-size:15px;color:#334155;line-height:1.7;margin:0 0 16px;">${greeting}</p>
-<p style="font-size:15px;color:#334155;line-height:1.7;margin:0 0 16px;">This is my last follow-up. Your custom demo is still live:</p>
-<div style="text-align:center;margin:24px 0;">
-<a href="${demoUrl}" style="display:inline-block;background:#1B5FA8;color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">View Demo</a>
-</div>
-<p style="font-size:15px;color:#334155;line-height:1.7;margin:0 0 16px;">No pressure at all. When you're ready, <a href="${BOOKING_LINK}" style="color:#1B5FA8;font-weight:600;">grab 10 minutes here</a> and I'll show you how it works.</p>
-<p style="font-size:15px;color:#334155;line-height:1.7;margin:0 0 4px;">Wishing you a great week!</p>
-<p style="font-size:15px;color:#334155;font-weight:600;margin:0;">Matthew</p>`, unsub);
+Matthew${footer}`,
+    },
+  ]);
+  return variant;
 }
 
 // ── Sending ──────────────────────────────────────────────────────────────────
 
-async function sendEmail(to, subject, html, text) {
+async function sendEmail(to, subject, text, step, retries = 2) {
   if (DRY_RUN) {
     console.log(`  [DRY RUN] Would send to ${to}: "${subject}"`);
-    return { success: true, dry: true };
+    return { success: true, dry: true, id: 'dry-run' };
   }
 
   const { Resend } = require('resend');
   const resend = new Resend(process.env.RESEND_API_KEY);
 
-  const { data, error } = await resend.emails.send({
-    from: `Matthew from Latchly <${FROM_EMAIL}>`,
-    to,
-    subject,
-    html,
-    text,
-  });
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const replyTo = process.env.AGENTMAIL_INBOX_ID || FROM_EMAIL;
+      const { data, error } = await resend.emails.send({
+        from: `Matthew from Latchly <${FROM_EMAIL}>`,
+        reply_to: replyTo,
+        to,
+        subject,
+        text,
+        headers: {
+          'X-Latchly-Step': String(step ?? ''),
+        },
+      });
 
-  if (error) {
-    console.error(`  Email error for ${to}: ${error.message}`);
-    return { success: false, error };
+      if (error) {
+        // Permanent errors — don't retry
+        if (error.statusCode && error.statusCode < 500) {
+          log.error('send_permanent_fail', { email: to, step, message: error.message });
+          return { success: false, error };
+        }
+        // Transient error — retry with backoff
+        if (attempt < retries) {
+          const delay = 1000 * Math.pow(2, attempt);
+          log.warn('send_retry', { email: to, step, attempt: attempt + 1, delay_ms: delay });
+          await new Promise(r => setTimeout(r, delay));
+          continue;
+        }
+        log.error('send_exhausted', { email: to, step, attempts: retries + 1, message: error.message });
+        return { success: false, error };
+      }
+
+      return { success: true, id: data?.id };
+    } catch (err) {
+      if (attempt < retries) {
+        const delay = 1000 * Math.pow(2, attempt);
+        log.warn('send_exception_retry', { email: to, step, attempt: attempt + 1, delay_ms: delay });
+        await new Promise(r => setTimeout(r, delay));
+        continue;
+      }
+      log.catch('send_exception', err, { email: to, step, attempts: retries + 1 });
+      return { success: false, error: err };
+    }
   }
-
-  return { success: true, id: data?.id };
 }
 
 // ── Drip schedule ────────────────────────────────────────────────────────────
@@ -233,6 +289,13 @@ function shouldSendDrip(lead) {
   if (step >= 3) return null; // Sequence complete
   if (lead.unsubscribed) return null;
   if (!lead.email) return null;
+
+  // Stop drip if prospect has replied (closer has processed a response)
+  if ((lead.closer_responses || 0) > 0) return null;
+  if (lead.escalated) return null;
+
+  // Stop drip if prospect has bounced
+  if (lead.bounce_type) return null;
 
   const lastSent = lead.last_outreach_at ? new Date(lead.last_outreach_at) : null;
   const now = new Date();
@@ -253,6 +316,7 @@ function shouldSendDrip(lead) {
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
+  log.startRun({ dry_run: DRY_RUN, max_emails: MAX_EMAILS });
   const inputFile = path.join(ROOT, 'leads', 'openclaw', 'audited.json');
 
   // Try to load from DB first, fall back to file
@@ -267,32 +331,35 @@ async function main() {
         SELECT * FROM prospects
         WHERE status IN ('audited', 'outreach')
           AND unsubscribed = FALSE
+          AND bounce_type IS NULL
           AND email IS NOT NULL
           AND outreach_step < 3
+          AND sco_dispatched_at IS NULL
         ORDER BY combined_score DESC
         LIMIT ${MAX_EMAILS * 2}
       `;
       if (rows.length > 0) {
         leads = rows;
         useDB = true;
-        console.log(`Loaded ${leads.length} prospects from DB`);
+        log.info('loaded_from_db', { count: leads.length });
       }
     } catch (err) {
-      console.log(`DB unavailable, falling back to file: ${err.message}`);
+      log.warn('db_unavailable', { message: err.message, detail: 'falling back to file' });
     }
   }
 
   if (!useDB && fs.existsSync(inputFile)) {
     leads = JSON.parse(fs.readFileSync(inputFile, 'utf8'));
-    console.log(`Loaded ${leads.length} leads from file`);
+    log.info('loaded_from_file', { count: leads.length });
   }
 
   if (leads.length === 0) {
-    console.log('No leads to outreach. Run audit first.');
+    log.warn('no_leads', { detail: 'Run audit first' });
     return;
   }
 
   let sent = 0;
+  let skipped_tz = 0;
   const results = [];
 
   for (const lead of leads) {
@@ -301,30 +368,43 @@ async function main() {
     const step = shouldSendDrip(lead);
     if (step === null) continue;
 
-    const email = buildEmail(lead, step);
-    console.log(`  Sending step ${step} to ${lead.email} (${lead.business_name})...`);
+    // Only send if it's 7-9:30 AM in the prospect's local timezone
+    if (!isLocalSendWindow(lead.state)) {
+      skipped_tz++;
+      log.info('skipped_timezone', { business: lead.business_name, state: lead.state });
+      continue;
+    }
 
-    const result = await sendEmail(lead.email, email.subject, email.html, email.text);
+    const email = buildEmail(lead, step);
+    log.lead('sending', lead, { step });
+
+    const result = await sendEmail(lead.email, email.subject, email.text, step);
 
     if (result.success) {
       sent++;
-      lead.outreach_step = (lead.outreach_step || 0) + 1;
+      const newStep = (lead.outreach_step || 0) + 1;
+      lead.outreach_step = newStep;
       lead.last_outreach_at = new Date().toISOString();
+      lead.last_resend_email_id = result.id || null;
       lead.status = 'outreach';
 
-      // Update DB
+      log.lead('sent', lead, { step, email_id: result.id });
+
+      // Update DB in a transaction (atomic: step + email ID together)
       if (useDB && !DRY_RUN) {
         try {
           const { neon } = require('@neondatabase/serverless');
           const sql = neon(process.env.DATABASE_URL);
           await sql`UPDATE prospects SET
-            outreach_step = ${lead.outreach_step},
+            outreach_step = ${newStep},
             last_outreach_at = NOW(),
+            last_resend_email_id = ${result.id || null},
             status = 'outreach',
             updated_at = NOW()
-          WHERE id = ${lead.id}`;
+          WHERE id = ${lead.id}
+            AND outreach_step < ${newStep}`;
         } catch (err) {
-          console.error(`  DB update failed: ${err.message}`);
+          log.catch('db_update_failed', err, { lead_id: lead.id, business: lead.business_name });
         }
       }
 
@@ -332,6 +412,7 @@ async function main() {
         business: lead.business_name,
         email: lead.email,
         step,
+        emailId: result.id,
         success: true,
       });
     }
@@ -345,12 +426,12 @@ async function main() {
     fs.writeFileSync(inputFile, JSON.stringify(leads, null, 2), 'utf8');
   }
 
-  console.log(`\nOutreach complete: ${sent} emails sent`);
+  log.endRun({ sent, skipped_tz, total_leads: leads.length });
   return results;
 }
 
 module.exports = { main, buildEmail, shouldSendDrip };
 
 if (require.main === module) {
-  main().catch(err => { console.error('Outreach failed:', err); process.exit(1); });
+  main().catch(err => { log.catch('fatal', err); process.exit(1); });
 }

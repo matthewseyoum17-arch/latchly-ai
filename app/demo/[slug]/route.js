@@ -3,6 +3,39 @@ import path from 'path';
 
 export const dynamic = 'force-dynamic';
 
+const DEMO_MAX_AGE_DAYS = parseInt(process.env.DEMO_MAX_AGE_DAYS || '30', 10);
+const BOOKING_LINK = process.env.BOOKING_LINK || 'https://calendly.com/latchlyai/demo';
+
+function expiredPage(slug) {
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Demo Expired</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:system-ui,-apple-system,sans-serif;background:#f8fafc;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+.card{background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.08);max-width:480px;width:100%;padding:48px 32px;text-align:center}
+h1{font-size:24px;color:#0f172a;margin-bottom:8px}p{font-size:15px;color:#64748b;line-height:1.7;margin-bottom:24px}
+.btn{display:inline-block;background:#1B5FA8;color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px}
+.btn:hover{background:#174d8a}.sub{font-size:12px;color:#94a3b8;margin-top:16px}</style></head>
+<body><div class="card">
+<div style="font-size:48px;margin-bottom:16px">&#128337;</div>
+<h1>This Demo Has Expired</h1>
+<p>This personalized demo was built over 30 days ago and is no longer available. Want a fresh one? Book a quick call and we'll build you an updated version.</p>
+<a href="${BOOKING_LINK}" class="btn">Book a 10-Minute Call</a>
+<p class="sub">Latchly</p>
+</div></body></html>`;
+}
+
+function freshnessBanner(daysAgo) {
+  const urgency = daysAgo <= 3
+    ? { label: 'Built just for you', bg: '#10b981', icon: '&#9889;' }
+    : daysAgo <= 14
+      ? { label: `Built for you ${daysAgo} days ago`, bg: '#f59e0b', icon: '&#128197;' }
+      : { label: `Built ${daysAgo} days ago — expiring soon`, bg: '#ef4444', icon: '&#9203;' };
+
+  return `<div id="latchly-freshness" style="position:fixed;top:0;left:0;right:0;z-index:99999;background:${urgency.bg};color:#fff;text-align:center;padding:10px 16px;font-family:system-ui,-apple-system,sans-serif;font-size:13px;font-weight:600;letter-spacing:.3px;box-shadow:0 2px 8px rgba(0,0,0,.15);">
+${urgency.icon} ${urgency.label} &mdash; <a href="${BOOKING_LINK}" style="color:#fff;text-decoration:underline;font-weight:700;">Book a call to get started</a>
+</div>
+<style>#latchly-freshness~*{margin-top:40px!important}</style>`;
+}
+
 export async function GET(request, { params }) {
   const { slug } = await params;
 
@@ -18,7 +51,26 @@ export async function GET(request, { params }) {
     return new Response('Demo not found', { status: 404 });
   }
 
+  // Check demo age from file creation time
+  const stat = fs.statSync(demoPath);
+  const createdAt = stat.birthtime || stat.mtime;
+  const daysAgo = Math.floor((Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
+
+  // Expired — show expiration page
+  if (daysAgo > DEMO_MAX_AGE_DAYS) {
+    return new Response(expiredPage(safeSlug), {
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'X-Robots-Tag': 'noindex, nofollow',
+      },
+    });
+  }
+
   let html = fs.readFileSync(demoPath, 'utf8');
+
+  // Inject freshness banner after <body>
+  const banner = freshnessBanner(daysAgo);
+  html = html.replace(/<body[^>]*>/i, (match) => match + '\n' + banner);
 
   // Inject tracking + alert snippet before </body>
   const trackingSnippet = `
