@@ -214,15 +214,9 @@ function mergeScrapedContent(template, scraped, lead) {
     };
   }
 
-  // Override stats with real data
-  if (scraped.yearsInBusiness) {
-    const yrs = scraped.yearsInBusiness;
-    if (template.stats) {
-      template.stats = template.stats.map(s => {
-        if (/year/i.test(s.label)) return { ...s, value: `${yrs}+` };
-        return s;
-      });
-    }
+  // Override years in business with real data
+  if (scraped.yearsInBusiness && template.stats && typeof template.stats === 'object') {
+    template.stats.yearsInBusiness = String(scraped.yearsInBusiness);
   }
 
   // Add certifications to about/why-us
