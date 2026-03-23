@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 // Strict browser-verified lead qualifier for the web redesign + AI lead-capture package.
 // Requires a Chrome instance exposing CDP on :9222.
-// Enforces all 3 gates:
+// Exact-profile standard:
 //   1) verified NO chatbot across HTML + scripts/network + desktop UI + mobile UI
-//   2) redesign need >= 7
-//   3) buyer quality >= 7
-// Also requires package-fit >= 8.
+//   2) site opens cleanly and still feels clearly subpar / outdated
+//   3) redesign need >= 8 with multiple visible problems
+//   4) buyer quality >= 7
+//   5) package-fit >= 8 with obvious lead-capture gaps
 
 const WebSocket = require('ws');
 const http = require('http');
@@ -58,6 +59,14 @@ const UI_CHAT_PATTERNS = [
 
 const FRANCHISE_PATTERNS = /one hour|mr\.? rooter|roto-rooter|service experts|ars rescue|home depot|lowe'?s|servpro|servicemaster|terminix|orkin/i;
 const HIGH_INTENT_PATTERNS = /emergency|same-day|24\/7|urgent|dispatch|repair/i;
+const EXACT_PROFILE_MIN = {
+  noChatConfidence: 8,
+  redesign: 8,
+  buyer: 7,
+  packageFit: 8,
+  redesignProblems: 3,
+  leadCaptureGaps: 3,
+};
 
 function splitCSV(line) {
   const out = [];
@@ -275,6 +284,30 @@ function buildComboReason(lead, redesign, buyer, gaps) {
   const topProblems = redesign.problems.slice(0, 2).join('; ');
   const topGaps = gaps.slice(0, 2).join('; ');
   return `${lead.businessName} is the right kind of target because the website itself is clearly subpar (${topProblems || 'dated conversion experience'}), there is still no chatbot/live-chat layer in place, and the business is leaving money on the table through lead-capture gaps (${topGaps || 'no instant response path'}) — which makes the redesign + AI lead capture package a strong combo offer.`;
+}
+
+function getExactProfileFailure(noChatResult, redesign, buyer, gaps, desktop, mobile) {
+  if (!noChatResult.verified || noChatResult.confidence < EXACT_PROFILE_MIN.noChatConfidence) {
+    return `no-chat confidence < ${EXACT_PROFILE_MIN.noChatConfidence}`;
+  }
+  if (redesign.score < EXACT_PROFILE_MIN.redesign) {
+    return `redesign < ${EXACT_PROFILE_MIN.redesign}`;
+  }
+  if (buyer.score < EXACT_PROFILE_MIN.buyer) {
+    return `buyer < ${EXACT_PROFILE_MIN.buyer}`;
+  }
+  if (redesign.problems.length < EXACT_PROFILE_MIN.redesignProblems) {
+    return `too few redesign problems (${redesign.problems.length})`;
+  }
+  if (gaps.length < EXACT_PROFILE_MIN.leadCaptureGaps) {
+    return `too few lead-capture gaps (${gaps.length})`;
+  }
+  const weakDesktopPath = !desktop.visiblePhoneAboveFold || (!desktop.formVisibleAboveFold && desktop.formCount === 0);
+  const weakMobilePath = !mobile.visiblePhoneAboveFold || !mobile.hasStickyMobileCta;
+  if (!weakDesktopPath && !weakMobilePath) {
+    return 'conversion path too healthy';
+  }
+  return '';
 }
 
 function getOwnerNameIfPublic(name, title) {
@@ -643,14 +676,14 @@ async function main() {
       }
 
       const redesign = scoreRedesign(lead, desktop, mobile);
-      if (redesign.score < 7) {
+      if (redesign.score < EXACT_PROFILE_MIN.redesign) {
         rejected.redesign++;
         console.log(`❌ redesign ${redesign.score}/10`);
         continue;
       }
 
       const buyer = scoreBuyerQuality(lead, desktop, mobile);
-      if (buyer.score < 7) {
+      if (buyer.score < EXACT_PROFILE_MIN.buyer) {
         rejected.buyer++;
         console.log(`❌ buyer ${buyer.score}/10`);
         continue;
@@ -658,9 +691,16 @@ async function main() {
 
       const leadCaptureGaps = buildLeadCaptureGaps(desktop, mobile);
       const packageFit = scorePackageFit(lead, noChat, redesign, buyer, leadCaptureGaps, desktop);
-      if (packageFit < 8) {
+      if (packageFit < EXACT_PROFILE_MIN.packageFit) {
         rejected.packageFit++;
         console.log(`❌ package-fit ${packageFit}/10`);
+        continue;
+      }
+
+      const exactProfileFailure = getExactProfileFailure(noChat, redesign, buyer, leadCaptureGaps, desktop, mobile);
+      if (exactProfileFailure) {
+        rejected.packageFit++;
+        console.log(`❌ exact-profile ${exactProfileFailure}`);
         continue;
       }
 
@@ -711,9 +751,9 @@ async function main() {
   ws.close();
 
   qualified.sort((a, b) => (
-    b.overallScore - a.overallScore ||
-    b.packageFitScore - a.packageFitScore ||
     b.redesignNeedScore - a.redesignNeedScore ||
+    b.packageFitScore - a.packageFitScore ||
+    b.overallScore - a.overallScore ||
     a.businessName.localeCompare(b.businessName)
   ));
 

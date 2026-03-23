@@ -11,6 +11,15 @@ const OUTPUT_EMAIL_MD = path.join(LEADS_DIR, 'latchly-email-ready.md');
 const OUTPUT_SETTER_MD = path.join(LEADS_DIR, 'latchly-setter-ready.md');
 const OUTPUT_SETTER_TXT = path.join(LEADS_DIR, 'latchly-setter-ready.txt');
 const TARGET = parseInt(process.argv[2] || process.env.BATCH_SIZE || '25', 10);
+const EXACT_PROFILE_MIN = {
+  noChatConfidence: 8,
+  redesign: 8,
+  buyer: 7,
+  packageFit: 8,
+  overall40: 32,
+  redesignProblems: 3,
+  leadCaptureGaps: 3,
+};
 
 function splitCSV(line) {
   const out = [];
@@ -127,13 +136,25 @@ function normalizeRow(row) {
   };
 }
 
+function countListItems(value) {
+  return String(value || '')
+    .split(';')
+    .map(s => s.trim())
+    .filter(Boolean)
+    .length;
+}
+
 function isKeep(row) {
   if (!row.businessName || !row.phone || !row.website) return false;
   if (row.verifiedNoChatbot !== 'yes') return false;
-  if (row.redesignNeedScore < 7) return false;
-  if (row.buyerQualityScore < 7) return false;
-  if (row.packageFitScore < 8) return false;
-  const bad = /intercom|hubspot|birdeye|drift|tidio|tawk|crisp|livechat|yes/i;
+  if (row.noChatConfidence < EXACT_PROFILE_MIN.noChatConfidence) return false;
+  if (row.redesignNeedScore < EXACT_PROFILE_MIN.redesign) return false;
+  if (row.buyerQualityScore < EXACT_PROFILE_MIN.buyer) return false;
+  if (row.packageFitScore < EXACT_PROFILE_MIN.packageFit) return false;
+  if (row.overallScore < EXACT_PROFILE_MIN.overall40) return false;
+  if (countListItems(row.redesignProblems) < EXACT_PROFILE_MIN.redesignProblems) return false;
+  if (countListItems(row.leadCaptureGaps || row.missed) < EXACT_PROFILE_MIN.leadCaptureGaps) return false;
+  const bad = /intercom|hubspot|birdeye|drift|tidio|tawk|crisp|livechat|podium|leadconnector|msgsndr|yes/i;
   if (bad.test(row.chatbot)) return false;
   return true;
 }
@@ -172,7 +193,13 @@ for (const raw of rows) {
 }
 
 const finalRows = Array.from(merged.values())
-  .sort((a, b) => b.fitScore - a.fitScore || scoreTiebreak(b) - scoreTiebreak(a) || a.businessName.localeCompare(b.businessName))
+  .sort((a, b) => (
+    b.redesignNeedScore - a.redesignNeedScore ||
+    b.packageFitScore - a.packageFitScore ||
+    b.fitScore - a.fitScore ||
+    scoreTiebreak(b) - scoreTiebreak(a) ||
+    a.businessName.localeCompare(b.businessName)
+  ))
   .slice(0, TARGET);
 
 const headers = [
@@ -219,7 +246,7 @@ const emailMd = [
   '',
   `Generated ${generatedAt}`,
   '',
-  `This run produced **${finalRows.length} clean leads** that passed all hard gates: verified no-chatbot, redesign need >= 7, buyer quality >= 7, and package-fit >= 8.`,
+  `This run produced **${finalRows.length} clean leads** that passed the exact-profile gates: verified no-chatbot, no-chat confidence >= 8, redesign need >= 8, buyer quality >= 7, package-fit >= 8, and multiple visible redesign + lead-capture problems.`,
   '',
   `Top niches: ${topNiches || 'N/A'}`,
   '',

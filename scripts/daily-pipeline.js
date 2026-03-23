@@ -4,8 +4,15 @@
  * Runs the full automated daily lead pipeline:
  *   1. Scrape raw leads from YellowPages/BBB (autonomous, no browser session needed)
  *   2. Qualify + dedupe against master list (website check, chatbot detection, fit scoring)
- *   3. Build clean batch of BATCH_SIZE leads (target: 300 for 3 SCOs × 100)
+ *   3. Build a strict clean batch of BATCH_SIZE leads (target: 300 for 3 SCOs × 100)
  *   4. Email each SCO their 100-lead slice via AgentMail
+ *
+ * Exact-profile standard for dispatch:
+ *   - clearly bad / outdated website
+ *   - opens cleanly
+ *   - verified no chatbot / live chat / AI chat
+ *   - real local service business
+ *   - setter-worthy redesign + Latchly pitch
  *
  * Env vars required:
  *   AGENTMAIL_API_KEY
@@ -95,7 +102,7 @@ async function main() {
   console.log('');
   console.log('═══════════════════════════════════════════════════════');
   console.log(` LATCHLY DAILY LEAD PIPELINE — ${runDate}`);
-  console.log(` Target: ${BATCH_SIZE} qualified leads → 3 SCOs (100 each)`);
+  console.log(` Target: ${BATCH_SIZE} exact-profile leads → 3 SCOs (100 each)`);
   console.log('═══════════════════════════════════════════════════════');
 
   fs.mkdirSync(LEADS_DIR, { recursive: true });
@@ -104,7 +111,7 @@ async function main() {
   const rawCsv = path.join(LEADS_DIR, 'apollo-leads.csv');
   const skipScrape = process.env.SKIP_SCRAPE === '1';
   const apolloMode = process.env.APOLLO_MODE === 'cdp';
-  const rawNeeded = BATCH_SIZE * 3; // ~600 raw to qualify 200
+  const rawNeeded = BATCH_SIZE * 4; // stricter exact-profile filter needs more raw volume upstream
 
   if (!skipScrape) {
     if (apolloMode) {
