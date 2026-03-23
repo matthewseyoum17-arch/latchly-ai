@@ -17,8 +17,6 @@ const { makeSlug } = require('./shared/utils');
 
 const ROOT = path.join(__dirname, '..', '..');
 const DEMOS_DIR = path.join(ROOT, 'demos', 'prospects');
-const DRY_RUN = process.env.DRY_RUN === 'true';
-const SITE_BASE = process.env.SITE_BASE || 'https://latchlyai.com';
 
 const envFile = path.join(ROOT, '.env');
 if (fs.existsSync(envFile)) {
@@ -28,16 +26,57 @@ if (fs.existsSync(envFile)) {
   });
 }
 
+const DRY_RUN = process.env.DRY_RUN === 'true';
+const SITE_BASE = process.env.SITE_BASE || 'https://latchlyai.com';
+
 function qualityBadge(score) {
   if (score >= 90) return 'A / 9+ ready';
   if (score >= 80) return 'B / usable';
   return 'C / needs work';
 }
 
-function main() {
+async function persistDemoPage({ slug, lead, family, html }) {
+  if (!process.env.DATABASE_URL) return { ok: false, reason: 'no_database_url' };
+  try {
+    const { neon } = require('@neondatabase/serverless');
+    const sql = neon(process.env.DATABASE_URL);
+    await sql`
+      INSERT INTO demo_pages (slug, business_name, city, state, niche, family, source, demo_url, html, updated_at)
+      VALUES (
+        ${slug},
+        ${lead.business_name || ''},
+        ${lead.city || ''},
+        ${lead.state || ''},
+        ${lead.niche || ''},
+        ${family || null},
+        ${'variation-engine'},
+        ${`${SITE_BASE}/demo/${slug}`},
+        ${html},
+        NOW()
+      )
+      ON CONFLICT (slug)
+      DO UPDATE SET
+        business_name = EXCLUDED.business_name,
+        city = EXCLUDED.city,
+        state = EXCLUDED.state,
+        niche = EXCLUDED.niche,
+        family = EXCLUDED.family,
+        source = EXCLUDED.source,
+        demo_url = EXCLUDED.demo_url,
+        html = EXCLUDED.html,
+        updated_at = NOW()
+    `;
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, reason: err.message };
+  }
+}
+
+async function main() {
   const args = process.argv.slice(2);
   const isPreview = args.includes('--preview');
   const forcedFamily = args.includes('--family') ? args[args.indexOf('--family') + 1] : null;
+  const leadMatch = args.includes('--lead') ? args[args.indexOf('--lead') + 1].toLowerCase() : null;
 
   const inputFile = args.includes('--input')
     ? args[args.indexOf('--input') + 1]
@@ -48,7 +87,10 @@ function main() {
     process.exit(1);
   }
 
-  const leads = JSON.parse(fs.readFileSync(inputFile, 'utf8'));
+  let leads = JSON.parse(fs.readFileSync(inputFile, 'utf8'));
+  if (leadMatch) {
+    leads = leads.filter(l => String(l.business_name || '').toLowerCase().includes(leadMatch));
+  }
   console.log(`Loaded ${leads.length} leads`);
 
   if (!fs.existsSync(DEMOS_DIR)) fs.mkdirSync(DEMOS_DIR, { recursive: true });
@@ -73,7 +115,8 @@ function main() {
         console.log(`  [DRY] ${fam.family.padEnd(12)} → ${slug}  ${String(fam.score).padStart(3)}/100  ${qualityBadge(fam.score)}`);
       } else {
         fs.writeFileSync(outPath, fam.html, 'utf8');
-        console.log(`  ✓ ${fam.label.padEnd(30)} → /demo/${slug}  ${String(fam.score).padStart(3)}/100  ${qualityBadge(fam.score)}`);
+        const persisted = await persistDemoPage({ slug, lead, family: fam.family, html: fam.html });
+        console.log(`  ✓ ${fam.label.padEnd(30)} → /demo/${slug}  ${String(fam.score).padStart(3)}/100  ${qualityBadge(fam.score)}${persisted.ok ? '' : `  [persist failed: ${persisted.reason}]`}`);
       }
       built++;
     }
@@ -88,19 +131,20 @@ function main() {
     for (const lead of leads) {
       if (!lead.business_name) continue;
 
-      const slug = lead.demo_slug || makeSlug(lead.business_name, lead.city, lead.state);
-      lead.demo_slug = slug;
-      lead.demo_url = `${SITE_BASE}/demo/${slug}`;
-
+      const baseSlug = makeSlug(lead.business_name, lead.city, lead.state);
       const opts = forcedFamily ? { family: forcedFamily } : {};
       const result = engine.generate(lead, opts);
+      const slug = forcedFamily ? `${baseSlug}-${result.family}` : (lead.demo_slug || baseSlug);
+      lead.demo_slug = slug;
+      lead.demo_url = `${SITE_BASE}/demo/${slug}`;
       const outPath = path.join(DEMOS_DIR, `${slug}.html`);
 
       if (DRY_RUN) {
         console.log(`  [DRY] ${lead.business_name} → ${result.family}  ${String(result.score).padStart(3)}/100  ${qualityBadge(result.score)}`);
       } else {
         fs.writeFileSync(outPath, result.html, 'utf8');
-        console.log(`  ✓ ${lead.business_name.padEnd(30)} → ${result.family.padEnd(12)} → /demo/${slug}  ${String(result.score).padStart(3)}/100  ${qualityBadge(result.score)}`);
+        const persisted = await persistDemoPage({ slug, lead, family: result.family, html: result.html });
+        console.log(`  ✓ ${lead.business_name.padEnd(30)} → ${result.family.padEnd(12)} → /demo/${slug}  ${String(result.score).padStart(3)}/100  ${qualityBadge(result.score)}${persisted.ok ? '' : `  [persist failed: ${persisted.reason}]`}`);
         if (!forcedFamily && result.ranking) {
           const summary = result.ranking.slice(0, 3)
             .map(r => `${r.family}:${r.score}/${r.finalScore}`)

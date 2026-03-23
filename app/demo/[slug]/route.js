@@ -42,6 +42,23 @@ async function loadDemoFromDb(safeSlug) {
 
   try {
     const sql = neon(process.env.DATABASE_URL);
+
+    const demoPages = await sql`
+      SELECT html, updated_at, created_at, source
+      FROM demo_pages
+      WHERE slug = ${safeSlug}
+      ORDER BY updated_at DESC NULLS LAST, created_at DESC NULLS LAST
+      LIMIT 1
+    `;
+
+    if (demoPages.length && demoPages[0].html) {
+      return {
+        html: demoPages[0].html,
+        createdAt: demoPages[0].updated_at || demoPages[0].created_at,
+        source: demoPages[0].source || 'demo_pages',
+      };
+    }
+
     const rows = await sql`
       SELECT demo_html, demo_persisted_at, updated_at, created_at
       FROM prospects
