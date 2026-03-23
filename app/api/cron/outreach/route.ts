@@ -101,20 +101,21 @@ function buildEmail(lead: Prospect, step: number) {
   const demoUrl = lead.demo_url || `${siteBase}/demo/${lead.demo_slug}`;
   const unsub = unsubLink(lead.email);
   const cityLine = city ? ` and the ${city} market` : "";
-  const footer = `\n\n---\n${physAddr}\nUnsubscribe: ${unsub}`;
+  const footerAddress = String(physAddr).replace(/Latchly AI/g, "Latchly");
+  const footer = `\n\n---\n${footerAddress}\nUnsubscribe: ${unsub}`;
 
   if (step === 0) {
     const variant = pickVariant(lead, step, [
       {
         subject: `homepage concept for ${biz}`,
         opener: `I put together a custom homepage concept for ${biz}. Not a pitch deck — an actual working design built around your services${cityLine}.`,
-        body: `The goal was to tighten up the conversion flow so more of your existing visitors turn into calls and booked jobs, especially on mobile and after hours. There’s also a built-in assistant to handle common questions when your team is off the clock.`,
+        body: `The goal was to tighten up the conversion flow so more of your existing visitors turn into calls and booked jobs, especially on mobile and after hours. It also gives you a cleaner lead-capture path for people who don’t want to call right away.`,
         close: `No strings. If it sparks any ideas, I’m happy to walk you through it.`
       },
       {
         subject: `built this for ${biz}`,
         opener: `I spent a little time mocking up a live homepage concept for ${biz}. It’s tailored to the services you already offer${cityLine}.`,
-        body: `Main idea was simple: make the site feel more current, make the next step clearer, and give you a better shot at turning traffic into real jobs without relying on people to call during business hours.`,
+        body: `Main idea was simple: make the site feel more current, make the next step clearer, and give you a better shot at turning traffic into real jobs with stronger lead capture instead of relying on people to call during business hours.`,
         close: `If it’s useful, I can show you what I changed and why.`
       },
       {
@@ -329,6 +330,14 @@ export async function GET(request: NextRequest) {
     maxEmails,
     warmupDay: process.env.WARMUP_START
       ? Math.floor((Date.now() - new Date(process.env.WARMUP_START).getTime()) / 86400000)
+      : null,
+  });
+}
+86400000)
+      : null,
+  });
+}
+TART).getTime()) / 86400000)
       : null,
   });
 }
