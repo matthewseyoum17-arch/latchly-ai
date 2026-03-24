@@ -113,6 +113,35 @@ const BUILDERS = [
  * Audit a site's HTML for all 8 bad-site criteria.
  * Returns { issues: string[], issueCount: number, score: number, pitchAngle: string }
  */
+// Chatbot / live-chat signatures that indicate the site already has a chat tool
+const CHATBOT_SIGNATURES = [
+  'intercom', 'drift.com', 'crisp.chat', 'tidio', 'tawk.to', 'freshchat',
+  'zendesk', 'hubspot', 'liveagent', 'olark', 'purechat', 'livechat',
+  'smartsupp', 'chatra', 'jivochat', 'gorgias', 're.chat', 'helpscout',
+  'latchly', 'latchlyai', 'lw-fab', 'lw-panel',  // our own widget
+];
+
+// Signals that the site is already professional/modern — not worth redesigning
+const GOOD_SITE_SIGNALS = [
+  /google-tag-manager|gtm\.js/i,            // Active marketing/analytics
+  /netlify|vercel\.app|webflow\.io/i,        // Modern hosting
+  /react|vue|angular|next\.js|nuxt/i,       // Modern JS framework
+  /graphql|apollo-client/i,                  // Modern API patterns
+];
+
+function hasChatbot(html) {
+  const lower = html.toLowerCase();
+  return CHATBOT_SIGNATURES.some(sig => lower.includes(sig));
+}
+
+function siteIsTooGood(html, issueCount) {
+  // Fewer than 3 issues = site is fine, skip
+  if (issueCount < 3) return true;
+  // Has multiple good-site signals = modern professional site
+  const matches = GOOD_SITE_SIGNALS.filter(re => re.test(html)).length;
+  return matches >= 2;
+}
+
 function auditSite(html, resolvedUrl) {
   const issues = [];
   const h = String(html || '');
@@ -210,7 +239,10 @@ function auditSite(html, resolvedUrl) {
   // Build a pitch angle from top issues
   const pitchAngle = buildPitchAngle(issues, builderDetected, resolvedUrl);
 
-  return { issues, issueCount, score, pitchAngle, builderDetected };
+  const chatbotDetected = hasChatbot(h);
+  const tooGood = siteIsTooGood(h, issueCount);
+
+  return { issues, issueCount, score, pitchAngle, builderDetected, chatbotDetected, tooGood };
 }
 
 /** Map a raw niche string to a broad category used for opener framing. */
@@ -529,10 +561,16 @@ async function main() {
       continue;
     }
 
-    const { issues, issueCount, score, pitchAngle, builderDetected } = auditSite(fetchResult.text, fetchResult.url);
+    const { issues, issueCount, score, pitchAngle, builderDetected, chatbotDetected, tooGood } = auditSite(fetchResult.text, fetchResult.url);
     const personalizedOpener = buildPersonalizedOpener(issues, builderDetected, lead, fetchResult.text);
 
-    if (issueCount < MIN_ISSUES) {
+    if (chatbotDetected) {
+      console.log(`chatbot detected -> skip`);
+      skippedOK++;
+      continue;
+    }
+
+    if (tooGood || issueCount < MIN_ISSUES) {
       console.log(`site OK (${issueCount} issues) -> skip`);
       skippedOK++;
       continue;
