@@ -179,11 +179,21 @@ HARD RULES
 
 MAIN OFFER POSITIONING
 The offer is:
-- a premium website/demo concept tailored to the prospect
+- a premium working redesign preview tailored to the prospect
 - better conversion structure
 - stronger trust presentation
 - cleaner CTA flow
 - optional built-in AI assistant for after-hours questions, lead capture, and booking
+
+FINAL PRODUCT STANDARD
+The emailed page should feel close to a shippable final site, not a thin mockup.
+Aim for:
+- real business name, city, services, phone, and location details when available
+- customer-facing copy, not meta demo language
+- trust signals that feel local and believable
+- strong CTA flow, mobile clarity, and a premium first impression
+- AI assistant copy that uses the business's actual info when possible
+Avoid framing the page like a gimmick, experiment, or throwaway concept.
 
 Priority of value in the email:
 1. better site / brand / conversion
@@ -215,12 +225,12 @@ For roofing, prioritize angles like:
 - premium brand positioning
 
 If there is a custom demo URL:
-- lead with the fact that a custom concept/demo was put together for them
+- lead with the fact that a custom page preview was put together for them
 - make it sound thoughtful and useful, not gimmicky
 - do NOT say it was "whipped up in 5 minutes"
 - do NOT overexplain the build process
 - do NOT talk about the system itself
-- present the demo as a concrete idea, not a stunt
+- present the page like a serious redesign preview, not a stunt
 
 If there is NO demo URL:
 - pitch the idea and ask permission to send a custom concept
@@ -352,8 +362,8 @@ const INPUT_TEMPLATE = {
   brand_positioning: '',
   pain_points: [],
   offer: {
-    type: 'custom homepage demo',
-    primary_value: 'premium website redesign concept tailored to their business',
+    type: 'custom homepage preview',
+    primary_value: 'premium working redesign preview tailored to their business',
     secondary_value: 'included AI assistant for after-hours lead capture and booking',
   },
   cta_preference: 'reply_or_demo_click',

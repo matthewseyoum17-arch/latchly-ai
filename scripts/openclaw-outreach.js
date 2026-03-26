@@ -124,21 +124,21 @@ function buildEmail(lead, step) {
   if (step === 0) {
     const variant = pickVariant(lead, step, [
       {
-        subject: `homepage concept for ${biz}`,
-        opener: `I put together a custom homepage concept for ${biz}. Not a pitch deck — an actual working design built around your services${cityLine}.`,
-        body: `The goal was to tighten up the conversion flow so more of your existing visitors turn into calls and booked jobs, especially on mobile and after hours. It also gives you a cleaner lead-capture path for people who don’t want to call right away.`,
+        subject: `homepage preview for ${biz}`,
+        opener: `I put together a working homepage redesign preview for ${biz}. It’s a real page built around your services${cityLine}, not a deck or a throwaway mockup.`,
+        body: `The goal was to make the site feel more premium, tighten up the conversion flow, and give you a cleaner lead-capture path for people who don’t call right away, especially on mobile and after hours.`,
         close: `No strings. If it sparks any ideas, I’m happy to walk you through it.`
       },
       {
         subject: `built this for ${biz}`,
-        opener: `I spent a little time mocking up a live homepage concept for ${biz}. It’s tailored to the services you already offer${cityLine}.`,
-        body: `Main idea was simple: make the site feel more current, make the next step clearer, and give you a better shot at turning traffic into real jobs with stronger lead capture instead of relying on people to call during business hours.`,
+        opener: `I spent a little time building a live redesign preview for ${biz}. It’s tailored to the services you already offer${cityLine}.`,
+        body: `Main idea was simple: make the site feel more current, make the next step clearer, and give you a better shot at turning traffic into real jobs with stronger trust presentation and better lead capture.`,
         close: `If it’s useful, I can show you what I changed and why.`
       },
       {
-        subject: `quick site concept for ${biz}`,
-        opener: `I built a quick homepage concept for ${biz} after looking through the current site${cityLine ? cityLine : ''}.`,
-        body: `It’s meant to show what a cleaner, higher-converting version could look like — better structure, stronger mobile flow, and better lead capture for visitors who land after hours or aren’t ready to call.`,
+        subject: `site preview for ${biz}`,
+        opener: `I built a live site preview for ${biz} after looking through the current site${cityLine ? cityLine : ''}.`,
+        body: `It’s meant to show what a cleaner, more polished, higher-converting version could look like with better structure, stronger mobile flow, and a clearer path for visitors who land after hours or aren’t ready to call yet.`,
         close: `Take a look when you have a minute. Happy to break it down if you want.`
       },
     ]);
@@ -163,10 +163,10 @@ Latchly${footer}`,
   if (step === 1) {
     const variant = pickVariant(lead, step, [
       {
-        subject: `Re: homepage concept for ${biz}`,
+        subject: `Re: homepage preview for ${biz}`,
         text: `${greeting}
 
-Wanted to make sure the ${biz} concept I sent over didn’t get buried.
+Wanted to make sure the ${biz} page preview I sent over didn’t get buried.
 
 It’s here if you want to take a quick look:
 ${demoUrl}
@@ -177,7 +177,7 @@ Matthew${footer}`,
         subject: `Re: built this for ${biz}`,
         text: `${greeting}
 
-Following up once on the homepage concept I put together for ${biz}.
+Following up once on the live redesign preview I put together for ${biz}.
 
 Here’s the link again:
 ${demoUrl}
@@ -185,10 +185,10 @@ ${demoUrl}
 Matthew${footer}`,
       },
       {
-        subject: `Re: quick site concept for ${biz}`,
+        subject: `Re: site preview for ${biz}`,
         text: `${greeting}
 
-Just resurfacing the concept I built for ${biz} in case it got missed.
+Just resurfacing the live site preview I built for ${biz} in case it got missed.
 
 ${demoUrl}
 
@@ -200,10 +200,10 @@ Matthew${footer}`,
 
   const variant = pickVariant(lead, step, [
     {
-      subject: `${biz} concept — last note`,
+      subject: `${biz} preview — last note`,
       text: `${greeting}
 
-I won’t keep bugging you about this. If a stronger web presence for ${biz} ever moves up the list, the concept I built is here:
+I won’t keep bugging you about this. If a stronger web presence for ${biz} ever moves up the list, the page preview I built is here:
 
 ${demoUrl}
 
@@ -212,10 +212,10 @@ All the best,
 Matthew${footer}`,
     },
     {
-      subject: `${biz} homepage concept`,
+      subject: `${biz} homepage preview`,
       text: `${greeting}
 
-Last note from me on this. Keeping the concept link here in case it’s useful later:
+Last note from me on this. Keeping the page preview here in case it’s useful later:
 
 ${demoUrl}
 

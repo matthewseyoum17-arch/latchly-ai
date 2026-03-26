@@ -363,7 +363,7 @@ ${serviceOpts}
   </div>
 </section>
 
-<div id="toast" class="toast">Request captured — this is a concept demo.</div>
+<div id="toast" class="toast">Request received — we’ll be in touch soon.</div>
 ${widget}
 
 <script>
