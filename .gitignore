@@ -33,3 +33,6 @@ scripts/*.png
 docs/
 test-results/
 LEADS_PIPELINE.md
+scripts/email-setters.js
+scripts/nicholas-50.js
+scripts/dispatch-inventory.js

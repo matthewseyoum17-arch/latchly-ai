@@ -44,8 +44,6 @@ function printSummary() {
     path.join(LEADS_DIR, 'latchly-clean-batch.csv'),
     path.join(LEADS_DIR, 'latchly-clean-batch.md'),
     path.join(LEADS_DIR, 'latchly-email-ready.md'),
-    path.join(LEADS_DIR, 'latchly-setter-ready.md'),
-    path.join(LEADS_DIR, 'latchly-setter-ready.txt'),
   ].forEach(file => {
     const rel = path.relative(ROOT, file);
     const ok = exists(file);
@@ -89,7 +87,7 @@ function main() {
     process.exit(1);
   }
 
-  run('Build clean batch + setter/email outputs', 'node', ['scripts/build-clean-batch.js', String(BATCH_SIZE)], {
+  run('Build clean batch + email outputs', 'node', ['scripts/build-clean-batch.js', String(BATCH_SIZE)], {
     QUALIFIED_INPUT: QUALIFIED_OUTPUT,
     BATCH_SIZE: String(BATCH_SIZE),
   });

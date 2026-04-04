@@ -8,8 +8,6 @@ const QUALIFIED_INPUT = process.env.QUALIFIED_INPUT || path.join(LEADS_DIR, 'qua
 const OUTPUT_CSV = path.join(LEADS_DIR, 'latchly-clean-batch.csv');
 const OUTPUT_MD = path.join(LEADS_DIR, 'latchly-clean-batch.md');
 const OUTPUT_EMAIL_MD = path.join(LEADS_DIR, 'latchly-email-ready.md');
-const OUTPUT_SETTER_MD = path.join(LEADS_DIR, 'latchly-setter-ready.md');
-const OUTPUT_SETTER_TXT = path.join(LEADS_DIR, 'latchly-setter-ready.txt');
 const TARGET = parseInt(process.argv[2] || process.env.BATCH_SIZE || '25', 10);
 const EXACT_PROFILE_MIN = {
   noChatConfidence: 8,
@@ -272,47 +270,6 @@ finalRows.forEach((r, index) => {
   emailMd.push('');
 });
 fs.writeFileSync(OUTPUT_EMAIL_MD, emailMd.join('\n'));
-
-const setterLines = [
-  '# Latchly setter-ready lead sheet',
-  '',
-  `Generated ${generatedAt}`,
-  '',
-  'Use this as the call/texting queue. Prioritize owners / founders first, then the highest package-fit scores.',
-  ''
-];
-const setterTxt = [];
-finalRows.forEach((r, index) => {
-  setterLines.push(`## ${index + 1}. ${r.businessName}`);
-  setterLines.push(`- Contact: ${r.decisionMaker || 'Needs lookup'}`);
-  setterLines.push(`- Title: ${r.title || 'Unknown'}`);
-  setterLines.push(`- Phone: ${r.phone}`);
-  setterLines.push(`- Location: ${r.city}, ${r.state}`);
-  setterLines.push(`- Website: ${r.website}`);
-  setterLines.push(`- Redesign need: ${r.redesignNeedScore}/10`);
-  setterLines.push(`- Buyer quality: ${r.buyerQualityScore}/10`);
-  setterLines.push(`- Package fit: ${r.packageFitScore}/10`);
-  setterLines.push(`- Why now: ${r.leadCaptureGaps || r.missed || 'No instant engagement / after-hours capture gap'}`);
-  setterLines.push(`- Proof of demand: ${r.signals || 'Website appears active'}`);
-  setterLines.push(`- Combo reason: ${r.why}`);
-  setterLines.push('');
-
-  setterTxt.push([
-    `${index + 1}. ${r.businessName}`,
-    `Contact: ${r.decisionMaker || 'Needs lookup'}${r.title ? ` (${r.title})` : ''}`,
-    `Phone: ${r.phone}`,
-    `Location: ${r.city}, ${r.state}`,
-    `Website: ${r.website}`,
-    `Redesign need: ${r.redesignNeedScore}/10`,
-    `Buyer quality: ${r.buyerQualityScore}/10`,
-    `Package fit: ${r.packageFitScore}/10`,
-    `Why now: ${r.leadCaptureGaps || r.missed || 'No instant engagement / after-hours capture gap'}`,
-    `Proof of demand: ${r.signals || 'Website appears active'}`,
-    `Combo reason: ${r.why}`,
-  ].join('\n'));
-});
-fs.writeFileSync(OUTPUT_SETTER_MD, setterLines.join('\n'));
-fs.writeFileSync(OUTPUT_SETTER_TXT, setterTxt.join('\n\n---\n\n') + '\n');
 
 console.log(`Wrote ${finalRows.length} leads`);
 console.log(OUTPUT_CSV);

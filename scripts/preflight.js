@@ -75,20 +75,9 @@ async function main() {
     }
   }
 
-  // SCO config
-  let scoCount = 0;
-  for (let i = 1; i <= 5; i++) {
-    if (process.env[`SCO_${i}_NAME`] && process.env[`SCO_${i}_EMAIL`]) scoCount++;
-  }
-  if (scoCount === 0) {
-    bad('SCO config — no SCOs configured', 'Set SCO_1_NAME + SCO_1_EMAIL in .env');
-  } else {
-    ok(`SCO config — ${scoCount} SCOs configured`);
-  }
-
   // Optional
   if (!process.env.NOTIFY_EMAIL) {
-    warning('NOTIFY_EMAIL not set', 'Defaulting to matt@latchlyai.com');
+    warning('NOTIFY_EMAIL not set', 'Set NOTIFY_EMAIL in .env for notifications');
   }
 
   // ── 2. Database ───────────────────────────────────────────────────────────
@@ -123,7 +112,7 @@ async function main() {
         WHERE table_name = 'prospects'
       `;
       const colNames = cols.map(c => c.column_name);
-      const requiredCols = ['sco_dispatched_at', 'sco_assigned_to', 'opened_at', 'clicked_at', 'open_count', 'click_count'];
+      const requiredCols = ['opened_at', 'clicked_at', 'open_count', 'click_count'];
       const missingCols = requiredCols.filter(c => !colNames.includes(c));
       if (missingCols.length === 0) {
         ok('All migration columns present');

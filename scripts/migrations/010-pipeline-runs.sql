@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS pipeline_runs (
   audited INT DEFAULT 0,
   demos_built INT DEFAULT 0,
   emails_sent INT DEFAULT 0,
-  sco_dispatched INT DEFAULT 0,
+  leads_dispatched INT DEFAULT 0,
   errors INT DEFAULT 0,
   duration_ms INT,
   metadata JSONB,

@@ -244,7 +244,6 @@ export async function GET(request: NextRequest) {
       AND bounce_type IS NULL
       AND email IS NOT NULL
       AND outreach_step < 3
-      AND sco_dispatched_at IS NULL
     ORDER BY combined_score DESC
     LIMIT ${maxEmails * 3}
   `) as Prospect[];

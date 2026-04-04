@@ -2,7 +2,7 @@ name: OpenClaw Pipeline (Daily Lead Scout + Audit)
 
 on:
   schedule:
-    # Runs at 4:30 AM ET (9:30 UTC) Mon-Fri, ~90 min before SCO dispatch at 6 AM ET
+    # Runs at 4:30 AM ET (9:30 UTC) Mon-Fri
     - cron: '30 9 * * 1-5'
   workflow_dispatch: # Manual trigger
 

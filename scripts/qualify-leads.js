@@ -450,7 +450,7 @@ function scoreLead(lead, siteData, decisionMaker) {
   if (siteData.missedLeadOpportunity && siteData.missedLeadOpportunity.length > 10) { score++; reasons.push('Clear missed-lead opportunity'); }
   if (lead.employees === 0 || (lead.employees >= 5 && lead.employees <= 75)) { score++; reasons.push('Right company size'); }
 
-  // ── Bonus signals for SCO bundle (redesign + Latchly) ──────────────────────
+  // ── Bonus signals ──────────────────────────────────────────────────────────
   // Bonus 1: Owner directly reachable — name identified AND owner-level title
   if (decisionMaker && /owner|founder|president|proprietor|principal/i.test(lead.title || '')) {
     score++; reasons.push('Owner directly reachable');

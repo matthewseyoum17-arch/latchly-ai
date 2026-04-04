@@ -1,14 +1,13 @@
 #!/usr/bin/env node
 /**
  * daily-pipeline.js
- * Exact-profile SCO pipeline using a rolling verified inventory reservoir.
+ * Daily lead pipeline using a rolling verified inventory reservoir.
  *
  * Flow:
  *   1. Optional scrape raw leads
  *   2. Qualify strict exact-profile candidates
  *   3. Replenish durable inventory from newly-qualified rows
- *   4. Dispatch exactly 300 inventory-backed leads (100 each SCO) when available
- *   5. Email each SCO their assigned slice unless SKIP_EMAIL=1
+ *   4. Dispatch inventory-backed leads when available
  *
  * Safety thresholds:
  *   INVENTORY_MIN_DISPATCH (default 300)
@@ -146,20 +145,11 @@ async function main() {
     process.exit(1);
   }
 
-  if (process.env.SKIP_EMAIL === '1') {
-    console.log('\n📧 SKIP_EMAIL=1 — skipping email dispatch (inventory-backed dry run)');
-  } else {
-    run('Email SCOs', 'node', ['scripts/email-setters.js'], {
-      QUALIFIED_INPUT: DISPATCH_CSV,
-      BATCH_SIZE: String(BATCH_SIZE),
-    });
-  }
-
   const elapsed = Math.round((Date.now() - startTime) / 1000);
   console.log('');
   console.log('═══════════════════════════════════════════════════════');
   console.log(` ✅ PIPELINE COMPLETE — ${elapsed}s`);
-  console.log(` ${countCSVRows(DISPATCH_CSV)} inventory-backed leads prepared for SCO dispatch`);
+  console.log(` ${countCSVRows(DISPATCH_CSV)} inventory-backed leads prepared`);
   console.log('═══════════════════════════════════════════════════════');
   console.log('');
 }

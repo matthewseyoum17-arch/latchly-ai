@@ -358,7 +358,6 @@ async function main() {
           AND bounce_type IS NULL
           AND email IS NOT NULL
           AND outreach_step < 3
-          AND sco_dispatched_at IS NULL
         ORDER BY combined_score DESC
         LIMIT ${MAX_EMAILS * 2}
       `;
