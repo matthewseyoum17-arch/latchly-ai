@@ -4,7 +4,7 @@
  * Daily orchestrator for LeadClaw web design lead pipeline.
  *   1. Scrape raw leads from BBB (both website + no-website)
  *   2. Qualify into Bucket A (no site, 30) + Bucket B (bad site, 20)
- *   3. Email daily report to matthewseyoum17@gmail.com via AgentMail
+ *   3. Email daily report to NOTIFY_EMAIL via AgentMail
  */
 
 const fs = require('fs');
@@ -26,7 +26,7 @@ const LEADS_DIR = path.join(ROOT, 'leads', 'leadclaw');
 const DAILY_DIR = path.join(LEADS_DIR, 'daily');
 const QUALIFIED_CSV = path.join(LEADS_DIR, 'qualified.csv');
 const DAILY_MD = path.join(LEADS_DIR, 'daily-leads.md');
-const OWNER_EMAIL    = process.env.LEADCLAW_EMAIL || 'matthewseyoum8@icloud.com';
+const OWNER_EMAIL    = process.env.LEADCLAW_EMAIL || '';
 const OWNER_COUNT    = 90;
 
 function run(label, command, args, env = {}) {

@@ -1,6 +1,11 @@
 import { chromium } from 'playwright';
 import { readFileSync, writeFileSync } from 'fs';
 import { parse } from 'csv-parse/sync';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const ROOT = join(__dirname, '..');
 
 // Common chatbot/live chat indicators
 const CHATBOT_SIGNATURES = [
@@ -104,10 +109,10 @@ async function main() {
   // Extract URLs from CSVs
   const urls = new Set();
 
-  const apollo = parse(readFileSync('/home/matthewseyoum17/leadpilot-ai/leads/apollo-leads.csv'), { columns: true });
+  const apollo = parse(readFileSync(join(ROOT, 'leads/apollo-leads.csv')), { columns: true });
   apollo.forEach(r => { if (r['Company Website']) urls.add(r['Company Website'].trim()); });
 
-  const qualified = parse(readFileSync('/home/matthewseyoum17/leadpilot-ai/leads/qualified-leads.csv'), { columns: true });
+  const qualified = parse(readFileSync(join(ROOT, 'leads/qualified-leads.csv')), { columns: true });
   qualified.forEach(r => { if (r['Website']) urls.add(r['Website'].trim()); });
 
   const siteList = [...urls].filter(u => u.length > 0);
@@ -166,7 +171,7 @@ async function main() {
   }
 
   // Save full results as JSON
-  writeFileSync('/home/matthewseyoum17/leadpilot-ai/leads/chatbot-check-results.json', JSON.stringify(results, null, 2));
+  writeFileSync(join(ROOT, 'leads/chatbot-check-results.json'), JSON.stringify(results, null, 2));
   console.log('\nFull results saved to leads/chatbot-check-results.json');
 }
 
