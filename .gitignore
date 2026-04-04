@@ -18,3 +18,15 @@ nitra-presentation.html
 nitra-system-chart.html
 demos/prospects/
 public/
+.playwright-mcp/
+.planning/
+.learnings/
+.claude/
+.omc/
+AGENT_MEMORY.md
+LATCHLY_LEADMASTER_PROTOCOL.md
+*BLUEPRINT*.md
+*CIRCULAR*.md
+CLAUDE_CODE_*.txt
+stripe-login.png
+scripts/*.png
