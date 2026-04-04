@@ -30,3 +30,6 @@ LATCHLY_LEADMASTER_PROTOCOL.md
 CLAUDE_CODE_*.txt
 stripe-login.png
 scripts/*.png
+docs/
+test-results/
+LEADS_PIPELINE.md
