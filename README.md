@@ -12,7 +12,7 @@ The core pipeline. Scrapes leads from multiple sources, scores their websites, g
 - **14 industries**, 80+ U.S. cities
 - Multi-source ingestion: Apollo API, BBB directories, CSV imports (~450 raw leads per batch)
 - Website scoring: mobile responsiveness, SSL, load time, chatbot detection (50+ widget signatures), 9 marketing signals
-- Demo site generation: scrapes prospect branding (logo, colors, services) and builds multi-page responsive sites with 7 design variants
+- Demo site generation: scrapes prospect branding (logo, colors, services) and builds multi-page responsive sites with 6 design variants
 - Email delivery: timezone-aware sending (7:00-9:30 AM local), 4-week domain warmup ramp, CAN-SPAM compliance
 - Engagement tracking: opens, demo clicks, repeat visits, chat widget submissions
 - Automated follow-ups triggered by high-intent behavior
@@ -22,7 +22,7 @@ The core pipeline. Scrapes leads from multiple sources, scores their websites, g
 - `scripts/openclaw-scout.js` - Lead sourcing
 - `scripts/openclaw-demo-builder.js` - Demo site generation
 - `scripts/openclaw-outreach.js` - Email drip engine
-- `scripts/variation-engine/` - 7 design family generators (craft, emergency, luxury, modern, regional, trust, premium)
+- `scripts/variation-engine/` - 6 design family generators (craft, emergency, luxury, modern, regional, trust)
 - `app/api/cron/outreach/route.ts` - Scheduled outreach dispatch
 - `app/api/cron/closer/route.ts` - Follow-up automation
 
@@ -89,7 +89,7 @@ Automated Follow-up
 - **Email:** Resend, AgentMail
 - **Scraping:** Chrome DevTools Protocol, BBB API
 - **Lead Data:** Apollo API
-- **Scheduling:** Vercel Cron, systemd timers
+- **Scheduling:** Vercel Cron, GitHub Actions
 
 ## Setup
 
