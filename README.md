@@ -11,7 +11,7 @@ The core pipeline. Scrapes leads from multiple sources, scores their websites, g
 - **1,000+ websites analyzed**, 954 personalized demo sites generated
 - **14 industries**, 80+ U.S. cities
 - Multi-source ingestion: Apollo API, BBB directories, CSV imports (~450 raw leads per batch)
-- Website scoring: mobile responsiveness, SSL, load time, chatbot detection (50+ widget signatures), 9 marketing signals
+- Website scoring: mobile responsiveness, SSL, load time, chatbot detection (50+ widget signatures), 8 marketing signals
 - Demo site generation: scrapes prospect branding (logo, colors, services) and builds multi-page responsive sites with 6 design variants
 - Email delivery: timezone-aware sending (7:00-9:30 AM local), 4-week domain warmup ramp, CAN-SPAM compliance
 - Engagement tracking: opens, demo clicks, repeat visits, chat widget submissions
