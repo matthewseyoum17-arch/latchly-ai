@@ -2,8 +2,11 @@ const fs = require('fs');
 const path = require('path');
 const {
   ALLOWED_STATES,
+  FLORIDA_DBPR_LICENSE_TYPES,
   HOME_SERVICE_NICHES,
   LOCAL_MARKETS,
+  MARKET_COORDS,
+  OSM_NICHE_TAGS,
   SEED_FILES,
   SOURCE_PER_QUERY_LIMIT,
   SUNBELT_MARKETS,
@@ -38,6 +41,10 @@ async function discoverCandidates(options = {}) {
 
   if (liveEnabled) {
     await collectCandidates(candidates, seen, localCandidateLimit, scrapePublicDirectories(localCandidateLimit, LOCAL_MARKETS));
+    // OSM Overpass adds local supply for Gainesville/Tallahassee — niche
+    // balance is mediocre (OSM `craft=roofer` over-tagged vs other crafts)
+    // but for LOCAL it's pure additional volume.
+    await collectCandidates(candidates, seen, localCandidateLimit, scrapeOpenStreetMap(localCandidateLimit - candidates.length, LOCAL_MARKETS));
     await collectCandidates(candidates, seen, localCandidateLimit, scrapePaidFallback(localCandidateLimit - candidates.length, LOCAL_MARKETS));
   }
 
@@ -49,6 +56,10 @@ async function discoverCandidates(options = {}) {
   if (liveEnabled) {
     const broadMarkets = nonLocalMarkets();
     await collectCandidates(candidates, seen, limit, scrapePublicDirectories(Math.max(0, limit - candidates.length), broadMarkets));
+    // OSM in broader Sunbelt pass is opt-in — adds 8-15 min to daily runs.
+    if (process.env.LATCHLY_ENABLE_OSM_BROAD === '1') {
+      await collectCandidates(candidates, seen, limit, scrapeOpenStreetMap(Math.max(0, limit - candidates.length), broadMarkets));
+    }
     await collectCandidates(candidates, seen, limit, scrapePaidFallback(Math.max(0, limit - candidates.length), broadMarkets));
   }
 
@@ -263,6 +274,175 @@ async function collectCandidates(candidates, seen, limit, iterable) {
   }
 }
 
+// OpenStreetMap Overpass API source. Free, no auth, niche-tagged via
+// craft= / shop= / amenity=. Returns nodes/ways with tags.{name, phone,
+// website, addr:*}. Niche balance is excellent — no roofing skew.
+async function* scrapeOpenStreetMap(limit, marketsOverride = null) {
+  if (limit <= 0) return;
+  if (process.env.LATCHLY_SKIP_OSM_DISCOVERY === '1') return;
+  const onlyMode = process.env.LATCHLY_DISCOVERY_ONLY;
+  if (onlyMode && onlyMode !== 'osm') return;
+
+  const markets = marketsOverride || prioritizeMarkets();
+  let yielded = 0;
+  const HALF_DEG = 0.18; // ~12 mi N/S, 12-15 mi E/W (varies with latitude)
+
+  for (const market of markets) {
+    if (yielded >= limit) return;
+    const coordKey = `${market.city},${market.state}`;
+    const coord = MARKET_COORDS[coordKey];
+    if (!coord) continue;
+    const south = coord.lat - HALF_DEG;
+    const west = coord.lon - HALF_DEG;
+    const north = coord.lat + HALF_DEG;
+    const east = coord.lon + HALF_DEG;
+    const bbox = `${south},${west},${north},${east}`;
+
+    for (const niche of HOME_SERVICE_NICHES) {
+      if (yielded >= limit) return;
+      const tagPairs = OSM_NICHE_TAGS[niche];
+      if (!tagPairs || !tagPairs.length) continue;
+
+      const queryBody = tagPairs
+        .map(([k, v]) => `node["${k}"="${v}"](${bbox});way["${k}"="${v}"](${bbox});`)
+        .join('');
+      const query = `[out:json][timeout:25];(${queryBody});out center;`;
+      const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
+
+      let parsed;
+      try {
+        const res = await fetchText(url, 30000);
+        if (!res.ok || !res.text) continue;
+        parsed = JSON.parse(res.text);
+      } catch {
+        continue;
+      }
+      const elements = parsed?.elements || [];
+
+      for (const elem of elements.slice(0, SOURCE_PER_QUERY_LIMIT * 2)) {
+        if (yielded >= limit) return;
+        const tags = elem.tags || {};
+        const name = (tags.name || '').trim();
+        if (!name) continue;
+        const lead = {
+          sourceName: 'osm-overpass',
+          sourceRecordId: `osm-${elem.type}-${elem.id}`,
+          rawPayload: {
+            osmType: elem.type,
+            osmId: elem.id,
+            tags,
+            queryNiche: niche,
+            queryMarket: coordKey,
+          },
+          businessName: name,
+          normalizedName: name.toLowerCase(),
+          niche,
+          city: (tags['addr:city'] || market.city).trim(),
+          state: String(tags['addr:state'] || market.state).toUpperCase(),
+          phone: normalizePhone(tags.phone || tags['contact:phone'] || ''),
+          website: normalizeWebsite(tags.website || tags['contact:website'] || ''),
+        };
+        if (!keepCandidate(lead)) continue;
+        yielded++;
+        yield lead;
+      }
+      await sleep(500);
+    }
+  }
+}
+
+// Florida DBPR public license search. Florida-only (filters markets by state).
+// Best lever for Gainesville/Tallahassee local supply since it lists every
+// licensed contractor statewide regardless of how they market themselves.
+// Endpoint format may need iteration — defensive: silently yields nothing
+// if the endpoint shape changes.
+async function* scrapeFloridaDBPR(limit, marketsOverride = null) {
+  if (limit <= 0) return;
+  if (process.env.LATCHLY_SKIP_DBPR_DISCOVERY === '1') return;
+  const onlyMode = process.env.LATCHLY_DISCOVERY_ONLY;
+  if (onlyMode && onlyMode !== 'dbpr') return;
+
+  const markets = (marketsOverride || prioritizeMarkets()).filter(m => m.state === 'FL');
+  if (!markets.length) return;
+  let yielded = 0;
+
+  for (const market of markets) {
+    if (yielded >= limit) return;
+
+    for (const niche of HOME_SERVICE_NICHES) {
+      if (yielded >= limit) return;
+      const licenseTypes = FLORIDA_DBPR_LICENSE_TYPES[niche];
+      if (!licenseTypes || !licenseTypes.length) continue;
+
+      for (const licenseType of licenseTypes) {
+        if (yielded >= limit) return;
+        // Public DBPR business search query — POST-style fields encoded as GET.
+        const params = new URLSearchParams({
+          professionId: 'all',
+          licenseTypeCode: licenseType,
+          city: market.city,
+          status: 'Current',
+        });
+        const url = `https://www.myfloridalicense.com/wl11.asp?${params.toString()}`;
+
+        let res;
+        try {
+          res = await fetchText(url, 25000);
+        } catch {
+          continue;
+        }
+        if (!res?.ok || !res.text) continue;
+
+        // The DBPR results page is HTML with a table of licensees. Parse rows
+        // looking for company/individual name + city + license number.
+        const rows = parseDbprResults(res.text, niche, licenseType, market);
+        for (const lead of rows.slice(0, SOURCE_PER_QUERY_LIMIT)) {
+          if (yielded >= limit) return;
+          if (!keepCandidate(lead)) continue;
+          yielded++;
+          yield lead;
+        }
+        await sleep(400);
+      }
+    }
+  }
+}
+
+function parseDbprResults(html, niche, licenseType, market) {
+  const leads = [];
+  if (!html) return leads;
+  // Find table rows; pattern is loose to tolerate DBPR HTML variations.
+  const rowPattern = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+  let match;
+  while ((match = rowPattern.exec(html))) {
+    const rowHtml = match[1];
+    const cells = [];
+    const cellPattern = /<td[^>]*>([\s\S]*?)<\/td>/gi;
+    let cellMatch;
+    while ((cellMatch = cellPattern.exec(rowHtml))) {
+      cells.push(stripHtml(cellMatch[1]).trim());
+    }
+    if (cells.length < 3) continue;
+    const businessName = cells.find(c => /\b(LLC|INC|CORP|CO\.?|COMPANY|CONTRACTORS?|SERVICES?)\b/i.test(c)) || cells[1];
+    if (!businessName || businessName.length < 4) continue;
+    if (/^\s*Name\s*$/i.test(businessName)) continue; // header row
+    const city = cells.find(c => c.toUpperCase() === market.city.toUpperCase()) || market.city;
+    leads.push({
+      sourceName: 'florida-dbpr',
+      sourceRecordId: `dbpr-${licenseType}-${businessName}|${city}`,
+      rawPayload: { licenseType, cells },
+      businessName,
+      normalizedName: businessName.toLowerCase(),
+      niche,
+      city,
+      state: 'FL',
+      phone: '',
+      website: '',
+    });
+  }
+  return leads;
+}
+
 async function* scrapePaidFallback(limit, marketsOverride = null) {
   if (limit <= 0) return;
   if (!process.env.SERPAPI_API_KEY) return;
@@ -456,8 +636,11 @@ module.exports = {
   scrapeBBB,
   scrapeYellowPages,
   scrapeSerpApiMaps,
+  scrapeOpenStreetMap,
+  scrapeFloridaDBPR,
   normalizeSeedRow,
   parseBBBSearch,
   parseBBBProfile,
+  parseDbprResults,
   mergeSoftDupes,
 };
