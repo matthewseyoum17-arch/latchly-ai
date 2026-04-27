@@ -207,6 +207,7 @@ function buildVendorHits(textChunks) {
 function scoreRedesign(lead, desktop, mobile) {
   const problems = [];
   let score = 1;
+  const builderHits = desktop.builderHits || [];
   const add = (condition, points, label) => {
     if (condition && !problems.includes(label)) {
       problems.push(label);
@@ -217,7 +218,7 @@ function scoreRedesign(lead, desktop, mobile) {
   add(!desktop.h1Text || desktop.h1Text.length < 18, 1, 'Weak hero headline / unclear value proposition');
   add(!desktop.hasPrimaryCtaAboveFold, 2, 'Weak CTA hierarchy above the fold');
   add(!desktop.visiblePhoneAboveFold && !desktop.formVisibleAboveFold, 2, 'No strong above-the-fold conversion path');
-  add(desktop.builderHits.length > 0, 2, 'Generic builder / template feel');
+  add(builderHits.length > 0, 2, 'Generic builder / template feel');
   add(desktop.tableLayout || desktop.inlineStyleHeavy, 1, 'Dated front-end implementation');
   add(desktop.navLinkCount >= 9 || desktop.aboveFoldInteractiveCount >= 10, 1, 'Cluttered layout / crowded header');
   add(!desktop.hasReviewsSection && !desktop.hasTrustBlock, 1, 'Poor trust presentation');
@@ -268,6 +269,7 @@ function buildLeadCaptureGaps(desktop, mobile) {
 
 function scorePackageFit(lead, noChatResult, redesign, buyer, gaps, desktop) {
   let score = 0;
+  const marketingSignals = desktop.marketingSignals || [];
   if (noChatResult.verified) score += 2;
   if (redesign.score >= 8) score += 2;
   else if (redesign.score >= 7) score += 1;
@@ -275,7 +277,7 @@ function scorePackageFit(lead, noChatResult, redesign, buyer, gaps, desktop) {
   else if (buyer.score >= 7) score += 1;
   if (gaps.length >= 3) score += 2;
   else if (gaps.length >= 2) score += 1;
-  if (desktop.marketingSignals.length >= 2 || desktop.hasServiceAreaWords) score += 1;
+  if (marketingSignals.length >= 2 || desktop.hasServiceAreaWords) score += 1;
   if (desktop.hasEmergencyWords || HIGH_INTENT_PATTERNS.test(`${lead.niche} ${lead.businessName}`)) score += 1;
   return clamp(score, 1, 10);
 }
@@ -559,6 +561,8 @@ async function collectAudit(ws, sessionId, website, mode) {
       ...(payload.requestVendorHits || []),
     ]);
     payload.uiSignals = unique(payload.uiSignals || []);
+    payload.builderHits = unique(payload.builderHits || []);
+    payload.marketingSignals = unique(payload.marketingSignals || []);
     payload.ok = payload.ok !== false;
     return payload;
   } finally {

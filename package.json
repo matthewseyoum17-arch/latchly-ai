@@ -19,6 +19,13 @@
     "leads:daily:dry": "SKIP_SCRAPE=1 SKIP_EMAIL=1 node scripts/daily-pipeline.js",
     "leads:daily:apollo": "APOLLO_MODE=cdp node scripts/daily-pipeline.js",
     "leads:inventory:replenish": "node scripts/replenish-inventory.js",
+    "leads:funnel:daily": "node scripts/latchly-leads/pipeline.js",
+    "leads:funnel:dry": "DRY_RUN=true LATCHLY_SKIP_LIVE_DISCOVERY=1 LATCHLY_SKIP_BROWSER_AUDIT=1 LATCHLY_SKIP_WEBSITE_FETCH=1 LATCHLY_LEADS_SKIP_DB=1 node scripts/latchly-leads/pipeline.js",
+    "leads:funnel:archive-bad-import": "node scripts/latchly-leads/archive-bad-import.js",
+    "leads:funnel:quality": "node scripts/latchly-leads/quality-gate.js",
+    "leads:funnel:test": "node --test scripts/latchly-leads/tests/*.test.js",
+    "resend:login": "resend login",
+    "resend:doctor": "resend doctor",
     "leadclaw": "node scripts/leadclaw-pipeline.js",
     "leadclaw:dry": "SKIP_EMAIL=1 node scripts/leadclaw-pipeline.js",
     "leadclaw:local": "SKIP_SCRAPE=1 node scripts/leadclaw-pipeline.js",
@@ -74,6 +81,7 @@
     "playwright-extra": "^4.3.6",
     "playwright-extra-plugin-stealth": "^0.0.1",
     "postcss": "^8.4.49",
+    "resend-cli": "^2.2.1",
     "tailwindcss": "^3.4.17",
     "typescript": "5.9.3"
   }
