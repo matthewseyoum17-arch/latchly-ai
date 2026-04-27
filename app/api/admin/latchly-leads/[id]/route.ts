@@ -3,6 +3,24 @@ import { neon } from "@neondatabase/serverless";
 import { verifyDashboardRequest } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+const NO_STORE_HEADERS = {
+  "Cache-Control": "private, no-store, max-age=0, must-revalidate",
+};
+
+function dbUrl() {
+  return (
+    process.env.DATABASE_URL_UNPOOLED
+    || process.env.POSTGRES_URL_NON_POOLING
+    || process.env.DATABASE_URL
+    || ""
+  );
+}
+
+function jsonResponse(body: any, init?: { status?: number }) {
+  return NextResponse.json(body, { ...init, headers: NO_STORE_HEADERS });
+}
 
 const STATUSES = new Set([
   "new",
@@ -32,28 +50,29 @@ export async function PATCH(
   { params }: { params: { id: string } },
 ) {
   if (!verifyDashboardRequest(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return jsonResponse({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (!process.env.DATABASE_URL) {
-    return NextResponse.json({ error: "DATABASE_URL is required" }, { status: 500 });
+  const url = dbUrl();
+  if (!url) {
+    return jsonResponse({ error: "DATABASE_URL is required" }, { status: 500 });
   }
 
   const id = Number(params.id);
   if (!Number.isInteger(id) || id <= 0) {
-    return NextResponse.json({ error: "Invalid lead id" }, { status: 400 });
+    return jsonResponse({ error: "Invalid lead id" }, { status: 400 });
   }
 
   try {
     const body = await request.json();
-    const sql = neon(process.env.DATABASE_URL);
+    const sql = neon(url);
     const [existing] = await sql.query(
       "SELECT id, status, notes FROM latchly_leads WHERE id = $1",
       [id],
     );
 
     if (!existing) {
-      return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+      return jsonResponse({ error: "Lead not found" }, { status: 404 });
     }
 
     const updates: string[] = [];
@@ -66,7 +85,7 @@ export async function PATCH(
 
       if (apiField === "status") {
         if (!STATUSES.has(value)) {
-          return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+          return jsonResponse({ error: "Invalid status" }, { status: 400 });
         }
       } else if (apiField === "lastContactedAt" || apiField === "nextFollowUpDate") {
         value = normalizeNullableDate(value);
@@ -80,7 +99,7 @@ export async function PATCH(
     }
 
     if (!updates.length) {
-      return NextResponse.json({ error: "No supported fields provided" }, { status: 400 });
+      return jsonResponse({ error: "No supported fields provided" }, { status: 400 });
     }
 
     values.push(id);
@@ -108,10 +127,10 @@ export async function PATCH(
       changedFields,
     });
 
-    return NextResponse.json({ lead: mapLead(updated) });
+    return jsonResponse({ lead: mapLead(updated) });
   } catch (error: any) {
     console.error("Latchly lead update error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return jsonResponse({ error: error.message }, { status: 500 });
   }
 }
 

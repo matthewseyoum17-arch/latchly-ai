@@ -38,6 +38,7 @@ jobs:
           LATCHLY_DAILY_TARGET: '50'
           LATCHLY_DAILY_MINIMUM: '40'
           LATCHLY_REQUIRE_8AM_ET: '1'
+          SKIP_EMAIL: '1'
           SERPAPI_API_KEY: ${{ secrets.SERPAPI_API_KEY }}
           DATAFORSEO_LOGIN: ${{ secrets.DATAFORSEO_LOGIN }}
           DATAFORSEO_PASSWORD: ${{ secrets.DATAFORSEO_PASSWORD }}

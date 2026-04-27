@@ -11,7 +11,9 @@ const {
 } = require('./config');
 const {
   businessKey,
+  domainFromWebsite,
   fetchText,
+  normalizeKey,
   normalizePhone,
   normalizeWebsite,
   parseCSV,
@@ -32,6 +34,8 @@ async function discoverCandidates(options = {}) {
     parseInt(process.env.LATCHLY_LOCAL_CANDIDATE_LIMIT || String(Math.max(TARGET_DAILY_LEADS * 3, 150)), 10),
   );
 
+  const finalize = () => mergeSoftDupes(candidates).slice(0, limit);
+
   if (liveEnabled) {
     await collectCandidates(candidates, seen, localCandidateLimit, scrapePublicDirectories(localCandidateLimit, LOCAL_MARKETS));
     await collectCandidates(candidates, seen, localCandidateLimit, scrapePaidFallback(localCandidateLimit - candidates.length, LOCAL_MARKETS));
@@ -39,7 +43,7 @@ async function discoverCandidates(options = {}) {
 
   for (const lead of seeds.filter(isLocalLead)) {
     addCandidate(candidates, seen, lead);
-    if (candidates.length >= limit) return candidates;
+    if (candidates.length >= limit) return finalize();
   }
 
   if (liveEnabled) {
@@ -50,10 +54,52 @@ async function discoverCandidates(options = {}) {
 
   for (const lead of seeds.filter(lead => !isLocalLead(lead))) {
     addCandidate(candidates, seen, lead);
-    if (candidates.length >= limit) return candidates;
+    if (candidates.length >= limit) return finalize();
   }
 
-  return candidates.slice(0, limit);
+  return finalize();
+}
+
+// Soft-dedupe: same normalized name + state across cities, where neither row
+// has a hard identifier (domain or phone), almost certainly the same business
+// listed twice. Collapse into a single primary row with cityVariants attached.
+// Multi-branch businesses with distinct phones/domains are preserved as separate.
+function mergeSoftDupes(candidates) {
+  const groups = new Map();
+  for (const candidate of candidates) {
+    const hasHard = Boolean(domainFromWebsite(candidate.website)) || Boolean(normalizePhone(candidate.phone));
+    const softKey = `${normalizeKey(candidate.businessName)}::${normalizeKey(candidate.state)}`;
+    if (!groups.has(softKey)) groups.set(softKey, []);
+    groups.get(softKey).push({ candidate, hasHard });
+  }
+
+  const merged = [];
+  for (const group of groups.values()) {
+    if (group.length === 1) {
+      merged.push(group[0].candidate);
+      continue;
+    }
+    if (group.some(entry => entry.hasHard)) {
+      // At least one row has phone or domain — treat as real distinct branches.
+      for (const entry of group) merged.push(entry.candidate);
+      continue;
+    }
+    // No hard identifiers anywhere — collapse to first row, list cities as variants.
+    const primary = { ...group[0].candidate };
+    const cityVariants = [];
+    const seenCity = new Set();
+    for (const entry of group) {
+      const city = (entry.candidate.city || '').trim();
+      if (!city) continue;
+      const key = city.toLowerCase();
+      if (seenCity.has(key)) continue;
+      seenCity.add(key);
+      cityVariants.push(city);
+    }
+    if (cityVariants.length) primary.cityVariants = cityVariants;
+    merged.push(primary);
+  }
+  return merged;
 }
 
 function loadSeedCandidates() {
@@ -413,4 +459,5 @@ module.exports = {
   normalizeSeedRow,
   parseBBBSearch,
   parseBBBProfile,
+  mergeSoftDupes,
 };

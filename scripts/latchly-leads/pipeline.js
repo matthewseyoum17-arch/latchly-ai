@@ -33,13 +33,16 @@ async function main() {
 
   const candidateLimit = parseInt(process.env.LATCHLY_CANDIDATE_LIMIT || String(TARGET_DAILY_LEADS * 8), 10);
   const candidates = await discoverCandidates({ limit: candidateLimit, deliveredKeys });
+  const verbose = process.env.LATCHLY_VERBOSE === '1';
+  if (verbose) console.log(`[discovery] candidates=${candidates.length}`);
 
   const qualified = [];
   const rejections = [];
   let auditAttempts = 0;
   let audited = 0;
 
-  for (const candidate of candidates) {
+  for (let i = 0; i < candidates.length; i++) {
+    const candidate = candidates[i];
     if (qualified.length >= TARGET_DAILY_LEADS * 2) break;
     if (deliveredKeys.has(businessKey(candidate))) continue;
 
@@ -49,6 +52,7 @@ async function main() {
       audit = await auditLead(candidate);
       if (audit.status === 'audited') audited++;
     } catch (err) {
+      if (verbose) console.log(`[audit ${i + 1}/${candidates.length}] ${candidate.businessName} -> error: ${err.message}`);
       rejections.push({ reason: `audit failed: ${err.message}`, businessName: candidate.businessName });
       continue;
     }
@@ -83,6 +87,12 @@ async function main() {
         businessName: candidate.businessName,
         score: scored.score,
       });
+    }
+
+    if (verbose) {
+      const flag = scored.qualified && scored.score >= QUALIFIED_SCORE ? 'QUAL' : 'rej ';
+      const sc = Number(scored.score || 0).toFixed(1);
+      console.log(`[audit ${i + 1}/${candidates.length}] ${flag} score=${sc} ws=${audit.status} | qualified=${qualified.length}/${TARGET_DAILY_LEADS * 2} | ${candidate.businessName}`);
     }
   }
 

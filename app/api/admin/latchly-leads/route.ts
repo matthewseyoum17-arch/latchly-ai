@@ -3,6 +3,7 @@ import { neon } from "@neondatabase/serverless";
 import { verifyDashboardRequest } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 const STATUSES = new Set([
   "new",
@@ -15,20 +16,43 @@ const STATUSES = new Set([
   "lost",
 ]);
 
+const NO_STORE_HEADERS = {
+  "Cache-Control": "private, no-store, max-age=0, must-revalidate",
+};
+
+function dbUrl() {
+  return (
+    process.env.DATABASE_URL_UNPOOLED
+    || process.env.POSTGRES_URL_NON_POOLING
+    || process.env.DATABASE_URL
+    || ""
+  );
+}
+
+function jsonResponse(body: any, init?: { status?: number }) {
+  return NextResponse.json(body, { ...init, headers: NO_STORE_HEADERS });
+}
+
 export async function GET(request: NextRequest) {
   if (!verifyDashboardRequest(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return jsonResponse({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (!process.env.DATABASE_URL) {
-    return NextResponse.json({ error: "DATABASE_URL is required" }, { status: 500 });
+  const url = dbUrl();
+  if (!url) {
+    return jsonResponse({ error: "DATABASE_URL is required" }, { status: 500 });
+  }
+
+  const searchParams = request.nextUrl.searchParams;
+
+  if (searchParams.get("debug") === "1") {
+    return runDiagnostics(url);
   }
 
   try {
-    const sql = neon(process.env.DATABASE_URL);
+    const sql = neon(url);
     const params: any[] = [];
     const where: string[] = [];
-    const searchParams = request.nextUrl.searchParams;
     const includeArchived = isTruthy(searchParams.get("includeArchived"));
 
     if (!includeArchived) {
@@ -97,48 +121,86 @@ export async function GET(request: NextRequest) {
       params,
     );
 
-    const activeWhereSql = includeArchived ? "" : "WHERE archived_at IS NULL";
-    const [summary] = await sql.query(`
-      SELECT
-        COUNT(*)::int AS total,
-        COUNT(*) FILTER (WHERE status = 'new')::int AS new_count,
-        COUNT(*) FILTER (WHERE status IN ('contacted', 'interested', 'follow_up'))::int AS active_count,
-        COUNT(*) FILTER (WHERE status = 'won')::int AS won_count,
-        COUNT(*) FILTER (WHERE score >= 9)::int AS high_score_count,
-        COUNT(*) FILTER (WHERE state = 'FL' AND city IN ('Gainesville', 'Tallahassee'))::int AS local_count,
-        COUNT(*) FILTER (WHERE website IS NULL OR website = '' OR website_status = 'no_website')::int AS no_website_count,
-        COUNT(*) FILTER (WHERE website_status = 'poor_website')::int AS poor_website_count,
-        COUNT(*) FILTER (
-          WHERE next_follow_up_date IS NOT NULL
-          AND next_follow_up_date <= CURRENT_DATE
-          AND status NOT IN ('not_fit', 'won', 'lost')
-        )::int AS due_follow_up_count,
-        ROUND(AVG(score)::numeric, 1) AS avg_score
-      FROM latchly_leads
-      ${activeWhereSql}`);
+    const summaryRows = includeArchived
+      ? await sql`
+          SELECT
+            COUNT(*)::int AS total,
+            COUNT(*) FILTER (WHERE status = 'new')::int AS new_count,
+            COUNT(*) FILTER (WHERE status IN ('contacted', 'interested', 'follow_up'))::int AS active_count,
+            COUNT(*) FILTER (WHERE status = 'won')::int AS won_count,
+            COUNT(*) FILTER (WHERE score >= 9)::int AS high_score_count,
+            COUNT(*) FILTER (WHERE state = 'FL' AND city IN ('Gainesville', 'Tallahassee'))::int AS local_count,
+            COUNT(*) FILTER (WHERE website IS NULL OR website = '' OR website_status = 'no_website')::int AS no_website_count,
+            COUNT(*) FILTER (WHERE website_status = 'poor_website')::int AS poor_website_count,
+            COUNT(*) FILTER (
+              WHERE next_follow_up_date IS NOT NULL
+              AND next_follow_up_date <= CURRENT_DATE
+              AND status NOT IN ('not_fit', 'won', 'lost')
+            )::int AS due_follow_up_count,
+            ROUND(AVG(score)::numeric, 1) AS avg_score
+          FROM latchly_leads`
+      : await sql`
+          SELECT
+            COUNT(*)::int AS total,
+            COUNT(*) FILTER (WHERE status = 'new')::int AS new_count,
+            COUNT(*) FILTER (WHERE status IN ('contacted', 'interested', 'follow_up'))::int AS active_count,
+            COUNT(*) FILTER (WHERE status = 'won')::int AS won_count,
+            COUNT(*) FILTER (WHERE score >= 9)::int AS high_score_count,
+            COUNT(*) FILTER (WHERE state = 'FL' AND city IN ('Gainesville', 'Tallahassee'))::int AS local_count,
+            COUNT(*) FILTER (WHERE website IS NULL OR website = '' OR website_status = 'no_website')::int AS no_website_count,
+            COUNT(*) FILTER (WHERE website_status = 'poor_website')::int AS poor_website_count,
+            COUNT(*) FILTER (
+              WHERE next_follow_up_date IS NOT NULL
+              AND next_follow_up_date <= CURRENT_DATE
+              AND status NOT IN ('not_fit', 'won', 'lost')
+            )::int AS due_follow_up_count,
+            ROUND(AVG(score)::numeric, 1) AS avg_score
+          FROM latchly_leads
+          WHERE archived_at IS NULL`;
+    const summary = summaryRows[0] || {};
 
-    const statusCounts = await sql.query(`
-      SELECT status, COUNT(*)::int AS count
-      FROM latchly_leads
-      ${activeWhereSql}
-      GROUP BY status
-      ORDER BY status`);
+    const statusCounts = includeArchived
+      ? await sql`
+          SELECT status, COUNT(*)::int AS count
+          FROM latchly_leads
+          GROUP BY status
+          ORDER BY status`
+      : await sql`
+          SELECT status, COUNT(*)::int AS count
+          FROM latchly_leads
+          WHERE archived_at IS NULL
+          GROUP BY status
+          ORDER BY status`;
 
-    const cities = await sql.query(`
-      SELECT city, COUNT(*)::int AS count
-      FROM latchly_leads
-      WHERE ${includeArchived ? "" : "archived_at IS NULL AND "}city IS NOT NULL AND city <> ''
-      GROUP BY city
-      ORDER BY city`);
+    const cities = includeArchived
+      ? await sql`
+          SELECT city, COUNT(*)::int AS count
+          FROM latchly_leads
+          WHERE city IS NOT NULL AND city <> ''
+          GROUP BY city
+          ORDER BY city`
+      : await sql`
+          SELECT city, COUNT(*)::int AS count
+          FROM latchly_leads
+          WHERE archived_at IS NULL AND city IS NOT NULL AND city <> ''
+          GROUP BY city
+          ORDER BY city`;
 
-    const niches = await sql.query(`
-      SELECT niche, COUNT(*)::int AS count
-      FROM latchly_leads
-      WHERE ${includeArchived ? "" : "archived_at IS NULL AND "}niche IS NOT NULL AND niche <> ''
-      GROUP BY niche
-      ORDER BY niche`);
+    const niches = includeArchived
+      ? await sql`
+          SELECT niche, COUNT(*)::int AS count
+          FROM latchly_leads
+          WHERE niche IS NOT NULL AND niche <> ''
+          GROUP BY niche
+          ORDER BY niche`
+      : await sql`
+          SELECT niche, COUNT(*)::int AS count
+          FROM latchly_leads
+          WHERE archived_at IS NULL AND niche IS NOT NULL AND niche <> ''
+          GROUP BY niche
+          ORDER BY niche`;
 
-    const [latestRun] = await sql`
+    const latestRunRows = await sql`
       SELECT
         id, run_date, target_count, minimum_count, candidate_count, audited_count,
         qualified_count, delivered_count, local_count, rejected_count,
@@ -147,8 +209,9 @@ export async function GET(request: NextRequest) {
       FROM latchly_lead_runs
       ORDER BY created_at DESC
       LIMIT 1`;
+    const latestRun = latestRunRows[0];
 
-    return NextResponse.json({
+    return jsonResponse({
       leads: leads.map(mapLead),
       stats: {
         total: Number(summary?.total || 0),
@@ -171,7 +234,38 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("Latchly leads CRM fetch error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return jsonResponse({ error: error.message }, { status: 500 });
+  }
+}
+
+async function runDiagnostics(url: string) {
+  try {
+    const sql = neon(url);
+    const [meta] = await sql`SELECT current_database() AS db, current_user AS user, now() AS db_now`;
+    const [counts] = await sql`
+      SELECT
+        (SELECT COUNT(*)::int FROM latchly_leads) AS leads_total,
+        (SELECT COUNT(*)::int FROM latchly_leads WHERE archived_at IS NULL) AS leads_active,
+        (SELECT COUNT(*)::int FROM latchly_lead_runs) AS runs_total,
+        (SELECT COUNT(*)::int FROM latchly_lead_activities) AS activities_total`;
+    const recentRuns = await sql`
+      SELECT id, run_date, dry_run, delivered_count, rejected_count, email_sent, created_at
+      FROM latchly_lead_runs
+      ORDER BY id DESC
+      LIMIT 5`;
+    return jsonResponse({
+      ok: true,
+      url_kind: process.env.DATABASE_URL_UNPOOLED
+        ? "DATABASE_URL_UNPOOLED"
+        : process.env.POSTGRES_URL_NON_POOLING
+          ? "POSTGRES_URL_NON_POOLING"
+          : "DATABASE_URL",
+      meta,
+      counts,
+      recentRuns,
+    });
+  } catch (error: any) {
+    return jsonResponse({ ok: false, error: error.message }, { status: 500 });
   }
 }
 
