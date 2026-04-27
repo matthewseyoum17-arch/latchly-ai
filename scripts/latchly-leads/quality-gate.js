@@ -63,11 +63,20 @@ function runQualityGate(leads, stats = {}, options = {}) {
   }
 
   const dominantNiche = dominantNicheIssue(sorted);
-  if (dominantNiche) issues.push(dominantNiche);
+  if (dominantNiche) {
+    // When supply is thin (under target), niche dominance is unavoidable —
+    // downgrade to a warning so we still deliver what we have. Diversification
+    // is a discovery-side problem, not a reason to throw the batch away.
+    if (sorted.length < minimum) {
+      dominantNiche.severity = 'under_target';
+      dominantNiche.message += ' (downgraded to warning: under target supply)';
+    }
+    issues.push(dominantNiche);
+  }
 
   return {
     ok: !issues.some(issue => issue.severity === 'reject'),
-    underTarget: issues.some(issue => issue.code === 'under_target'),
+    underTarget: issues.some(issue => issue.code === 'under_target' || (issue.code === 'one_niche_dominance' && issue.severity === 'under_target')),
     issues,
     leads: sorted,
   };
