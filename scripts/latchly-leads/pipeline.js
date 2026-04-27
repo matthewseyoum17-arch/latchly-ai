@@ -152,7 +152,8 @@ async function main() {
   if (sendResult.sent) {
     await storage.markDelivered(qualitySelected, { date, emailId: sendResult.id });
   }
-  await storage.recordRun(stats, sendResult);
+  // dry_run on the run record = real dry run (no leads written), not just SKIP_EMAIL.
+  await storage.recordRun(stats, { ...sendResult, dryRun: process.env.DRY_RUN === 'true' });
 
   console.log(JSON.stringify({ ...stats, files, email: sendResult }, null, 2));
 }
