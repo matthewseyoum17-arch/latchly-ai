@@ -38,10 +38,16 @@ function hasBrowserUse() {
   }
 }
 
+// Two-stage audit:
+//   Stage 1 (browser-use → playwright fallback) — single-page initial read
+//      ↓ extract signals from homepage
+//   Promising gate — deterministic rule on Stage 1 signals
+//      ↓ if not promising for redesign and site is real, reject early
+//   Stage 2 (playwright multi-page) — only on promising real-site candidates
 async function auditLead(lead, options = {}) {
   const website = normalizeWebsite(lead.website);
   if (!website) {
-    return decorateAudit(lead, {
+    const audit = decorateAudit(lead, {
       status: 'no_website',
       finalUrl: '',
       html: '',
@@ -49,10 +55,11 @@ async function auditLead(lead, options = {}) {
       pagesChecked: [],
       auditor: 'none',
     });
+    return { ...audit, promising: true, promisingReason: 'no_site', auditStage: 'skip-no-site' };
   }
 
   if (process.env.LATCHLY_SKIP_WEBSITE_FETCH === '1') {
-    return decorateAudit(lead, {
+    const audit = decorateAudit(lead, {
       status: 'skipped',
       finalUrl: website,
       html: '',
@@ -60,25 +67,152 @@ async function auditLead(lead, options = {}) {
       pagesChecked: [],
       auditor: 'skipped',
     });
+    return { ...audit, promising: false, promisingReason: 'skipped', auditStage: 'skipped' };
   }
 
   if (process.env.LATCHLY_SKIP_BROWSER_AUDIT === '1') {
-    return auditByFetch(website, lead);
+    const audit = await auditByFetch(website, lead);
+    const verdict = evaluatePromising(audit, audit.signals || {});
+    return { ...audit, promising: !verdict.notPromising, promisingReason: verdict.reason, promisingNegatives: verdict.negatives, auditStage: 'fetch-only' };
   }
 
-  if (hasBrowserUse()) {
+  // Stage 1
+  let stage1Raw;
+  try {
+    stage1Raw = await initialReadStage1(website);
+  } catch (err) {
+    if (process.env.LATCHLY_BROWSER_AUDIT_STRICT === '1') throw err;
+    const audit = await auditByFetch(website, lead);
+    const verdict = evaluatePromising(audit, audit.signals || {});
+    return { ...audit, promising: !verdict.notPromising, promisingReason: verdict.reason, promisingNegatives: verdict.negatives, auditStage: 'fetch-fallback' };
+  }
+  const stage1Audit = decorateAudit(lead, stage1Raw);
+  const stage1Signals = stage1Raw.signals || {};
+  const verdict = evaluatePromising(stage1Audit, stage1Signals);
+  const truthStatus = stage1Audit.verifiedSignals?.websiteTruth?.status;
+
+  // Non-real-site statuses (no_site/unreachable/directory/parked) auto-promote to no-website-creation; no Stage 2 needed.
+  if (truthStatus !== 'real_business_website') {
+    return {
+      ...stage1Audit,
+      promising: true,
+      promisingReason: `auto:${truthStatus || 'unknown'}`,
+      auditStage: 'stage1-non-real',
+    };
+  }
+
+  // Real site that fails the promising gate → reject before paying for Stage 2.
+  if (verdict.notPromising) {
+    return {
+      ...stage1Audit,
+      promising: false,
+      promisingReason: verdict.reason,
+      promisingNegatives: verdict.negatives,
+      auditStage: 'stage1-rejected',
+    };
+  }
+
+  // Stage 2: full multi-page playwright audit on promising real-site candidates.
+  let stage2Raw;
+  try {
+    stage2Raw = await auditWithPlaywright(website);
+  } catch {
+    return {
+      ...stage1Audit,
+      promising: true,
+      promisingReason: verdict.reason,
+      promisingNegatives: verdict.negatives,
+      auditStage: 'stage1-only',
+    };
+  }
+  const stage2Audit = decorateAudit(lead, stage2Raw);
+  return {
+    ...stage2Audit,
+    promising: true,
+    promisingReason: verdict.reason,
+    promisingNegatives: verdict.negatives,
+    auditStage: 'stage2',
+    initialRead: { signals: stage1Signals, finalUrl: stage1Raw.finalUrl },
+  };
+}
+
+async function initialReadStage1(website) {
+  const wantBU = hasBrowserUse() && process.env.LATCHLY_DISABLE_BROWSER_USE !== '1';
+  if (wantBU) {
     try {
-      return decorateAudit(lead, await auditWithBrowserUse(website, options));
-    } catch (err) {
-      if (process.env.LATCHLY_BROWSER_AUDIT_STRICT === '1') throw err;
+      return await readSinglePageBrowserUse(website);
+    } catch {
+      // fall through to playwright
     }
   }
+  return await readSinglePagePlaywright(website);
+}
 
+async function readSinglePageBrowserUse(website) {
+  const session = `latchly-s1-${process.pid}`;
+  const url = normalizeWebsite(website);
+  execFileSync('browser-use', ['--session', session, 'open', url], {
+    encoding: 'utf8',
+    timeout: 30000,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  await sleep(400);
+  const raw = execFileSync('browser-use', ['--session', session, 'eval', AUDIT_JS], {
+    encoding: 'utf8',
+    timeout: 30000,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
   try {
-    return decorateAudit(lead, await auditWithPlaywright(website));
-  } catch {
-    return auditByFetch(website, lead);
+    execFileSync('browser-use', ['--session', session, 'close'], { stdio: 'ignore', timeout: 5000 });
+  } catch {}
+  const parsed = parseBrowserUseJson(raw);
+  return mergePageAudits([parsed], 'browser-use');
+}
+
+async function readSinglePagePlaywright(website) {
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const context = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+      userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile Safari/604.1',
+    });
+    const page = await context.newPage();
+    try {
+      await page.goto(website, { timeout: 20000, waitUntil: 'domcontentloaded' });
+      await page.waitForTimeout(400);
+      const parsed = JSON.parse(await page.evaluate(AUDIT_JS));
+      return mergePageAudits([parsed], 'playwright');
+    } finally {
+      await context.close().catch(() => {});
+    }
+  } finally {
+    await browser.close().catch(() => {});
   }
+}
+
+function evaluatePromising(audit, signals = {}) {
+  const truth = audit?.verifiedSignals?.websiteTruth?.status;
+  if (truth === 'no_site' || truth === 'unreachable' || truth === 'directory_or_social_only' || truth === 'parked_domain') {
+    return { notPromising: false, reason: `auto:${truth}`, negatives: [] };
+  }
+
+  const negList = [];
+  if (signals.notHttps) negList.push('not-https');
+  if (signals.staleCopyrightYear) negList.push(`stale-copyright-${signals.staleCopyrightYear}`);
+  if (!signals.hasTel) negList.push('no-tel-link');
+  if (!signals.hasForm) negList.push('no-form');
+  if (!signals.hasQuoteCta) negList.push('no-cta');
+  if (!signals.hasReviews) negList.push('no-reviews-keyword');
+  if (signals.builder) negList.push(`builder-${String(signals.builder).toLowerCase()}`);
+  if (Number(signals.visibleLength || 0) < 500) negList.push('thin-content');
+  if (!signals.hasViewport) negList.push('no-viewport');
+
+  const threshold = parseInt(process.env.LATCHLY_PROMISING_NEG_THRESHOLD || '2', 10);
+  const negatives = negList.length;
+  if (negatives >= threshold) {
+    return { notPromising: false, reason: `negatives=${negatives}>=${threshold}`, negatives: negList };
+  }
+  return { notPromising: true, reason: `negatives=${negatives}<${threshold}`, negatives: negList };
 }
 
 async function auditWithBrowserUse(website) {
@@ -433,4 +567,6 @@ module.exports = {
   auditWithPlaywright,
   extractContact,
   decorateAudit,
+  evaluatePromising,
+  initialReadStage1,
 };

@@ -5,6 +5,7 @@ const {
   LOCAL_SHARE_MIN,
   MIN_DAILY_LEADS,
   NO_WEBSITE_TARGET,
+  NO_WEBSITE_MAX_SHARE,
   POOR_WEBSITE_TARGET,
   QUALIFIED_SCORE,
   TARGET_DAILY_LEADS,
@@ -52,8 +53,19 @@ async function main() {
       audit = await auditLead(candidate);
       if (audit.status === 'audited') audited++;
     } catch (err) {
-      if (verbose) console.log(`[audit ${i + 1}/${candidates.length}] ${candidate.businessName} -> error: ${err.message}`);
+      if (verbose) console.log(`[${i + 1}/${candidates.length}] ${candidate.businessName} -> audit error: ${err.message}`);
       rejections.push({ reason: `audit failed: ${err.message}`, businessName: candidate.businessName });
+      continue;
+    }
+
+    // Promising gate — Stage 1 already decided whether this real-site
+    // candidate is worth Stage 2 + scoring. Skip non-promising real sites.
+    if (audit.promising === false) {
+      if (verbose) console.log(`[${i + 1}/${candidates.length}] NOT-PROMISING (${audit.promisingReason || 'unknown'}) ws=${audit.status} stage=${audit.auditStage || '-'} | ${candidate.businessName}`);
+      rejections.push({
+        reason: `not promising: ${audit.promisingReason || 'unknown'}`,
+        businessName: candidate.businessName,
+      });
       continue;
     }
 
@@ -92,7 +104,8 @@ async function main() {
     if (verbose) {
       const flag = scored.qualified && scored.score >= QUALIFIED_SCORE ? 'QUAL' : 'rej ';
       const sc = Number(scored.score || 0).toFixed(1);
-      console.log(`[audit ${i + 1}/${candidates.length}] ${flag} score=${sc} ws=${audit.status} | qualified=${qualified.length}/${TARGET_DAILY_LEADS * 2} | ${candidate.businessName}`);
+      const stage = audit.auditStage || '-';
+      console.log(`[${i + 1}/${candidates.length}] ${flag} score=${sc} ws=${audit.status} stage=${stage} | qualified=${qualified.length}/${TARGET_DAILY_LEADS * 2} | ${candidate.businessName}`);
     }
   }
 
@@ -222,6 +235,9 @@ function selectionLimits(leads, target) {
     localMax: Math.ceil(target * LOCAL_SHARE_MAX),
     bucketMin: Math.floor(target * 0.4),
     bucketMax: Math.ceil(target * 0.6),
+    // Hard ceiling on no-website share, NEVER relaxed by the fallback paths.
+    // Set NO_WEBSITE_MAX_SHARE>=1 to disable.
+    noWebsiteCeiling: Math.max(1, Math.floor(target * NO_WEBSITE_MAX_SHARE)),
     noWebsiteTarget,
     poorWebsiteTarget: target - noWebsiteTarget,
     nicheCap: distinctNiches >= 6 ? Math.ceil(target * 0.2) : Math.ceil(target * 0.3),
@@ -241,6 +257,9 @@ function withinSelectionLimits(selected, lead, limits) {
   const niche = normalizeNiche(lead.niche);
   if (lead.isLocalMarket && selected.filter(item => item.isLocalMarket).length >= limits.localMax) return false;
   if (selected.filter(item => leadBucket(item) === bucket).length >= limits.bucketMax) return false;
+  // Hard no-website ceiling — applies even in the relaxation paths.
+  if (bucket === 'noWebsite' && limits.noWebsiteCeiling != null
+      && selected.filter(item => leadBucket(item) === 'noWebsite').length >= limits.noWebsiteCeiling) return false;
   if (selected.filter(item => normalizeNiche(item.niche) === niche).length >= limits.nicheCap) return false;
   return true;
 }
