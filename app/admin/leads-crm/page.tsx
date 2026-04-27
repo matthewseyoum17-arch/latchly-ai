@@ -208,7 +208,17 @@ function statusLabel(status: string) {
 
 function formatDate(value?: string | null) {
   if (!value) return "-";
-  const date = new Date(value);
+  // Bare YYYY-MM-DD parses as UTC midnight, which renders one day earlier
+  // in user-local timezones. Treat date-only strings as local-noon to dodge
+  // the offset entirely. Full ISO datetimes (with T) keep their UTC instant.
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.exec(value);
+  let date: Date;
+  if (dateOnly) {
+    const [, y, m, d] = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value) || [];
+    date = new Date(Number(y), Number(m) - 1, Number(d), 12, 0, 0);
+  } else {
+    date = new Date(value);
+  }
   if (Number.isNaN(date.getTime())) return "-";
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
@@ -616,8 +626,9 @@ export default function LeadsCrmPage() {
               <span className="text-slate-600">{data.latestRun.delivered}/{data.latestRun.target} delivered</span>
               <span className="text-slate-600">{data.latestRun.local} local</span>
               <span className="text-slate-600">{data.latestRun.rejected} rejected</span>
-              <span className={data.latestRun.emailSent ? "text-teal-700 font-semibold" : "text-amber-700 font-semibold"}>
-                {data.latestRun.emailSent ? "Notice sent" : data.latestRun.dryRun ? "Dry run" : "Notice pending"}
+              <span className="text-emerald-700 font-semibold">{data.stats.total} in CRM</span>
+              <span className={data.latestRun.emailSent ? "text-teal-700 font-semibold" : data.latestRun.dryRun ? "text-amber-700 font-semibold" : "text-slate-500 font-medium"}>
+                {data.latestRun.emailSent ? "Email sent" : data.latestRun.dryRun ? "Dry run" : "Email skipped"}
               </span>
             </div>
             {data.latestRun.underTargetReason && (
