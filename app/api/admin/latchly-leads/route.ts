@@ -116,7 +116,7 @@ export async function GET(request: NextRequest) {
         first_seen_at, last_seen_at, delivered_at, created_at, updated_at
        FROM latchly_leads
        ${whereSql}
-       ORDER BY delivered_at DESC, score DESC, business_name ASC
+       ORDER BY score DESC, delivered_at DESC, business_name ASC
        LIMIT $${params.length}`,
       params,
     );
