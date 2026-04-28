@@ -1,25 +1,39 @@
 #!/usr/bin/env node
+const fs = require('fs');
+const path = require('path');
 const {
+  AUDIT_CONCURRENCY,
+  DIAGNOSTIC_INTERVAL,
   LEADS_DIR,
   LOCAL_SHARE_MAX,
   LOCAL_SHARE_MIN,
+  MAX_AUDIT_ATTEMPTS,
+  MAX_RUN_MINUTES,
   MIN_DAILY_LEADS,
   NO_WEBSITE_TARGET,
   NO_WEBSITE_MAX_SHARE,
   POOR_WEBSITE_TARGET,
   QUALIFIED_SCORE,
   TARGET_DAILY_LEADS,
+  WAVE_LOW_YIELD_MIN_ATTEMPTS,
+  WAVE_LOW_YIELD_MIN_RATE,
 } = require('./config');
-const { auditLead } = require('./audit');
+const { auditLead, createAuditSession } = require('./audit');
 const { buildDigest, sendDigest, writeDigestFiles } = require('./digest');
-const { discoverCandidates } = require('./discovery');
+const { discoverCandidates, orderCandidatesForAudit } = require('./discovery');
 const { createStorage } = require('./storage');
 const { businessKey, currentHourET, ensureDir, loadEnv, todayInET } = require('./utils');
 const { scoreLead } = require('./scoring');
-const { runQualityGate } = require('./quality-gate');
+const { enforcePremiumGate, enforceStandardGate } = require('./quality-gate');
 
 async function main() {
   loadEnv();
+  const cli = parseCliArgs(process.argv.slice(2));
+  if (cli.dryRun || process.env.DRY_RUN === 'true') {
+    process.env.DRY_RUN = 'true';
+    process.env.SKIP_EMAIL = '1';
+    process.env.LATCHLY_LEADS_SKIP_DB = '1';
+  }
   ensureDir(LEADS_DIR);
 
   if (process.env.LATCHLY_REQUIRE_8AM_ET === '1' && currentHourET() !== 8) {
@@ -28,93 +42,49 @@ async function main() {
   }
 
   const date = todayInET();
+  const targetLeads = cli.target || TARGET_DAILY_LEADS;
+  const minimumLeads = cli.target || MIN_DAILY_LEADS;
+  const tierMode = cli.tier || process.env.LATCHLY_TIER || 'both';
   const storage = createStorage();
   await storage.init();
   const deliveredKeys = await storage.deliveredKeys();
 
-  const candidateLimit = parseInt(process.env.LATCHLY_CANDIDATE_LIMIT || String(TARGET_DAILY_LEADS * 8), 10);
-  const candidates = await discoverCandidates({ limit: candidateLimit, deliveredKeys });
+  const candidateLimit = parseInt(process.env.LATCHLY_CANDIDATE_LIMIT || String(targetLeads * 8), 10);
+  const candidates = orderCandidatesForAudit(await discoverCandidates({ limit: candidateLimit, deliveredKeys }));
   const verbose = process.env.LATCHLY_VERBOSE === '1';
   if (verbose) console.log(`[discovery] candidates=${candidates.length}`);
+  const diagnosticsPath = diagnosticsEnabled()
+    ? path.join(LEADS_DIR, `diagnostics-${date}-${new Date().toISOString().replace(/[:.]/g, '-')}.jsonl`)
+    : '';
 
-  const qualified = [];
-  const rejections = [];
-  let auditAttempts = 0;
-  let audited = 0;
+  const {
+    qualified,
+    rejections,
+    auditAttempts,
+    audited,
+    stopReason,
+    waveStats,
+    diagnostics,
+  } = await auditAndScoreCandidates(candidates, deliveredKeys, {
+    verbose,
+    auditConcurrency: AUDIT_CONCURRENCY,
+    maxAuditAttempts: MAX_AUDIT_ATTEMPTS,
+    maxRunMs: MAX_RUN_MINUTES * 60 * 1000,
+    maxQualified: targetLeads * 3,
+    targetLeads,
+    requireQualifiedMix: true,
+    diagnosticsPath,
+    diagnosticInterval: DIAGNOSTIC_INTERVAL,
+  });
 
-  for (let i = 0; i < candidates.length; i++) {
-    const candidate = candidates[i];
-    if (qualified.length >= TARGET_DAILY_LEADS * 2) break;
-    if (deliveredKeys.has(businessKey(candidate))) continue;
-
-    let audit = {};
-    try {
-      auditAttempts++;
-      audit = await auditLead(candidate);
-      if (audit.status === 'audited') audited++;
-    } catch (err) {
-      if (verbose) console.log(`[${i + 1}/${candidates.length}] ${candidate.businessName} -> audit error: ${err.message}`);
-      rejections.push({ reason: `audit failed: ${err.message}`, businessName: candidate.businessName });
-      continue;
-    }
-
-    // Promising gate — Stage 1 already decided whether this real-site
-    // candidate is worth Stage 2 + scoring. Skip non-promising real sites.
-    if (audit.promising === false) {
-      if (verbose) console.log(`[${i + 1}/${candidates.length}] NOT-PROMISING (${audit.promisingReason || 'unknown'}) ws=${audit.status} stage=${audit.auditStage || '-'} | ${candidate.businessName}`);
-      rejections.push({
-        reason: `not promising: ${audit.promisingReason || 'unknown'}`,
-        businessName: candidate.businessName,
-      });
-      continue;
-    }
-
-    const enrichedCandidate = {
-      ...candidate,
-      contactName: candidate.contactName || audit.contactName || '',
-      contactTitle: candidate.contactTitle || audit.contactTitle || '',
-      phone: candidate.phone || audit.phone || '',
-    };
-    const scored = scoreLead(enrichedCandidate, audit);
-    const lead = {
-      ...enrichedCandidate,
-      phone: scored.phone,
-      website: scored.website,
-      score: scored.score,
-      reasons: scored.reasons,
-      blockers: scored.blockers,
-      decisionMaker: scored.decisionMaker,
-      pitch: scored.pitch,
-      isLocalMarket: scored.isLocalMarket,
-      websiteStatus: scored.websiteStatus,
-      leadType: scored.leadType,
-      audit: summarizeAudit(audit),
-    };
-
-    if (scored.qualified && scored.score >= QUALIFIED_SCORE) {
-      qualified.push(lead);
-    } else {
-      rejections.push({
-        reason: scored.blockers[0] || scored.reasons[0] || `score below ${QUALIFIED_SCORE}`,
-        businessName: candidate.businessName,
-        score: scored.score,
-      });
-    }
-
-    if (verbose) {
-      const flag = scored.qualified && scored.score >= QUALIFIED_SCORE ? 'QUAL' : 'rej ';
-      const sc = Number(scored.score || 0).toFixed(1);
-      const stage = audit.auditStage || '-';
-      console.log(`[${i + 1}/${candidates.length}] ${flag} score=${sc} ws=${audit.status} stage=${stage} | qualified=${qualified.length}/${TARGET_DAILY_LEADS * 2} | ${candidate.businessName}`);
-    }
-  }
-
-  const selected = selectDailyLeads(qualified, Math.max(TARGET_DAILY_LEADS, qualified.length));
-  const selection = summarizeSelection(qualified, selected, TARGET_DAILY_LEADS);
+  const tiered = selectTieredLeads(qualified, targetLeads, { tierMode });
+  const selected = tiered.leads;
+  const selection = summarizeSelection(qualified, selected, targetLeads);
   const stats = {
     date,
-    target: TARGET_DAILY_LEADS,
-    minimum: MIN_DAILY_LEADS,
+    target: targetLeads,
+    minimum: minimumLeads,
+    tierMode,
     candidates: candidates.length,
     auditAttempts,
     audited,
@@ -122,11 +92,23 @@ async function main() {
     delivered: selected.length,
     rejected: rejections.length,
     localDelivered: selected.filter(lead => lead.isLocalMarket).length,
+    maxAuditAttempts: MAX_AUDIT_ATTEMPTS,
+    maxRunMinutes: MAX_RUN_MINUTES,
+    stopReason,
+    diagnosticsPath,
+    waveStats,
+    diagnostics,
+    candidateOpportunityCounts: countBy(candidates, lead => lead.sourceOpportunity || 'unknown'),
     ...selection,
+    premiumQualified: tiered.premiumQualified,
+    premiumDelivered: tiered.premiumDelivered,
+    standardDelivered: tiered.standardDelivered,
+    premiumGateIssues: tiered.premiumGate.issues,
     topRejectionReasons: topReasons(rejections),
+    topRejectionsBySource: topReasonsBySource(rejections),
   };
 
-  const qualityGate = runQualityGate(selected, stats, { minimum: MIN_DAILY_LEADS, qualifiedScore: QUALIFIED_SCORE });
+  const qualityGate = enforceStandardGate(selected, stats, { minimum: minimumLeads, qualifiedScore: QUALIFIED_SCORE });
   if (!qualityGate.ok) {
     const message = qualityGate.issues
       .filter(issue => issue.severity === 'reject')
@@ -156,6 +138,50 @@ async function main() {
   await storage.recordRun(stats, { ...sendResult, dryRun: process.env.DRY_RUN === 'true' });
 
   console.log(JSON.stringify({ ...stats, files, email: sendResult }, null, 2));
+}
+
+function parseCliArgs(args = []) {
+  const out = {
+    tier: '',
+    target: 0,
+    dryRun: false,
+  };
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === '--dry-run') {
+      out.dryRun = true;
+      continue;
+    }
+    if (arg === '--tier') {
+      out.tier = normalizeTierMode(args[++i]);
+      continue;
+    }
+    if (arg.startsWith('--tier=')) {
+      out.tier = normalizeTierMode(arg.slice('--tier='.length));
+      continue;
+    }
+    if (arg === '--target') {
+      out.target = normalizePositiveInt(args[++i]);
+      continue;
+    }
+    if (arg.startsWith('--target=')) {
+      out.target = normalizePositiveInt(arg.slice('--target='.length));
+    }
+  }
+  return out;
+}
+
+function normalizeTierMode(value) {
+  const mode = String(value || '').toLowerCase();
+  if (['premium', 'standard', 'both'].includes(mode)) return mode;
+  if (mode) throw new Error(`Invalid --tier value "${value}". Use premium, standard, or both.`);
+  return '';
+}
+
+function normalizePositiveInt(value) {
+  const parsed = parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) throw new Error(`Invalid --target value "${value}".`);
+  return parsed;
 }
 
 function selectDailyLeads(leads, target) {
@@ -189,7 +215,7 @@ function selectDailyLeads(leads, target) {
   if (selected.length < target) {
     takeLeads(selected, used, sorted, target - selected.length, {
       ...limits,
-      nicheCap: target,
+      nicheCap: limits.relaxedNicheCap,
     });
   }
 
@@ -197,7 +223,7 @@ function selectDailyLeads(leads, target) {
     takeLeads(selected, used, sorted, target - selected.length, {
       ...limits,
       bucketMax: target,
-      nicheCap: target,
+      nicheCap: limits.relaxedNicheCap,
     });
   }
 
@@ -206,11 +232,466 @@ function selectDailyLeads(leads, target) {
       ...limits,
       localMax: target,
       bucketMax: target,
-      nicheCap: target,
+      nicheCap: limits.relaxedNicheCap,
     });
   }
 
   return selected.sort(sortLeads).slice(0, target);
+}
+
+function selectTieredLeads(qualified, target, options = {}) {
+  const tierMode = options.tierMode || 'both';
+  const premiumGate = tierMode === 'standard'
+    ? { leads: [], rejected: [], issues: [] }
+    : enforcePremiumGate(qualified, {}, { minimum: 0 });
+  const premiumPool = premiumGate.leads;
+  const selectedPremium = tierMode === 'standard'
+    ? []
+    : selectDailyLeads(premiumPool, Math.min(target, premiumPool.length))
+        .map(lead => ({ ...lead, tier: 'premium' }));
+
+  const used = new Set(selectedPremium.map(lead => businessKey(lead)).filter(Boolean));
+  const standardPool = tierMode === 'premium' || tierMode === 'both' || tierMode === 'standard'
+    ? qualified
+        .filter(lead => !used.has(businessKey(lead)))
+        .map(lead => ({ ...lead, tier: 'standard' }))
+    : [];
+  const needed = Math.max(0, target - selectedPremium.length);
+  const selectedStandard = needed
+    ? selectDailyLeads(standardPool, Math.min(needed, standardPool.length))
+        .map(lead => ({ ...lead, tier: 'standard' }))
+    : [];
+  const leads = [...selectedPremium, ...selectedStandard].sort(sortTieredLeads).slice(0, target);
+
+  return {
+    leads,
+    premiumGate,
+    premiumQualified: premiumPool.length,
+    premiumDelivered: leads.filter(lead => lead.tier === 'premium').length,
+    standardDelivered: leads.filter(lead => lead.tier !== 'premium').length,
+  };
+}
+
+async function auditAndScoreCandidates(candidates, deliveredKeys = new Set(), options = {}) {
+  const verbose = Boolean(options.verbose);
+  const auditFn = options.auditLead || auditLead;
+  const scoreFn = options.scoreLead || scoreLead;
+  const auditConcurrency = normalizeAuditConcurrency(options.auditConcurrency || AUDIT_CONCURRENCY);
+  const maxQualified = Number(options.maxQualified || TARGET_DAILY_LEADS * 2);
+  const targetLeads = Number(options.targetLeads || TARGET_DAILY_LEADS);
+  const requireQualifiedMix = Boolean(options.requireQualifiedMix);
+  const qualifiedLimit = requireQualifiedMix ? maxQualified + targetLeads : maxQualified;
+  const maxAuditAttempts = Number(options.maxAuditAttempts || MAX_AUDIT_ATTEMPTS);
+  const maxRunMs = Number(options.maxRunMs || MAX_RUN_MINUTES * 60 * 1000);
+  const startedAt = Date.now();
+  const waves = buildAuditWaves(orderCandidatesForAudit(candidates));
+  const diagnostics = createDiagnosticsWriter(options.diagnosticsPath, {
+    interval: options.diagnosticInterval || DIAGNOSTIC_INTERVAL,
+  });
+  const ownsAuditSession = !options.auditSession && !options.auditLead;
+  const auditSession = options.auditSession || (ownsAuditSession ? createAuditSession() : null);
+  const qualified = [];
+  const rejections = [];
+  const waveStats = [];
+  let auditAttempts = 0;
+  let audited = 0;
+  let stopReason = '';
+
+  try {
+    for (const wave of waves) {
+      if (qualifiedTargetMet(qualified, { maxQualified, targetLeads, requireQualifiedMix })) {
+        stopReason = 'qualified_target_met';
+        break;
+      }
+      if (auditAttempts >= maxAuditAttempts) {
+        stopReason = 'max_audit_attempts';
+        break;
+      }
+      if (Date.now() - startedAt >= maxRunMs) {
+        stopReason = 'max_run_minutes';
+        break;
+      }
+
+      const stats = {
+        name: wave.name,
+        candidates: wave.candidates.length,
+        auditAttempts: 0,
+        audited: 0,
+        qualified: 0,
+        rejected: 0,
+        stopped: false,
+        stopReason: '',
+      };
+      waveStats.push(stats);
+      let nextIndex = 0;
+
+      while (
+        nextIndex < wave.candidates.length
+        && qualified.length < qualifiedLimit
+        && !qualifiedTargetMet(qualified, { maxQualified, targetLeads, requireQualifiedMix })
+      ) {
+        if (auditAttempts >= maxAuditAttempts) {
+          stopReason = 'max_audit_attempts';
+          stats.stopped = true;
+          stats.stopReason = stopReason;
+          break;
+        }
+        if (Date.now() - startedAt >= maxRunMs) {
+          stopReason = 'max_run_minutes';
+          stats.stopped = true;
+          stats.stopReason = stopReason;
+          break;
+        }
+
+        const batch = [];
+        while (
+          nextIndex < wave.candidates.length
+          && batch.length < auditConcurrency
+          && auditAttempts + batch.length < maxAuditAttempts
+        ) {
+          const candidate = wave.candidates[nextIndex];
+          const index = wave.indexes[nextIndex];
+          nextIndex++;
+          if (deliveredKeys.has(businessKey(candidate))) continue;
+          batch.push({ candidate, index, wave: wave.name });
+        }
+        if (!batch.length) continue;
+
+        auditAttempts += batch.length;
+        stats.auditAttempts += batch.length;
+        const results = await Promise.all(batch.map(async entry => {
+          const started = Date.now();
+          try {
+            const audit = await auditFn(entry.candidate, auditSession ? { auditSession } : {});
+            return {
+              ...entry,
+              latencyMs: Date.now() - started,
+              audit,
+            };
+          } catch (err) {
+            return { ...entry, latencyMs: Date.now() - started, error: err };
+          }
+        }));
+        const auditedInBatch = results.filter(result => !result.error && result.audit?.status === 'audited').length;
+        audited += auditedInBatch;
+        stats.audited += auditedInBatch;
+
+        for (const result of results) {
+          if (qualified.length >= qualifiedLimit || qualifiedTargetMet(qualified, { maxQualified, targetLeads, requireQualifiedMix })) break;
+
+          const { candidate, index } = result;
+          let rejectionReason = '';
+          let scored = null;
+          let audit = result.audit || {};
+          if (result.error) {
+            rejectionReason = `audit failed: ${result.error.message}`;
+            if (verbose) console.log(`[${index + 1}/${candidates.length}] ${candidate.businessName} -> audit error: ${result.error.message}`);
+            rejections.push(rejection(candidate, rejectionReason, { wave: wave.name }));
+            stats.rejected++;
+            diagnostics.record(progressEvent({
+              candidate,
+              wave: wave.name,
+              index,
+              total: candidates.length,
+              latencyMs: result.latencyMs,
+              audit,
+              rejectionReason,
+              auditAttempts,
+              qualified: qualified.length,
+            }));
+            continue;
+          }
+
+          // Promising gate - Stage 1 already decided whether this real-site
+          // candidate is worth Stage 2 + scoring. Skip non-promising real sites.
+          if (audit.promising === false) {
+            rejectionReason = `not promising: ${audit.promisingReason || 'unknown'}`;
+            if (verbose) console.log(`[${index + 1}/${candidates.length}] NOT-PROMISING (${audit.promisingReason || 'unknown'}) ws=${audit.status} stage=${audit.auditStage || '-'} | ${candidate.businessName}`);
+            rejections.push(rejection(candidate, rejectionReason, { wave: wave.name }));
+            stats.rejected++;
+            diagnostics.record(progressEvent({
+              candidate,
+              wave: wave.name,
+              index,
+              total: candidates.length,
+              latencyMs: result.latencyMs,
+              audit,
+              rejectionReason,
+              auditAttempts,
+              qualified: qualified.length,
+            }));
+            continue;
+          }
+
+          const enrichedCandidate = {
+            ...candidate,
+            contactName: candidate.contactName || audit.contactName || '',
+            contactTitle: candidate.contactTitle || audit.contactTitle || '',
+            phone: candidate.phone || audit.phone || '',
+          };
+          scored = scoreFn(enrichedCandidate, audit);
+          const lead = {
+            ...enrichedCandidate,
+            phone: scored.phone,
+            website: scored.website,
+            score: scored.score,
+            reasons: scored.reasons,
+            blockers: scored.blockers,
+            decisionMaker: scored.decisionMaker,
+            pitch: scored.pitch,
+            isLocalMarket: scored.isLocalMarket,
+            websiteStatus: scored.websiteStatus,
+            leadType: scored.leadType,
+            signalCount: scored.signalCount,
+            websiteIssue: scored.websiteIssue,
+            decisionMakerConfidence: scored.decisionMakerConfidence,
+            audit: summarizeAudit(audit),
+          };
+
+          if (scored.qualified && scored.score >= QUALIFIED_SCORE) {
+            qualified.push(lead);
+            stats.qualified++;
+          } else {
+            rejectionReason = scored.blockers[0] || scored.reasons[0] || `score below ${QUALIFIED_SCORE}`;
+            rejections.push(rejection(candidate, rejectionReason, {
+              score: scored.score,
+              wave: wave.name,
+            }));
+            stats.rejected++;
+          }
+
+          diagnostics.record(progressEvent({
+            candidate,
+            wave: wave.name,
+            index,
+            total: candidates.length,
+            latencyMs: result.latencyMs,
+            audit,
+            rejectionReason,
+            score: scored?.score,
+            auditAttempts,
+            qualified: qualified.length,
+          }));
+
+          if (verbose) {
+            const flag = scored.qualified && scored.score >= QUALIFIED_SCORE ? 'QUAL' : 'rej ';
+            const sc = Number(scored.score || 0).toFixed(1);
+            const stage = audit.auditStage || '-';
+            console.log(`[${index + 1}/${candidates.length}] ${flag} score=${sc} ws=${audit.status} stage=${stage} wave=${wave.name} | qualified=${qualified.length}/${qualifiedLimit} | ${candidate.businessName}`);
+          }
+        }
+
+        const waveStopReason = stopWaveReason(stats, wave, { targetLeads, requireQualifiedMix });
+        if (waveStopReason) {
+          stats.stopped = true;
+          stats.stopReason = waveStopReason;
+          break;
+        }
+      }
+
+      diagnostics.flushProgress({
+        type: 'wave_complete',
+        wave: stats.name,
+        stats,
+        totalAuditAttempts: auditAttempts,
+        totalQualified: qualified.length,
+        qualifiedYield: auditAttempts ? Number((qualified.length / auditAttempts).toFixed(3)) : 0,
+      });
+
+      if (stopReason) break;
+      if (stats.stopped && wave.name === 'website_rich_low_priority') {
+        stopReason = stats.stopReason;
+        continue;
+      }
+    }
+  } finally {
+    diagnostics.close({
+      type: 'run_complete',
+      auditAttempts,
+      audited,
+      qualified: qualified.length,
+      rejected: rejections.length,
+      stopReason: stopReason || (qualifiedTargetMet(qualified, { maxQualified, targetLeads, requireQualifiedMix }) ? 'qualified_target_met' : ''),
+    });
+    if (ownsAuditSession && auditSession) await auditSession.close();
+  }
+
+  return {
+    qualified,
+    rejections,
+    auditAttempts,
+    audited,
+    stopReason: stopReason || (qualifiedTargetMet(qualified, { maxQualified, targetLeads, requireQualifiedMix }) ? 'qualified_target_met' : ''),
+    waveStats,
+    diagnostics: diagnostics.summary(),
+  };
+}
+
+function normalizeAuditConcurrency(value) {
+  const parsed = parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+}
+
+function buildAuditWaves(candidates = []) {
+  const groups = [
+    { name: 'no_source_website', candidates: [], indexes: [] },
+    { name: 'possible_poor_site', candidates: [], indexes: [] },
+    { name: 'website_rich_low_priority', candidates: [], indexes: [] },
+  ];
+  const byName = new Map(groups.map(group => [group.name, group]));
+  candidates.forEach((candidate, index) => {
+    const name = candidate.sourceOpportunity || (candidate.website ? 'possible_poor_site' : 'no_source_website');
+    const group = byName.get(name) || byName.get('possible_poor_site');
+    group.candidates.push(candidate);
+    group.indexes.push(index);
+  });
+  return groups.filter(group => group.candidates.length);
+}
+
+function shouldStopWave(stats, wave, options = {}) {
+  return Boolean(stopWaveReason(stats, wave, options));
+}
+
+function stopWaveReason(stats, wave, options = {}) {
+  if (!stats) return '';
+  if (options.requireQualifiedMix && wave.name === 'no_source_website') {
+    const cap = Math.max(1, Number(options.targetLeads || TARGET_DAILY_LEADS));
+    if (stats.qualified >= cap) return `bucket_saturated:${wave.name}:${stats.qualified}/${cap}`;
+  }
+  if (stats.auditAttempts < WAVE_LOW_YIELD_MIN_ATTEMPTS) return '';
+  if (wave.name === 'no_source_website') return '';
+  const yieldRate = stats.qualified / Math.max(1, stats.auditAttempts);
+  return yieldRate < WAVE_LOW_YIELD_MIN_RATE ? lowYieldReason(stats) : '';
+}
+
+function lowYieldReason(stats) {
+  const yieldRate = stats.auditAttempts ? stats.qualified / stats.auditAttempts : 0;
+  return `low_yield:${stats.name}:${stats.qualified}/${stats.auditAttempts}:${yieldRate.toFixed(3)}`;
+}
+
+function qualifiedTargetMet(qualified, options = {}) {
+  const maxQualified = Number(options.maxQualified || TARGET_DAILY_LEADS * 2);
+  if (qualified.length < maxQualified) return false;
+  if (!options.requireQualifiedMix) return true;
+  return hasQualifiedMix(qualified, Number(options.targetLeads || TARGET_DAILY_LEADS));
+}
+
+function hasQualifiedMix(qualified, target) {
+  const bucketMin = Math.max(1, Math.floor(target * 0.4));
+  const noWebsite = qualified.filter(lead => leadBucket(lead) === 'noWebsite').length;
+  const poorWebsite = qualified.filter(lead => leadBucket(lead) === 'poorWebsite').length;
+  const nicheCount = new Set(qualified.map(lead => normalizeNiche(lead.niche))).size;
+  const minNiches = target >= 20 ? 6 : Math.min(3, target);
+  return noWebsite >= bucketMin && poorWebsite >= bucketMin && nicheCount >= minNiches;
+}
+
+function rejection(candidate, reason, extra = {}) {
+  return {
+    reason,
+    businessName: candidate.businessName,
+    sourceName: candidate.sourceName || '',
+    sourceOpportunity: candidate.sourceOpportunity || '',
+    niche: candidate.niche || '',
+    city: candidate.city || '',
+    state: candidate.state || '',
+    ...extra,
+  };
+}
+
+function diagnosticsEnabled() {
+  return process.env.LATCHLY_DIAGNOSTICS !== '0';
+}
+
+function createDiagnosticsWriter(file, options = {}) {
+  const interval = Number(options.interval || DIAGNOSTIC_INTERVAL);
+  const recent = [];
+  const summaryStats = {
+    path: file || '',
+    records: 0,
+    progressWrites: 0,
+    sourceCounts: {},
+    rejectionCounts: {},
+    stageCounts: {},
+    latencyMs: { total: 0, max: 0 },
+  };
+  if (file) {
+    ensureDir(path.dirname(file));
+    fs.writeFileSync(file, '');
+  }
+
+  const write = payload => {
+    if (!file) return;
+    fs.appendFileSync(file, `${JSON.stringify({ at: new Date().toISOString(), ...payload })}\n`);
+  };
+
+  return {
+    record(event) {
+      summaryStats.records++;
+      bump(summaryStats.sourceCounts, event.sourceName || 'unknown');
+      if (event.rejectionReason) bump(summaryStats.rejectionCounts, event.rejectionReason);
+      bump(summaryStats.stageCounts, event.auditStage || 'unknown');
+      summaryStats.latencyMs.total += Number(event.latencyMs || 0);
+      summaryStats.latencyMs.max = Math.max(summaryStats.latencyMs.max, Number(event.latencyMs || 0));
+      recent.push(event);
+      if (recent.length > interval) recent.shift();
+      if (event.auditAttempts && event.auditAttempts % interval === 0) {
+        summaryStats.progressWrites++;
+        write({
+          type: 'progress',
+          auditAttempts: event.auditAttempts,
+          qualified: event.qualified,
+          qualifiedYield: event.qualifiedYield,
+          recent,
+          sourceCounts: summaryStats.sourceCounts,
+          rejectionCounts: summaryStats.rejectionCounts,
+          stageCounts: summaryStats.stageCounts,
+        });
+      }
+    },
+    flushProgress(payload) {
+      write(payload);
+    },
+    close(payload) {
+      write(payload);
+    },
+    summary() {
+      const average = summaryStats.records
+        ? Math.round(summaryStats.latencyMs.total / summaryStats.records)
+        : 0;
+      return {
+        ...summaryStats,
+        latencyMs: {
+          average,
+          max: summaryStats.latencyMs.max,
+        },
+      };
+    },
+  };
+}
+
+function progressEvent({ candidate, wave, index, total, latencyMs, audit, rejectionReason, score, auditAttempts, qualified }) {
+  return {
+    wave,
+    index: index + 1,
+    total,
+    businessName: candidate.businessName,
+    sourceName: candidate.sourceName || '',
+    sourceOpportunity: candidate.sourceOpportunity || '',
+    niche: candidate.niche || '',
+    market: `${candidate.city || ''}, ${candidate.state || ''}`.trim().replace(/^,\s*/, ''),
+    latencyMs,
+    auditStage: audit.auditStage || audit.status || 'error',
+    websiteStatus: audit.verifiedSignals?.websiteTruth?.status || audit.status || '',
+    rejectionReason,
+    score,
+    auditAttempts,
+    qualified,
+    qualifiedYield: auditAttempts ? Number((qualified / auditAttempts).toFixed(3)) : 0,
+  };
+}
+
+function bump(object, key) {
+  object[key] = (object[key] || 0) + 1;
 }
 
 function takeLeads(selected, used, leads, count, limits) {
@@ -231,19 +712,29 @@ function selectionLimits(leads, target) {
   const noWebsiteTarget = configuredTotal > 0
     ? Math.round(target * (Math.max(0, NO_WEBSITE_TARGET) / configuredTotal))
     : Math.floor(target / 2);
+  const bucketMin = Math.floor(target * 0.4);
+  const qualifiedPoorWebsite = leads.filter(lead => leadBucket(lead) === 'poorWebsite').length;
   return {
     localMin: Math.ceil(target * LOCAL_SHARE_MIN),
     localMax: Math.ceil(target * LOCAL_SHARE_MAX),
-    bucketMin: Math.floor(target * 0.4),
+    bucketMin,
     bucketMax: Math.ceil(target * 0.6),
-    // Hard ceiling on no-website share, NEVER relaxed by the fallback paths.
-    // Set NO_WEBSITE_MAX_SHARE>=1 to disable.
-    noWebsiteCeiling: Math.max(1, Math.floor(target * NO_WEBSITE_MAX_SHARE)),
+    // Prefer the configured no-site ceiling, but do not under-deliver when
+    // verified poor-site supply is short and verified no-site supply exists.
+    noWebsiteCeiling: qualifiedPoorWebsite >= bucketMin
+      ? Math.max(1, Math.floor(target * NO_WEBSITE_MAX_SHARE))
+      : target,
     noWebsiteTarget,
     poorWebsiteTarget: target - noWebsiteTarget,
     nicheCap: distinctNiches >= 6 ? Math.ceil(target * 0.2) : Math.ceil(target * 0.3),
+    relaxedNicheCap: dominanceSafeNicheCap(target, distinctNiches),
     minNiches: distinctNiches >= 6 ? 6 : distinctNiches,
   };
+}
+
+function dominanceSafeNicheCap(target, distinctNiches) {
+  if (distinctNiches <= 1) return target;
+  return Math.max(1, Math.floor(target * 0.6));
 }
 
 function leadBucket(lead) {
@@ -258,7 +749,8 @@ function withinSelectionLimits(selected, lead, limits) {
   const niche = normalizeNiche(lead.niche);
   if (lead.isLocalMarket && selected.filter(item => item.isLocalMarket).length >= limits.localMax) return false;
   if (selected.filter(item => leadBucket(item) === bucket).length >= limits.bucketMax) return false;
-  // Hard no-website ceiling — applies even in the relaxation paths.
+  // No-website ceiling applies in every relaxation path, but the ceiling can
+  // expand to target when poor-site qualified supply is short.
   if (bucket === 'noWebsite' && limits.noWebsiteCeiling != null
       && selected.filter(item => leadBucket(item) === 'noWebsite').length >= limits.noWebsiteCeiling) return false;
   if (selected.filter(item => normalizeNiche(item.niche) === niche).length >= limits.nicheCap) return false;
@@ -316,6 +808,11 @@ function sortLeads(a, b) {
     || String(a.businessName || '').localeCompare(String(b.businessName || ''));
 }
 
+function sortTieredLeads(a, b) {
+  return Number(b.tier === 'premium') - Number(a.tier === 'premium')
+    || sortLeads(a, b);
+}
+
 function normalizeNiche(value) {
   return String(value || 'unknown').trim().toLowerCase();
 }
@@ -352,6 +849,21 @@ function topReasons(rejections) {
     .map(([reason, count]) => `${reason} (${count})`);
 }
 
+function topReasonsBySource(rejections) {
+  const counts = new Map();
+  for (const rejection of rejections) {
+    const key = `${rejection.sourceName || 'unknown'}|${rejection.sourceOpportunity || 'unknown'}|${rejection.reason || 'unknown'}`;
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([key, count]) => {
+      const [sourceName, sourceOpportunity, reason] = key.split('|');
+      return { sourceName, sourceOpportunity, reason, count };
+    });
+}
+
 function summarizeAudit(audit) {
   return {
     status: audit.status,
@@ -360,6 +872,12 @@ function summarizeAudit(audit) {
     pagesChecked: audit.pagesChecked,
     signals: audit.signals,
     verifiedSignals: audit.verifiedSignals,
+    decisionMaker: audit.decisionMaker,
+    signalCount: audit.signalCount,
+    noWebsite: audit.noWebsite,
+    poorWebsite: audit.poorWebsite,
+    websiteIssue: audit.websiteIssue,
+    decisionMakerConfidence: audit.decisionMakerConfidence,
   };
 }
 
@@ -372,7 +890,13 @@ if (require.main === module) {
 
 module.exports = {
   main,
+  auditAndScoreCandidates,
+  buildAuditWaves,
+  hasQualifiedMix,
   selectDailyLeads,
+  selectTieredLeads,
+  qualifiedTargetMet,
+  shouldStopWave,
   summarizeSelection,
   leadBucket,
   selectionLimits,

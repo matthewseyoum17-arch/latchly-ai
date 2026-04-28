@@ -98,6 +98,11 @@ export async function PATCH(
       changedFields[apiField] = value;
     }
 
+    if (body.status === "contacted" && existing.status !== "contacted" && !("lastContactedAt" in body)) {
+      updates.push("last_contacted_at = NOW()");
+      changedFields.lastContactedAt = "now";
+    }
+
     if (!updates.length) {
       return jsonResponse({ error: "No supported fields provided" }, { status: 400 });
     }
@@ -112,6 +117,7 @@ export async function PATCH(
         phone, email, website, website_status, source_name, source_record_id,
         decision_maker_name, decision_maker_title, decision_maker_confidence,
         score, score_reasons, score_blockers, pitch, is_local_market,
+        tier, signal_count,
         status, notes, last_contacted_at, next_follow_up_date,
         archived_at, archive_reason,
         first_seen_at, last_seen_at, delivered_at, created_at, updated_at`,
@@ -154,7 +160,7 @@ async function insertActivity(sql: any, details: {
 }) {
   const statusChanged = details.previousStatus !== details.nextStatus;
   const notesChanged = details.previousNotes !== details.nextNotes;
-  const activityType = statusChanged ? "status_changed" : notesChanged ? "note_updated" : "lead_updated";
+  const activityType = statusChanged ? "status_change" : notesChanged ? "note_updated" : "lead_updated";
 
   await sql`
     INSERT INTO latchly_lead_activities (
@@ -192,6 +198,8 @@ function mapLead(row: any) {
     scoreBlockers: normalizeJsonArray(row.score_blockers),
     pitch: normalizeJsonObject(row.pitch),
     isLocalMarket: Boolean(row.is_local_market) || isLocalRow(row),
+    tier: row.tier === "premium" ? "premium" : "standard",
+    signalCount: row.signal_count == null ? 0 : Number(row.signal_count),
     status: row.status,
     notes: row.notes || "",
     lastContactedAt: row.last_contacted_at,

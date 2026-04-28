@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { runQualityGate } = require('../quality-gate');
+const { enforcePremiumGate, runQualityGate } = require('../quality-gate');
 
 test('quality gate rejects flat score distribution', () => {
   const leads = makeBatch(50).map(lead => ({ ...lead, score: 8.5 }));
@@ -45,6 +45,61 @@ test('quality gate accepts 50+ verified score 8+ leads and preserves descending 
   for (let i = 1; i < result.leads.length; i++) {
     assert.ok(result.leads[i - 1].score >= result.leads[i].score);
   }
+});
+
+test('premium gate accepts score 9+, 3+ signals, website issue, and confident decision maker', () => {
+  const result = enforcePremiumGate([premiumLead()]);
+  assert.equal(result.ok, true);
+  assert.equal(result.leads.length, 1);
+  assert.equal(result.leads[0].tier, 'premium');
+});
+
+test('premium gate rejects leads with fewer than three signals', () => {
+  const result = enforcePremiumGate([premiumLead({ signalCount: 2 })]);
+  assert.equal(result.ok, false);
+  assert.equal(result.leads.length, 0);
+  assert.match(result.rejected[0].reasons.join(' '), /Signal count/);
+});
+
+test('premium gate rejects leads below score 9', () => {
+  const result = enforcePremiumGate([premiumLead({ score: 8.9 })]);
+  assert.equal(result.ok, false);
+  assert.equal(result.leads.length, 0);
+  assert.match(result.rejected[0].reasons.join(' '), /Score below/);
+});
+
+test('premium gate rejects good-site leads', () => {
+  const result = enforcePremiumGate([premiumLead({
+    website: 'https://modern.example',
+    websiteStatus: 'has_website',
+    leadType: 'website_review',
+    websiteIssue: false,
+    audit: goodSiteAudit(),
+  })]);
+  assert.equal(result.ok, false);
+  assert.equal(result.leads.length, 0);
+  assert.match(result.rejected[0].reasons.join(' '), /no-website or poor-website/);
+});
+
+test('premium gate rejects missing or weak decision-maker confidence', () => {
+  const result = enforcePremiumGate([premiumLead({
+    decisionMakerConfidence: 0,
+    decisionMaker: { name: '', confidence: 0 },
+  })]);
+  assert.equal(result.ok, false);
+  assert.equal(result.leads.length, 0);
+  assert.match(result.rejected[0].reasons.join(' '), /Decision-maker confidence/);
+});
+
+test('premium gate rejects niche dominance without under-target downgrade', () => {
+  const leads = Array.from({ length: 12 }, (_, index) => premiumLead({
+    businessName: `Dominant Roof ${index}`,
+    niche: 'roofing contractor',
+  }));
+  const result = enforcePremiumGate(leads, { minimum: 50 });
+  assert.equal(result.ok, false);
+  const issue = result.issues.find(item => item.code === 'one_niche_dominance');
+  assert.equal(issue?.severity, 'reject');
 });
 
 function makeBatch(count) {
@@ -100,6 +155,37 @@ function poorSiteAudit(index) {
           { reason: 'Stale copyright year: 2018', weight: 1, confidence: 0.9, source: 'test', url },
         ],
       },
+    },
+  };
+}
+
+function premiumLead(overrides = {}) {
+  return {
+    ...makeBatch(1)[0],
+    businessName: 'Premium Plumbing',
+    score: 9.3,
+    signalCount: 3,
+    websiteIssue: true,
+    decisionMaker: { name: 'Alicia Brown', title: 'Owner', confidence: 0.8 },
+    decisionMakerConfidence: 0.8,
+    ...overrides,
+  };
+}
+
+function goodSiteAudit() {
+  return {
+    verifiedSignals: {
+      evidenceIntegrity: { verifiable: true, issues: [] },
+      websiteTruth: {
+        status: 'real_business_website',
+        confidence: 0.9,
+        evidence: [{ source: 'test', url: 'https://modern.example', detail: 'Modern website', confidence: 0.9 }],
+      },
+      websiteQuality: {
+        positiveSignals: [{ reason: 'Mobile viewport detected', source: 'test', url: 'https://modern.example', confidence: 0.9 }],
+        negativeSignals: [],
+      },
+      signalSummary: { count: 3, websiteIssue: false, decisionMakerConfidence: 0.8 },
     },
   };
 }

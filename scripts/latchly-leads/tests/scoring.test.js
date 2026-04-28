@@ -139,6 +139,36 @@ test('poor audited website qualifies only with concrete audit issues', () => {
   assert.ok(scored.reasons.some(reason => /concrete redesign issues/.test(reason)));
 });
 
+test('poor-site scoring rejects negative signals without page-level verification', () => {
+  const lead = {
+    businessName: 'Unverified Bad Roofing',
+    niche: 'roofing contractor',
+    city: 'Dallas',
+    state: 'TX',
+    phone: '(214) 555-3333',
+    website: 'http://unverified-bad.example',
+  };
+  const audit = structuredWebsiteAudit(lead, {
+    status: 'audited',
+    finalUrl: lead.website,
+    html: '<html><head><title>Unverified Bad Roofing</title></head><body><table><tr><td><table><tr><td>Roof repair leaks. Copyright 2018.</td></tr></table></td></tr></table><script src="/jquery-1.7.js"></script></body></html>',
+  });
+  audit.verifiedSignals.websiteQuality.negativeSignals = audit.verifiedSignals.websiteQuality.negativeSignals.map(signal => ({
+    ...signal,
+    url: '',
+    confidence: 0.6,
+  }));
+  audit.verifiedSignals.evidenceIntegrity = {
+    verifiable: false,
+    issues: ['Negative signals missing page-level evidence'],
+  };
+
+  const scored = scoreLead(lead, audit);
+  assert.equal(scored.qualified, false);
+  assert.ok(scored.score < 8);
+  assert.ok(scored.blockers.some(reason => /not verifiable/.test(reason)));
+});
+
 test('chain businesses are blocked even with high need', () => {
   const lead = {
     businessName: 'Roto-Rooter Gainesville',
@@ -200,6 +230,21 @@ test('daily selection keeps no-website and poor-website buckets in flexible 50/5
   assert.equal(summary.noWebsiteShortage, 0);
   assert.equal(summary.poorWebsiteShortage, 0);
   assert.equal(selected.filter(lead => leadBucket(lead) === 'noWebsite').length, summary.noWebsiteDelivered);
+});
+
+test('daily selection relaxes no-website ceiling when poor-website qualified supply is short', () => {
+  const leads = [];
+  for (let i = 0; i < 12; i++) {
+    leads.push(fakeLead(`No Site Shortage ${i}`, i < 4 ? 'Gainesville' : 'Dallas', i < 4, 9.2, 'noWebsite', i, i % 2 ? 'plumber' : 'roofing contractor'));
+  }
+  leads.push(fakeLead('Only Poor Site', 'Dallas', false, 9.1, 'poorWebsite', 99, 'hvac contractor'));
+
+  const selected = selectDailyLeads(leads, 10);
+  const summary = summarizeSelection(leads, selected, 10);
+
+  assert.equal(selected.length, 10);
+  assert.equal(summary.poorWebsiteShortage, 3);
+  assert.ok(summary.noWebsiteDelivered > 5);
 });
 
 test('daily selection caps a dominant niche when varied qualified supply exists', () => {

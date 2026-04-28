@@ -1,6 +1,12 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { decorateAudit, evaluatePromising } = require('../audit');
+const {
+  candidatePages,
+  createAuditSession,
+  decorateAudit,
+  evaluatePromising,
+} = require('../audit');
+const { extractDecisionMaker } = require('../decision-maker');
 const { extractHtmlSignals } = require('../scoring');
 
 test('no-site candidate is verified separately from unreachable website', () => {
@@ -119,3 +125,107 @@ test('promising gate threshold respects LATCHLY_PROMISING_NEG_THRESHOLD env over
     delete process.env.LATCHLY_PROMISING_NEG_THRESHOLD;
   }
 });
+
+test('shared Playwright audit session launches one browser for concurrent contexts', async () => {
+  let launches = 0;
+  let contexts = 0;
+  const session = createAuditSession({
+    chromiumInstance: {
+      async launch() {
+        launches++;
+        return {
+          async newContext() {
+            contexts++;
+            return { close: async () => {} };
+          },
+          close: async () => {},
+        };
+      },
+    },
+  });
+
+  try {
+    await Promise.all([
+      session.newContext({}),
+      session.newContext({}),
+      session.newContext({}),
+    ]);
+  } finally {
+    await session.close();
+  }
+
+  assert.equal(launches, 1);
+  assert.equal(contexts, 3);
+});
+
+test('stage-2 page selection is capped to homepage plus high-signal internal pages', async () => {
+  const prior = process.env.LATCHLY_STAGE2_MAX_PAGES;
+  process.env.LATCHLY_STAGE2_MAX_PAGES = '3';
+  try {
+    const pages = await candidatePages('https://example.com', {
+      links: [
+        { href: 'https://example.com/gallery', text: 'Gallery' },
+        { href: 'https://example.com/request-estimate', text: 'Request Estimate' },
+        { href: 'https://example.com/contact-us', text: 'Contact Us' },
+        { href: 'https://other.example.com/services', text: 'Other services' },
+      ],
+    });
+
+    assert.deepEqual(pages, [
+      'https://example.com',
+      'https://example.com/request-estimate',
+      'https://example.com/contact-us',
+    ]);
+  } finally {
+    if (prior == null) delete process.env.LATCHLY_STAGE2_MAX_PAGES;
+    else process.env.LATCHLY_STAGE2_MAX_PAGES = prior;
+  }
+});
+
+test('decision-maker extraction reads JSON-LD Person schema', async () => {
+  const html = `<script type="application/ld+json">${JSON.stringify({
+    '@type': 'Person',
+    name: 'Alicia Brown',
+    jobTitle: 'Owner',
+  })}</script>`;
+  const result = await extractDecisionMaker(baseLead(), html, ['https://example.com'], null, { fetcher: missingFetcher });
+  assert.equal(result.name, 'Alicia Brown');
+  assert.equal(result.title, 'Owner');
+  assert.ok(result.confidence >= 0.9);
+});
+
+test('decision-maker extraction reads seeded about page content', async () => {
+  const result = await extractDecisionMaker(baseLead(), [
+    { url: 'https://example.com', html: '<h1>Audit Test Roofing</h1>' },
+    { url: 'https://example.com/about', html: '<main>Meet the owner Jordan Smith. Jordan has repaired roofs for 20 years.</main>' },
+  ], [], null, { fetcher: missingFetcher });
+  assert.equal(result.name, 'Jordan Smith');
+  assert.equal(result.title, 'Owner');
+  assert.ok(result.confidence >= 0.65);
+});
+
+test('decision-maker extraction uses possessive business-name heuristic', async () => {
+  const result = await extractDecisionMaker(baseLead({ businessName: "Smith's Plumbing" }), '', [], null, { fetcher: missingFetcher });
+  assert.equal(result.name, 'Smith');
+  assert.equal(result.confidence, 0.5);
+});
+
+test('decision-maker extraction raises confidence on multi-source agreement', async () => {
+  const html = `
+    <meta name="author" content="Alicia Brown">
+    <script type="application/ld+json">${JSON.stringify({ '@type': 'Person', name: 'Alicia Brown', jobTitle: 'Founder' })}</script>
+  `;
+  const result = await extractDecisionMaker(baseLead(), html, ['https://example.com'], null, { fetcher: missingFetcher });
+  assert.equal(result.name, 'Alicia Brown');
+  assert.equal(result.confidence, 0.95);
+});
+
+test('decision-maker extraction returns zero confidence when no strategy matches', async () => {
+  const result = await extractDecisionMaker(baseLead({ businessName: 'Generic Home Services' }), '<h1>Services</h1>', ['https://example.com'], null, { fetcher: missingFetcher });
+  assert.equal(result.name, '');
+  assert.equal(result.confidence, 0);
+});
+
+async function missingFetcher() {
+  return { ok: false, text: '' };
+}

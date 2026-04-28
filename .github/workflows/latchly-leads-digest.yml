@@ -7,6 +7,26 @@ on:
     - cron: '0 12 * * 1-5'
     - cron: '0 13 * * 1-5'
   workflow_dispatch:
+    inputs:
+      tier:
+        description: Lead tier mode
+        required: false
+        default: both
+        type: choice
+        options:
+          - premium
+          - standard
+          - both
+      target:
+        description: Number of leads to deliver
+        required: false
+        default: '50'
+        type: string
+      dry_run:
+        description: Run without DB writes or email
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   daily-leads:
@@ -35,14 +55,16 @@ jobs:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           LEAD_DIGEST_TO: matthewseyoum17@gmail.com
           LEAD_DIGEST_FROM: Latchly Lead Digest <notifications@latchlyai.com>
-          LATCHLY_DAILY_TARGET: '50'
-          LATCHLY_DAILY_MINIMUM: '40'
-          LATCHLY_REQUIRE_8AM_ET: '1'
+          LATCHLY_DAILY_TARGET: ${{ inputs.target || '50' }}
+          LATCHLY_DAILY_MINIMUM: ${{ inputs.target || '50' }}
+          LATCHLY_TIER: ${{ inputs.tier || 'both' }}
+          LATCHLY_REQUIRE_8AM_ET: ${{ github.event_name == 'schedule' && '1' || '0' }}
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
           SKIP_EMAIL: '1'
           SERPAPI_API_KEY: ${{ secrets.SERPAPI_API_KEY }}
           DATAFORSEO_LOGIN: ${{ secrets.DATAFORSEO_LOGIN }}
           DATAFORSEO_PASSWORD: ${{ secrets.DATAFORSEO_PASSWORD }}
-        run: npm run leads:funnel:daily
+        run: node scripts/latchly-leads/pipeline.js --tier "${{ inputs.tier || 'both' }}" --target "${{ inputs.target || '50' }}"
 
       - name: Upload lead artifacts
         if: always()

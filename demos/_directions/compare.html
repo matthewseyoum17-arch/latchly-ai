@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mom's OG · 3 Direction Compare</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #1a1a1a; color: #f0f0f0; font-family: -apple-system, system-ui, sans-serif;
+                min-height: 100vh; }
+  .page { padding: 28px 28px 56px; }
+  h1 { font-size: 22px; font-weight: 600; letter-spacing: -.01em; margin-bottom: 6px; }
+  .sub { font-size: 13px; opacity: .65; margin-bottom: 28px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .col { background: #2a2a2a; border-radius: 14px; overflow: hidden; padding: 16px;
+         border: 1px solid #3a3a3a; }
+  .col h2 { font-size: 14px; letter-spacing: .14em; text-transform: uppercase;
+            font-weight: 600; margin-bottom: 4px; }
+  .col h2 .accent { color: #FA4616; }
+  .col .desc { font-size: 11.5px; opacity: .6; margin-bottom: 12px; line-height: 1.4; min-height: 32px; }
+  .col .open {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; color: #f0f0f0; opacity: .7; text-decoration: none;
+    margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,.18); padding-bottom: 2px;
+  }
+  .frame-wrap { position: relative; width: 100%; aspect-ratio: 1440/900;
+                border-radius: 8px; overflow: hidden; background: #fff; }
+  .frame-wrap iframe {
+    position: absolute; top: 0; left: 0;
+    width: 1440px; height: 900px;
+    transform: scale(.305); transform-origin: 0 0;
+    border: 0;
+  }
+  .col.d1 h2 .accent { color: #FA4616; }
+  .col.d2 h2 .accent { color: #D4A574; }
+  .col.d3 h2 .accent { color: #B85C3D; }
+  @media (max-width: 1100px) { .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Mom's OG · Menu sub-page · 3 design directions</h1>
+  <p class="sub">Same content, three styles. 1440×900 each, scaled to ~30%. Click any card title to open the full live demo in this server.</p>
+
+  <div class="grid">
+    <div class="col d1">
+      <h2><span class="accent">D1.</span> Pentagram / Bierut</h2>
+      <p class="desc">Newspaper-of-record. B/W + orange accent. Oversized "16." numeral, indexed sauce list, today highlighted in orange.</p>
+      <a class="open" href="pentagram.html" target="_blank">Open full demo →</a>
+      <div class="frame-wrap"><iframe src="pentagram.html"></iframe></div>
+    </div>
+    <div class="col d2">
+      <h2><span class="accent">D2.</span> Build Studio</h2>
+      <p class="desc">Luxury minimalism. Cream + gold, ultralight serif. Floating dish cards over an arch. Hotel-bar feel.</p>
+      <a class="open" href="build.html" target="_blank">Open full demo →</a>
+      <div class="frame-wrap"><iframe src="build.html"></iframe></div>
+    </div>
+    <div class="col d3">
+      <h2><span class="accent">D3.</span> Takram</h2>
+      <p class="desc">Warm naturals. Sage + terracotta + cream. Newsreader serif italic. Sauce chips with 01–16 numbers, side panel, green pulse strip.</p>
+      <a class="open" href="takram.html" target="_blank">Open full demo →</a>
+      <div class="frame-wrap"><iframe src="takram.html"></iframe></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

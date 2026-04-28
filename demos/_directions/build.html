@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<!-- Mom's OG · Menu sub-page · Direction D2: Build Studio · 极简主义派 (luxury) -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Mom's OG · Menu · Build direction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Inter:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #FAF7F1;        /* warm off-white */
+    --paper2: #F1ECE0;
+    --ink: #1A1614;
+    --muted: #A89A82;
+    --rule: #E2DCCC;
+    --gold: #D4A574;
+    --gold2: #B98A55;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--paper); color: var(--ink);
+    font-size: 13px; line-height: 1.55; -webkit-font-smoothing: antialiased;
+    font-feature-settings: 'ss01', 'cv11';
+  }
+  .deck { width: 1440px; height: 900px; padding: 40px 80px; display: grid;
+          grid-template-rows: auto 1fr auto; gap: 36px; }
+  /* Top nav — barely there */
+  .nav { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
+  .nav .brand {
+    font-family: 'Cormorant Garamond', serif; font-weight: 400; font-size: 22px;
+    letter-spacing: -.005em;
+  }
+  .nav .brand .dot { color: var(--gold); }
+  .nav .links { display: flex; gap: 36px; justify-content: center; font-size: 12px;
+                font-weight: 400; letter-spacing: .04em; color: var(--ink); }
+  .nav .links a { color: inherit; text-decoration: none; opacity: .82; }
+  .nav .links a.active { opacity: 1; border-bottom: 1px solid var(--gold); padding-bottom: 4px; }
+  .nav .cta {
+    justify-self: end;
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 16px; border: 1px solid var(--ink); border-radius: 999px;
+    font-size: 11px; letter-spacing: .04em; font-weight: 500;
+    background: transparent; color: var(--ink); text-decoration: none;
+  }
+  /* Body — luxury composition with floating cards */
+  .body {
+    display: grid; grid-template-columns: 5fr 7fr; gap: 64px;
+    align-items: center; padding-top: 8px;
+  }
+  /* Left — refined heroish text */
+  .lede .eyebrow {
+    font-size: 10px; letter-spacing: .26em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 28px; font-weight: 500;
+  }
+  .lede h1 {
+    font-family: 'Cormorant Garamond', serif; font-weight: 300;
+    font-size: 78px; line-height: .96; letter-spacing: -.014em;
+    color: var(--ink);
+  }
+  .lede h1 .accent { font-weight: 600; color: var(--ink); }
+  .lede h1 .gold { color: var(--gold2); font-weight: 500; font-style: italic; }
+  .lede .rule { width: 56px; height: 1px; background: var(--gold); margin: 32px 0 24px; }
+  .lede .body-text {
+    color: var(--ink); opacity: .68; font-size: 14.5px; line-height: 1.65;
+    max-width: 440px; font-weight: 300;
+  }
+  .lede .figures { display: flex; gap: 36px; margin-top: 36px; }
+  .lede .figure .n {
+    font-family: 'Cormorant Garamond', serif; font-weight: 300;
+    font-size: 36px; line-height: 1; color: var(--ink); letter-spacing: -.01em;
+  }
+  .lede .figure .n .gold { color: var(--gold2); font-weight: 500; }
+  .lede .figure .lbl {
+    font-size: 10px; letter-spacing: .2em; text-transform: uppercase;
+    color: var(--muted); margin-top: 6px; font-weight: 500;
+  }
+  /* Right — floating signature dish cards */
+  .stage { position: relative; height: 540px; }
+  .arch {
+    position: absolute; right: 60px; top: 50%; transform: translateY(-50%);
+    width: 360px; height: 480px;
+    background: linear-gradient(180deg, var(--paper2) 0%, var(--paper) 100%);
+    border-radius: 180px 180px 0 0;
+    box-shadow: 0 40px 80px -20px rgba(80,60,30,.08);
+  }
+  .card {
+    position: absolute; background: #FFFEFA; padding: 22px 24px;
+    border-radius: 12px; box-shadow: 0 24px 48px -16px rgba(80,60,30,.16);
+    width: 240px;
+  }
+  .card .price {
+    font-family: 'Cormorant Garamond', serif; font-weight: 400;
+    font-size: 32px; line-height: 1; color: var(--ink); letter-spacing: -.01em;
+  }
+  .card .price .gold { color: var(--gold2); font-weight: 500; }
+  .card .name {
+    font-size: 11px; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--muted); margin-top: 6px; font-weight: 500;
+  }
+  .card .blurb {
+    font-size: 12.5px; color: var(--ink); opacity: .72; margin-top: 12px;
+    line-height: 1.55; font-weight: 300;
+  }
+  .card.c1 { left: 0; top: 30px; }
+  .card.c2 { left: 130px; top: 200px; }
+  .card.c3 { left: 0; top: 360px; }
+  .card.signature { background: var(--ink); color: var(--paper); }
+  .card.signature .price, .card.signature .price .gold { color: var(--paper); }
+  .card.signature .name { color: var(--gold); }
+  .card.signature .blurb { color: rgba(250,247,241,.78); }
+  /* Bottom — sauces strip + day pulse */
+  .strip {
+    display: grid; grid-template-columns: 7fr 5fr; gap: 64px; align-items: end;
+    padding-top: 28px; border-top: 1px solid var(--rule);
+  }
+  .strip .sauces .lbl {
+    font-size: 10px; letter-spacing: .2em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 12px; font-weight: 500;
+  }
+  .strip .sauces .list {
+    display: flex; flex-wrap: wrap; gap: 6px 14px;
+    font-size: 12.5px; color: var(--ink); opacity: .82; font-weight: 300;
+  }
+  .strip .sauces .list .tag.s {
+    color: var(--gold2); font-weight: 500; font-style: italic;
+  }
+  .strip .sauces .list .sep { opacity: .25; }
+  .strip .pulse { text-align: right; }
+  .strip .pulse .lbl {
+    font-size: 10px; letter-spacing: .2em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 8px; font-weight: 500;
+  }
+  .strip .pulse .text {
+    font-family: 'Cormorant Garamond', serif; font-weight: 400;
+    font-size: 22px; line-height: 1.25; color: var(--ink); letter-spacing: -.005em;
+  }
+  .strip .pulse .text .gold { color: var(--gold2); font-style: italic; font-weight: 500; }
+  .strip .pulse .meta {
+    margin-top: 8px; font-size: 10.5px; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--muted); font-weight: 500;
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+  <nav class="nav">
+    <div class="brand">mom's og<span class="dot">.</span></div>
+    <div class="links">
+      <a href="#">Menu</a>
+      <a href="#" class="active">Story</a>
+      <a href="#">Reviews</a>
+      <a href="#">Visit</a>
+    </div>
+    <a class="cta" href="#">Order on Toast →</a>
+  </nav>
+
+  <section class="body">
+    <div class="lede">
+      <p class="eyebrow">— The Menu · No. 02 —</p>
+      <h1>Sixteen <span class="gold">sauces</span>,<br>one burger,<br>and the cheapest <span class="accent">Long Island</span><br>in Gainesville.</h1>
+      <div class="rule"></div>
+      <p class="body-text">Cory restocks them in the order regulars empty them. The burger has stayed at $9.60 since the rebrand. The Long Island has stayed at three dollars longer than the kitchen has had its current cook.</p>
+      <div class="figures">
+        <div class="figure"><p class="n">$<span class="gold">9.60</span></p><p class="lbl">Mom's Burger</p></div>
+        <div class="figure"><p class="n"><span class="gold">16</span></p><p class="lbl">Wing Sauces</p></div>
+        <div class="figure"><p class="n">$<span class="gold">3</span></p><p class="lbl">Long Islands</p></div>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="arch"></div>
+      <div class="card c1">
+        <p class="price">$<span class="gold">12</span></p>
+        <p class="name">Baby Mama Wings · 10pc</p>
+        <p class="blurb">The sauce regulars order on autopilot. Sweet, sticky, a little dangerous.</p>
+      </div>
+      <div class="card c2 signature">
+        <p class="price">$<span class="gold">13</span></p>
+        <p class="name">Bacon Cheese + Loaded Tots</p>
+        <p class="blurb">The plate every other table is ordering. The basket of tots that gets fought over.</p>
+      </div>
+      <div class="card c3">
+        <p class="price">$<span class="gold">3</span></p>
+        <p class="name">Long Island · Every Night</p>
+        <p class="blurb">If you've been to Mom's, you already know. Every single night.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="strip">
+    <div class="sauces">
+      <p class="lbl">— The 16, in restock order —</p>
+      <p class="list">
+        <span class="tag s">Baby Mama</span><span class="sep">·</span>
+        <span class="tag">Hot Garlic</span><span class="sep">·</span>
+        <span class="tag">Teriyaki</span><span class="sep">·</span>
+        <span class="tag">Mild Buffalo</span><span class="sep">·</span>
+        <span class="tag">Hot Buffalo</span><span class="sep">·</span>
+        <span class="tag">Honey BBQ</span><span class="sep">·</span>
+        <span class="tag">Sweet Chili</span><span class="sep">·</span>
+        <span class="tag">Garlic Parm</span><span class="sep">·</span>
+        <span class="tag">Lemon Pepper</span><span class="sep">·</span>
+        <span class="tag">Cajun Dry</span><span class="sep">·</span>
+        <span class="tag">Old Bay</span><span class="sep">·</span>
+        <span class="tag">Mango Habanero</span><span class="sep">·</span>
+        <span class="tag">Carolina Gold</span><span class="sep">·</span>
+        <span class="tag">Smoky BBQ</span><span class="sep">·</span>
+        <span class="tag">Naked</span><span class="sep">·</span>
+        <span class="tag">House Hot</span>
+      </p>
+    </div>
+    <div class="pulse">
+      <p class="lbl">— Tonight —</p>
+      <p class="text">Trivia at <span class="gold">8 PM</span><br>back room fills fast.</p>
+      <p class="meta">Tuesday · the room every Gators student ends up in</p>
+    </div>
+  </section>
+</div>
+</body>
+</html>

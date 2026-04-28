@@ -6,13 +6,16 @@ const ARCHIVE_REASON = 'Archived bad seed-only CRM import: uniform 8.6 scores, a
 
 async function main() {
   loadEnv();
-  if (!process.env.DATABASE_URL) {
-    throw new Error('DATABASE_URL is required');
+  const databaseUrl = process.env.DATABASE_URL_UNPOOLED
+    || process.env.POSTGRES_URL_NON_POOLING
+    || process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    throw new Error('DATABASE_URL_UNPOOLED, POSTGRES_URL_NON_POOLING, or DATABASE_URL is required');
   }
 
   const expectedCount = parseInt(process.env.LATCHLY_BAD_IMPORT_EXPECTED || '50', 10);
   const execute = process.argv.includes('--execute') || process.env.LATCHLY_ARCHIVE_BAD_IMPORT_EXECUTE === '1';
-  const sql = neon(process.env.DATABASE_URL);
+  const sql = neon(databaseUrl);
 
   await sql`ALTER TABLE latchly_leads ADD COLUMN IF NOT EXISTS archived_at TIMESTAMP`;
   await sql`ALTER TABLE latchly_leads ADD COLUMN IF NOT EXISTS archive_reason TEXT`;

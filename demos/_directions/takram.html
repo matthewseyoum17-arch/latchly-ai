@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<!-- Mom's OG · Menu sub-page · Direction D3: Takram · 东方哲学派 (warm tech / considered naturalism) -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Mom's OG · Menu · Takram direction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400;1,6..72,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper:    #F5EFE2;
+    --paper2:   #EDE4D2;
+    --paper3:   #E5D9C0;
+    --ink:      #2A241D;
+    --muted:    #6B5F4E;
+    --sage:     #5C7C5A;
+    --sage2:    #4A6849;
+    --terra:    #B85C3D;
+    --terra2:   #9C4929;
+    --gold:     #C49A4A;
+    --rule:     rgba(42,36,29,.14);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--paper); color: var(--ink);
+    font-size: 14px; line-height: 1.55; -webkit-font-smoothing: antialiased;
+  }
+  .deck { width: 1440px; height: 900px; padding: 36px 56px; display: grid;
+          grid-template-rows: auto 1fr auto; gap: 28px; position: relative; }
+  /* Vertical marginalia */
+  .gutter-l, .gutter-r {
+    position: absolute; top: 50%; transform: translateY(-50%) rotate(-90deg);
+    transform-origin: center; font-size: 10.5px; letter-spacing: .26em;
+    text-transform: uppercase; color: var(--muted); font-weight: 500;
+  }
+  .gutter-l { left: 16px; }
+  .gutter-r { right: 16px; }
+  /* Top nav */
+  .nav { display: grid; grid-template-columns: auto 1fr auto; gap: 32px;
+         align-items: center; padding-bottom: 18px;
+         border-bottom: 1px solid var(--rule); }
+  .nav .brand {
+    font-family: 'Newsreader', serif; font-weight: 600; font-size: 24px;
+    letter-spacing: -.01em;
+  }
+  .nav .brand .clover { color: var(--sage); margin-right: 6px; }
+  .nav .links { display: flex; gap: 32px; justify-content: center;
+                font-size: 14px; font-family: 'Newsreader', serif; }
+  .nav .links a { color: var(--ink); text-decoration: none; opacity: .76; }
+  .nav .links a.active { opacity: 1; color: var(--terra); font-style: italic; }
+  .nav .meta {
+    font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted); display: inline-flex; align-items: center; gap: 14px;
+  }
+  .nav .meta .pill {
+    background: var(--sage); color: var(--paper); padding: 6px 14px;
+    border-radius: 999px; font-size: 10.5px; letter-spacing: .12em;
+  }
+  /* Body — editorial article + side card */
+  .body {
+    display: grid; grid-template-columns: 7fr 5fr; gap: 56px; align-items: start;
+    padding-top: 8px;
+  }
+  /* LEFT — title + index + signatures */
+  .lede .eyebrow {
+    font-size: 10.5px; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--terra); margin-bottom: 18px; font-weight: 500;
+  }
+  .lede h1 {
+    font-family: 'Newsreader', serif; font-weight: 500; font-style: italic;
+    font-size: 64px; line-height: 1; letter-spacing: -.012em;
+    color: var(--ink); max-width: 720px;
+  }
+  .lede h1 em { color: var(--terra); font-style: italic; font-weight: 600; }
+  .lede h1 .num { color: var(--sage2); font-weight: 600; font-style: normal; }
+  .lede .rule { width: 64px; height: 1px; background: var(--terra); margin: 22px 0 18px; }
+  .lede .body-text {
+    font-family: 'Newsreader', serif; font-size: 17px; line-height: 1.5;
+    color: var(--ink); opacity: .82; max-width: 540px;
+  }
+  /* The 16 — gentle "data art" treatment */
+  .index { margin-top: 26px; }
+  .index .lbl {
+    font-size: 10.5px; letter-spacing: .2em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 12px; font-weight: 500;
+  }
+  .index .grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px 14px;
+  }
+  .index .grid .chip {
+    background: rgba(255,255,255,.55);
+    border: 1px solid var(--rule);
+    border-radius: 16px;
+    padding: 10px 14px;
+    font-family: 'Newsreader', serif; font-size: 14.5px;
+    color: var(--ink); display: flex; justify-content: space-between; align-items: baseline;
+    transition: background .2s ease;
+  }
+  .index .grid .chip .n {
+    font-size: 10.5px; color: var(--muted); letter-spacing: .12em;
+    font-family: 'Inter', sans-serif; font-weight: 500;
+  }
+  .index .grid .chip.s {
+    background: linear-gradient(135deg, #FFE9D6, #F8C58C);
+    color: var(--terra2); font-weight: 600; font-style: italic;
+    border-color: var(--terra);
+  }
+  .index .grid .chip.s .n { color: var(--terra); }
+  /* RIGHT — signature side panel */
+  .side {
+    background: rgba(255,255,255,.55); border-radius: 28px;
+    padding: 36px 32px; border: 1px solid var(--rule);
+    display: flex; flex-direction: column; gap: 22px;
+  }
+  .side .head {
+    display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center;
+    padding-bottom: 18px; border-bottom: 1px solid var(--rule);
+  }
+  .side .head .ic {
+    width: 54px; height: 54px; border-radius: 999px;
+    background: var(--sage); color: var(--paper);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Newsreader', serif; font-size: 26px; font-style: italic; font-weight: 500;
+  }
+  .side .head .h-title {
+    font-family: 'Newsreader', serif; font-size: 22px; font-weight: 600; line-height: 1.1;
+  }
+  .side .head .h-sub {
+    font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted); margin-top: 4px;
+  }
+  /* Signature dish rows inside side panel */
+  .sig-row { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: baseline;
+             padding: 12px 0; border-bottom: 1px dashed var(--rule); }
+  .sig-row:last-child { border-bottom: none; }
+  .sig-row .name {
+    font-family: 'Newsreader', serif; font-weight: 600; font-size: 18px;
+    color: var(--ink); line-height: 1.15;
+  }
+  .sig-row .desc {
+    font-family: 'Newsreader', serif; font-size: 13.5px; color: var(--muted);
+    margin-top: 4px; max-width: 280px; line-height: 1.4; font-style: italic;
+  }
+  .sig-row .price {
+    font-family: 'Newsreader', serif; font-weight: 600; font-size: 22px;
+    color: var(--terra); white-space: nowrap;
+  }
+  .sig-row .price small {
+    font-size: 11px; color: var(--muted); font-weight: 400; font-family: 'Inter', sans-serif;
+    letter-spacing: .04em;
+  }
+  /* This-week pulse at bottom of side */
+  .pulse {
+    background: var(--sage); color: var(--paper);
+    border-radius: 18px; padding: 18px 22px;
+    display: grid; grid-template-columns: 1fr auto; gap: 18px; align-items: center;
+  }
+  .pulse .lbl {
+    font-size: 10.5px; letter-spacing: .2em; text-transform: uppercase;
+    color: rgba(245,239,226,.7); margin-bottom: 4px;
+  }
+  .pulse .text {
+    font-family: 'Newsreader', serif; font-size: 18px; font-style: italic; line-height: 1.2;
+  }
+  .pulse .deal {
+    font-family: 'Newsreader', serif; font-size: 28px; font-weight: 600; font-style: italic;
+    color: #FFD58A;
+  }
+  /* Footer */
+  .foot { display: grid; grid-template-columns: auto 1fr auto; align-items: end;
+          gap: 28px; padding-top: 14px; border-top: 1px solid var(--rule);
+          font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+          color: var(--muted); }
+  .foot .addr { font-weight: 500; color: var(--ink); }
+  .foot .stars { color: var(--terra); font-size: 14px; letter-spacing: .04em; }
+  .foot .order {
+    background: var(--terra); color: var(--paper); padding: 12px 18px;
+    border-radius: 999px; letter-spacing: .12em; font-size: 11px;
+    text-decoration: none; font-weight: 600;
+    box-shadow: 0 8px 20px -6px rgba(184,92,61,.4);
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+  <span class="gutter-l">Vol · I · Issue · 02 · Menu</span>
+  <span class="gutter-r">Open · 7 : 30 AM → 2 AM · 2026</span>
+
+  <nav class="nav">
+    <div class="brand"><span class="clover">☘</span>Mom's OG</div>
+    <div class="links">
+      <a href="#" class="active">Menu</a>
+      <a href="#">Story</a>
+      <a href="#">Reviews</a>
+      <a href="#">Visit</a>
+    </div>
+    <div class="meta">
+      <span class="pill">● Open · 2 AM</span>
+      <span>Order →</span>
+    </div>
+  </nav>
+
+  <section class="body">
+    <article class="lede">
+      <p class="eyebrow">— Section · No. 02 · The Menu —</p>
+      <h1><span class="num">Sixteen</span> <em>sauces</em>,<br>one burger,<br>the cheapest <em>Long Island</em><br>in Gainesville.</h1>
+      <div class="rule"></div>
+      <p class="body-text">Cory restocks them in the order regulars empty them. The burger has stayed at $9.60 since the rebrand. The Long Island has stayed at <em>three dollars</em> longer than the kitchen has had its current cook. Some pricing is principle, not promotion.</p>
+
+      <div class="index">
+        <p class="lbl">— The 16, in restock order —</p>
+        <div class="grid">
+          <span class="chip s"><span>Baby Mama</span><span class="n">01</span></span>
+          <span class="chip"><span>Hot Garlic</span><span class="n">02</span></span>
+          <span class="chip"><span>Teriyaki</span><span class="n">03</span></span>
+          <span class="chip"><span>Mild Buffalo</span><span class="n">04</span></span>
+          <span class="chip"><span>Hot Buffalo</span><span class="n">05</span></span>
+          <span class="chip"><span>Honey BBQ</span><span class="n">06</span></span>
+          <span class="chip"><span>Sweet Chili</span><span class="n">07</span></span>
+          <span class="chip"><span>Garlic Parm</span><span class="n">08</span></span>
+          <span class="chip"><span>Lemon Pepper</span><span class="n">09</span></span>
+          <span class="chip"><span>Cajun Dry</span><span class="n">10</span></span>
+          <span class="chip"><span>Old Bay</span><span class="n">11</span></span>
+          <span class="chip"><span>Mango Habanero</span><span class="n">12</span></span>
+          <span class="chip"><span>Carolina Gold</span><span class="n">13</span></span>
+          <span class="chip"><span>Smoky BBQ</span><span class="n">14</span></span>
+          <span class="chip"><span>Naked</span><span class="n">15</span></span>
+          <span class="chip"><span>House Hot</span><span class="n">16</span></span>
+        </div>
+      </div>
+    </article>
+
+    <aside class="side">
+      <div class="head">
+        <div class="ic">★</div>
+        <div>
+          <p class="h-title">The plates that come back through the kitchen all night long.</p>
+          <p class="h-sub">— What people order twice —</p>
+        </div>
+      </div>
+
+      <div>
+        <div class="sig-row">
+          <div>
+            <p class="name">Baby Mama Wings</p>
+            <p class="desc">Sweet, sticky, a little dangerous. Customer favorite three years running.</p>
+          </div>
+          <p class="price">$12<small>/10pc</small></p>
+        </div>
+        <div class="sig-row">
+          <div>
+            <p class="name">Mom's Burger</p>
+            <p class="desc">House patty, melted cheese, the works.</p>
+          </div>
+          <p class="price">$9.60</p>
+        </div>
+        <div class="sig-row">
+          <div>
+            <p class="name">Bacon Cheese + Loaded Tots</p>
+            <p class="desc">The plate every other table is ordering.</p>
+          </div>
+          <p class="price">$13<small>/combo</small></p>
+        </div>
+        <div class="sig-row">
+          <div>
+            <p class="name">$3 Long Island</p>
+            <p class="desc">Every. Single. Night.</p>
+          </div>
+          <p class="price">$3</p>
+        </div>
+      </div>
+
+      <div class="pulse">
+        <div>
+          <p class="lbl">— Tonight · Tuesday —</p>
+          <p class="text">Trivia at 8 PM. Back room fills fast.</p>
+        </div>
+        <p class="deal">FREE</p>
+      </div>
+    </aside>
+  </section>
+
+  <footer class="foot">
+    <span class="addr">1017 W University Ave · Gainesville, FL · (352) 378-8135</span>
+    <span class="stars">★★★★½ · 4.4 · 190+ Google reviews</span>
+    <a class="order" href="#">Order on Toast →</a>
+  </footer>
+</div>
+</body>
+</html>

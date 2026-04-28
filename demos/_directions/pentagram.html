@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<!-- Mom's OG · Menu sub-page · Direction D1: Pentagram / Michael Bierut · 信息建筑派 -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Mom's OG · Menu · Pentagram direction</title>
+<style>
+  :root {
+    --ink: #0A0A0A;
+    --paper: #FFFFFF;
+    --rule: #0A0A0A;
+    --accent: #FA4616;        /* Mom's OG orange — Bierut-style single accent */
+    --muted: #6B6B6B;
+    --line: #E0E0E0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Helvetica Neue', 'Inter', system-ui, -apple-system, sans-serif;
+    background: var(--paper); color: var(--ink);
+    font-size: 14px; line-height: 1.45; -webkit-font-smoothing: antialiased;
+  }
+  .deck { width: 1440px; height: 900px; padding: 32px 48px; display: grid;
+          grid-template-rows: auto auto 1fr auto; gap: 24px; }
+  /* Folio top bar */
+  .folio { display: grid; grid-template-columns: 1fr auto 1fr; align-items: end;
+           padding-bottom: 16px; border-bottom: 1px solid var(--rule); font-size: 11px;
+           letter-spacing: .14em; text-transform: uppercase; }
+  .folio .name { font-weight: 700; font-size: 14px; letter-spacing: .12em; }
+  .folio .center { text-align: center; color: var(--muted); }
+  .folio .meta { text-align: right; color: var(--muted); }
+  /* Section header — issue number + label */
+  .section-head { display: grid; grid-template-columns: auto 1fr auto; gap: 32px;
+                  align-items: end; padding-bottom: 12px; }
+  .section-head .num {
+    font-size: 220px; line-height: .85; font-weight: 700; letter-spacing: -.04em;
+    color: var(--ink);
+  }
+  .section-head .num em { font-style: normal; color: var(--accent); }
+  .section-head .meta-block { padding-bottom: 18px; }
+  .section-head .label {
+    font-size: 11px; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 12px;
+  }
+  .section-head .title {
+    font-size: 56px; font-weight: 700; line-height: 1; letter-spacing: -.025em;
+    max-width: 560px;
+  }
+  .section-head .deck-no {
+    font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+    text-align: right; padding-bottom: 18px;
+  }
+  /* Body grid */
+  .body-grid {
+    display: grid; grid-template-columns: 5fr 1px 4fr 1px 3fr; gap: 28px;
+    padding-top: 12px; border-top: 2px solid var(--rule);
+  }
+  .col-rule { background: var(--line); }
+  /* Column 1 — featured dishes */
+  .signatures .col-head {
+    font-size: 10px; letter-spacing: .2em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 14px;
+  }
+  .dish { display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: baseline;
+          padding: 14px 0; border-bottom: 1px dotted var(--line); }
+  .dish:last-of-type { border-bottom: none; }
+  .dish .name {
+    font-size: 22px; font-weight: 700; letter-spacing: -.012em; line-height: 1.05;
+  }
+  .dish .name em { font-style: normal; color: var(--accent); }
+  .dish .desc {
+    font-size: 12px; color: var(--muted); margin-top: 4px;
+    max-width: 320px; line-height: 1.45;
+  }
+  .dish .price {
+    font-size: 28px; font-weight: 700; line-height: 1; letter-spacing: -.015em;
+    white-space: nowrap;
+  }
+  .dish .price small { font-size: 11px; color: var(--muted); font-weight: 400; }
+  /* Column 2 — sauce index */
+  .sauces .col-head {
+    font-size: 10px; letter-spacing: .2em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 14px;
+  }
+  .sauces .col-title {
+    font-size: 13px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .14em; margin-bottom: 16px; padding-bottom: 8px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .sauces ol {
+    columns: 2; column-gap: 22px; list-style: none;
+    counter-reset: s;
+  }
+  .sauces ol li {
+    counter-increment: s; display: flex; justify-content: space-between;
+    padding: 4px 0; border-bottom: 1px dotted var(--line);
+    break-inside: avoid; font-size: 11.5px;
+  }
+  .sauces ol li::before {
+    content: counter(s, decimal-leading-zero);
+    color: var(--muted); margin-right: 8px;
+    font-variant-numeric: tabular-nums; font-size: 10px;
+  }
+  .sauces ol li.s { color: var(--accent); font-weight: 700; }
+  /* Column 3 — daily specials */
+  .week .col-head {
+    font-size: 10px; letter-spacing: .2em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 14px;
+  }
+  .week .day { display: grid; grid-template-columns: 28px 1fr auto;
+               padding: 6px 0; border-bottom: 1px dotted var(--line);
+               font-size: 11.5px; align-items: baseline; }
+  .week .day .d { font-weight: 700; letter-spacing: .08em; text-transform: uppercase; font-size: 10.5px; }
+  .week .day .what { color: var(--ink); }
+  .week .day .deal { color: var(--accent); font-weight: 700; font-size: 11.5px; white-space: nowrap; }
+  .week .day.today { color: var(--paper); background: var(--accent); margin: 0 -10px;
+                     padding: 6px 10px; }
+  .week .day.today .d, .week .day.today .what, .week .day.today .deal { color: var(--paper); }
+  /* Footer */
+  .foot {
+    display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 24px;
+    padding-top: 16px; border-top: 1px solid var(--rule);
+    font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted);
+    align-items: end;
+  }
+  .foot .addr { color: var(--ink); font-weight: 700; letter-spacing: .1em; }
+  .foot .order {
+    background: var(--ink); color: var(--paper); padding: 12px 16px;
+    text-align: center; letter-spacing: .14em;
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+  <header class="folio">
+    <span class="name">MOM'S OG</span>
+    <span class="center">Vol. I · Issue 02 · The Menu</span>
+    <span class="meta">1017 W University Ave · Gainesville, FL</span>
+  </header>
+
+  <section class="section-head">
+    <div class="num">16<em>.</em></div>
+    <div class="meta-block">
+      <p class="label">— Section · 02 · The Menu —</p>
+      <h1 class="title">Sixteen sauces, one burger, the cheapest Long Island in Gainesville.</h1>
+    </div>
+    <div class="deck-no">Page 02 / 04</div>
+  </section>
+
+  <main class="body-grid">
+    <div class="signatures">
+      <p class="col-head">— Signatures · the plates that come back through the kitchen —</p>
+      <article class="dish">
+        <div>
+          <p class="name">Baby Mama <em>Wings.</em></p>
+          <p class="desc">The sauce regulars order on autopilot. Sweet, sticky, a little dangerous.</p>
+        </div>
+        <p class="price">$12<small> /10pc</small></p>
+      </article>
+      <article class="dish">
+        <div>
+          <p class="name">Mom's Burger</p>
+          <p class="desc">House patty, melted cheese, the works.</p>
+        </div>
+        <p class="price">$9.60</p>
+      </article>
+      <article class="dish">
+        <div>
+          <p class="name">Bacon Cheese + Loaded Tots</p>
+          <p class="desc">The plate every other table is ordering. Bacon, melted cheese, the basket of tots that gets fought over.</p>
+        </div>
+        <p class="price">$13<small> /combo</small></p>
+      </article>
+      <article class="dish">
+        <div>
+          <p class="name">Hot Garlic Wings</p>
+          <p class="desc">Top-mentioned wing flavor in 2025 reviews. Real garlic, real heat.</p>
+        </div>
+        <p class="price">$8<small> /5pc</small></p>
+      </article>
+      <article class="dish">
+        <div>
+          <p class="name">$3 Long Island</p>
+          <p class="desc">If you've been to Mom's, you already know. Every. Single. Night.</p>
+        </div>
+        <p class="price">$3</p>
+      </article>
+    </div>
+
+    <div class="col-rule"></div>
+
+    <div class="sauces">
+      <p class="col-head">— Sauces, indexed —</p>
+      <p class="col-title">The 16</p>
+      <ol>
+        <li class="s">Baby Mama</li>
+        <li>Hot Garlic</li>
+        <li>Teriyaki</li>
+        <li>Mild Buffalo</li>
+        <li>Hot Buffalo</li>
+        <li>Honey BBQ</li>
+        <li>Sweet Chili</li>
+        <li>Garlic Parm</li>
+        <li>Lemon Pepper</li>
+        <li>Cajun Dry</li>
+        <li>Old Bay</li>
+        <li>Mango Habanero</li>
+        <li>Carolina Gold</li>
+        <li>Smoky BBQ</li>
+        <li>Naked</li>
+        <li>House Hot</li>
+      </ol>
+    </div>
+
+    <div class="col-rule"></div>
+
+    <div class="week">
+      <p class="col-head">— This week —</p>
+      <div class="day"><span class="d">Sun</span><span class="what">Hangover Brunch</span><span class="deal">AM</span></div>
+      <div class="day"><span class="d">Mon</span><span class="what">Long Island Night</span><span class="deal">$3</span></div>
+      <div class="day today"><span class="d">Tue</span><span class="what">Trivia · 8 PM</span><span class="deal">FREE</span></div>
+      <div class="day"><span class="d">Wed</span><span class="what">Wing Night</span><span class="deal">$8↑</span></div>
+      <div class="day"><span class="d">Thu</span><span class="what">$5 Burger + Fries</span><span class="deal">$5</span></div>
+      <div class="day"><span class="d">Fri</span><span class="what">Live Bands · Late Kitchen</span><span class="deal">PM</span></div>
+      <div class="day"><span class="d">Sat</span><span class="what">Gameday HQ 🐊</span><span class="deal">ALL</span></div>
+    </div>
+  </main>
+
+  <footer class="foot">
+    <span class="addr">Open 7:30 AM → 2 AM · every day</span>
+    <span>(352) 378-8135</span>
+    <span>1017 W University Ave</span>
+    <a class="order" href="#">Order on Toast →</a>
+  </footer>
+</div>
+</body>
+</html>

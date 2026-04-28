@@ -21,11 +21,30 @@ const MIN_DAILY_LEADS = parseInt(process.env.LATCHLY_DAILY_MINIMUM || '50', 10);
 const LOCAL_SHARE_MIN = parseFloat(process.env.LATCHLY_LOCAL_SHARE_MIN || '0.20');
 const LOCAL_SHARE_MAX = parseFloat(process.env.LATCHLY_LOCAL_SHARE_MAX || '0.30');
 const QUALIFIED_SCORE = parseFloat(process.env.LATCHLY_QUALIFIED_SCORE || '8');
+
+// Premium tier = high-confidence redesign/creation pitch:
+// score >= 9 AND signal_count >= 3 AND (no-website OR poor-website) AND
+// decision_maker_confidence >= 0.6. Standard tier is everything else
+// that still survives the existing quality gate.
+const PREMIUM_TIER = {
+  minScore: parseFloat(process.env.LATCHLY_PREMIUM_MIN_SCORE || '9'),
+  minSignalCount: parseInt(process.env.LATCHLY_PREMIUM_MIN_SIGNALS || '3', 10),
+  requireWebsiteIssue: process.env.LATCHLY_PREMIUM_REQUIRE_WEBSITE_ISSUE !== '0',
+  minDmConfidence: parseFloat(process.env.LATCHLY_PREMIUM_MIN_DM_CONFIDENCE || '0.6'),
+};
 const NO_WEBSITE_TARGET = parseInt(process.env.LATCHLY_NO_WEBSITE_TARGET || String(Math.floor(TARGET_DAILY_LEADS / 2)), 10);
 const POOR_WEBSITE_TARGET = parseInt(process.env.LATCHLY_POOR_WEBSITE_TARGET || String(TARGET_DAILY_LEADS - NO_WEBSITE_TARGET), 10);
 const NO_WEBSITE_MAX_SHARE = Math.min(1, Math.max(0, parseFloat(process.env.LATCHLY_NO_WEBSITE_MAX_SHARE || '0.55')));
 const PROMISING_NEG_THRESHOLD = parseInt(process.env.LATCHLY_PROMISING_NEG_THRESHOLD || '2', 10);
 const SOURCE_PER_QUERY_LIMIT = parseInt(process.env.LATCHLY_SOURCE_PER_QUERY_LIMIT || '8', 10);
+const AUDIT_CONCURRENCY = Math.max(1, parseInt(process.env.LATCHLY_AUDIT_CONCURRENCY || '3', 10));
+const MAX_AUDIT_ATTEMPTS = Math.max(1, parseInt(process.env.LATCHLY_MAX_AUDIT_ATTEMPTS || '180', 10));
+const MAX_RUN_MINUTES = Math.max(1, parseFloat(process.env.LATCHLY_MAX_RUN_MINUTES || '30'));
+const DIAGNOSTIC_INTERVAL = Math.max(1, parseInt(process.env.LATCHLY_DIAGNOSTIC_INTERVAL || '25', 10));
+const WEBSITE_RICH_SOURCE_CAP = Math.max(1, parseInt(process.env.LATCHLY_WEBSITE_RICH_SOURCE_CAP || '45', 10));
+const WEBSITE_RICH_MARKET_CAP = Math.max(1, parseInt(process.env.LATCHLY_WEBSITE_RICH_MARKET_CAP || '8', 10));
+const WAVE_LOW_YIELD_MIN_ATTEMPTS = Math.max(1, parseInt(process.env.LATCHLY_WAVE_LOW_YIELD_MIN_ATTEMPTS || '25', 10));
+const WAVE_LOW_YIELD_MIN_RATE = Math.max(0, parseFloat(process.env.LATCHLY_WAVE_LOW_YIELD_MIN_RATE || '0.04'));
 
 const DIGEST_TO = process.env.LEAD_DIGEST_TO
   || process.env.LATCHLY_LEAD_DIGEST_TO
@@ -216,19 +235,50 @@ const OSM_NICHE_TAGS = {
   'gutter cleaning':            [['craft', 'gutter']],
 };
 
-// Florida DBPR (myfloridalicense.com) license-type codes by niche. Used to
-// query the public license search statewide. Multiple types per niche are
-// queried sequentially.
+// Florida DBPR (myfloridalicense.com) license search fields by niche. These
+// are the current wl11.asp UI Board/LicenseType values, not the printed
+// license prefixes (CFC, EC, CCC, etc.). DBPR does not publish phone numbers,
+// so discovery enriches these licensed names through public directories before
+// admitting candidates.
 const FLORIDA_DBPR_LICENSE_TYPES = {
-  'roofing contractor':    ['CCC', 'CGC', 'CRC'],
-  'hvac contractor':       ['CMC', 'CAC'],
-  'plumber':               ['CFC'],
-  'electrician':           ['EC', 'ER', 'ES'],
-  'pool service':          ['RP', 'CPC'],
-  'pest control':          ['JF', 'JE'],
-  'remodeling contractor': ['CGC', 'CRC', 'CBC'],
-  'concrete contractor':   ['CGC', 'CRC'],
-  'siding contractor':     ['CGC', 'CRC'],
+  'roofing contractor': [
+    { board: '06', licenseType: '0603', label: 'Certified Roofing Contractor' },
+    { board: '06', licenseType: '0616', label: 'Registered Roofing Contractor' },
+  ],
+  'hvac contractor': [
+    { board: '06', licenseType: '0601', label: 'Certified AC Contractor' },
+    { board: '06', licenseType: '0606', label: 'Certified Mechanical Contractor' },
+    { board: '06', licenseType: '0614', label: 'Registered Air Conditioning Contractor' },
+    { board: '06', licenseType: '0620', label: 'Registered Mechanical Contractor' },
+  ],
+  plumber: [
+    { board: '06', licenseType: '0604', label: 'Certified Plumbing Contractor' },
+    { board: '06', licenseType: '0617', label: 'Registered Plumbing Contractor' },
+  ],
+  electrician: [
+    { board: '08', licenseType: '0801', label: 'Certified Electrical Contractor' },
+    { board: '08', licenseType: '0805', label: 'Registered Electrical Contractor' },
+  ],
+  'pool service': [
+    { board: '06', licenseType: '0607', label: 'Certified Pool/Spa Contractor' },
+    { board: '06', licenseType: '0621', label: 'Registered Pool/Spa Contractor' },
+  ],
+  'remodeling contractor': [
+    { board: '06', licenseType: '0602', label: 'Certified Building Contractor' },
+    { board: '06', licenseType: '0605', label: 'Certified General Contractor' },
+    { board: '06', licenseType: '0608', label: 'Certified Residential Contractor' },
+    { board: '06', licenseType: '0615', label: 'Registered Building Contractor' },
+    { board: '06', licenseType: '0618', label: 'Registered General Contractor' },
+    { board: '06', licenseType: '0623', label: 'Registered Residential Contractor' },
+  ],
+  'concrete contractor': [
+    { board: '06', licenseType: '0605', label: 'Certified General Contractor' },
+    { board: '06', licenseType: '0618', label: 'Registered General Contractor' },
+  ],
+  'siding contractor': [
+    { board: '06', licenseType: '0602', label: 'Certified Building Contractor' },
+    { board: '06', licenseType: '0615', label: 'Registered Building Contractor' },
+  ],
 };
 
 const HOME_SERVICE_NICHES = [
@@ -325,9 +375,18 @@ module.exports = {
   NO_WEBSITE_MAX_SHARE,
   PROMISING_NEG_THRESHOLD,
   SOURCE_PER_QUERY_LIMIT,
+  AUDIT_CONCURRENCY,
+  MAX_AUDIT_ATTEMPTS,
+  MAX_RUN_MINUTES,
+  DIAGNOSTIC_INTERVAL,
+  WEBSITE_RICH_SOURCE_CAP,
+  WEBSITE_RICH_MARKET_CAP,
+  WAVE_LOW_YIELD_MIN_ATTEMPTS,
+  WAVE_LOW_YIELD_MIN_RATE,
   LOCAL_SHARE_MIN,
   LOCAL_SHARE_MAX,
   QUALIFIED_SCORE,
+  PREMIUM_TIER,
   DIGEST_TO,
   DIGEST_FROM,
   LOCAL_MARKETS,

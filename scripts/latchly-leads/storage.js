@@ -4,17 +4,26 @@ const { LEADS_DIR } = require('./config');
 const { businessKey, ensureDir } = require('./utils');
 
 function createStorage() {
-  if (process.env.DATABASE_URL && process.env.LATCHLY_LEADS_SKIP_DB !== '1') {
-    return createDbStorage();
+  const url = databaseUrl();
+  if (url && process.env.LATCHLY_LEADS_SKIP_DB !== '1') {
+    return createDbStorage(url);
   }
   return createFileStorage();
 }
 
+function databaseUrl() {
+  return process.env.DATABASE_URL_UNPOOLED
+    || process.env.POSTGRES_URL_NON_POOLING
+    || process.env.DATABASE_URL
+    || '';
+}
+
 function createFileStorage() {
-  const file = path.join(LEADS_DIR, 'delivered.json');
+  const deliveredFile = path.join(LEADS_DIR, 'delivered.json');
+  const crmFile = path.join(LEADS_DIR, 'crm-leads.json');
   ensureDir(LEADS_DIR);
 
-  function read() {
+  function readJsonArray(file) {
     if (!fs.existsSync(file)) return [];
     try {
       return JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -26,11 +35,14 @@ function createFileStorage() {
   return {
     async init() {},
     async deliveredKeys() {
-      return new Set(read().map(row => row.businessKey));
+      return new Set(
+        [...readJsonArray(deliveredFile), ...readJsonArray(crmFile)]
+          .map(row => row.businessKey)
+          .filter(Boolean),
+      );
     },
     async upsertLeads(leads, meta = {}) {
-      const file = path.join(LEADS_DIR, 'crm-leads.json');
-      const existing = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : [];
+      const existing = readJsonArray(crmFile);
       const byKey = new Map(existing.map(row => [row.businessKey, row]));
       const now = new Date().toISOString();
       for (const lead of leads) {
@@ -42,23 +54,30 @@ function createFileStorage() {
           deliveredAt: byKey.get(row.businessKey)?.deliveredAt || now,
         });
       }
-      fs.writeFileSync(file, JSON.stringify([...byKey.values()], null, 2));
+      fs.writeFileSync(crmFile, JSON.stringify([...byKey.values()], null, 2));
     },
     async markDelivered(leads, meta = {}) {
-      const existing = read();
+      const existing = readJsonArray(deliveredFile);
+      const byKey = new Map(existing.map(row => [row.businessKey, row]));
       const now = new Date().toISOString();
-      const additions = leads.map(lead => ({
-        businessKey: businessKey(lead),
-        businessName: lead.businessName,
-        city: lead.city,
-        state: lead.state,
-        phone: lead.phone,
-        website: lead.website,
-        score: lead.score,
-        deliveredAt: now,
-        meta,
-      }));
-      fs.writeFileSync(file, JSON.stringify([...existing, ...additions], null, 2));
+      for (const lead of leads) {
+        const key = businessKey(lead);
+        if (!key) continue;
+        const prior = byKey.get(key);
+        byKey.set(key, {
+          ...prior,
+          businessKey: key,
+          businessName: lead.businessName,
+          city: lead.city,
+          state: lead.state,
+          phone: lead.phone,
+          website: lead.website,
+          score: lead.score,
+          deliveredAt: prior?.deliveredAt || now,
+          meta,
+        });
+      }
+      fs.writeFileSync(deliveredFile, JSON.stringify([...byKey.values()], null, 2));
     },
     async recordRun(stats = {}, email = {}) {
       const file = path.join(LEADS_DIR, 'crm-runs.json');
@@ -86,8 +105,21 @@ function createFileStorage() {
         sourceCounts: stats.sourceCounts || {},
         scoreDistribution: stats.scoreDistribution || {},
         websiteStatusCounts: stats.websiteStatusCounts || {},
+        tierMode: stats.tierMode || 'both',
+        premiumQualified: stats.premiumQualified || 0,
+        premiumDelivered: stats.premiumDelivered || 0,
+        standardDelivered: stats.standardDelivered || 0,
+        premiumGateIssues: stats.premiumGateIssues || [],
         selectionNotes: stats.selectionNotes || [],
         topRejectionReasons: stats.topRejectionReasons || [],
+        topRejectionsBySource: stats.topRejectionsBySource || [],
+        candidateOpportunityCounts: stats.candidateOpportunityCounts || {},
+        waveStats: stats.waveStats || [],
+        diagnosticsPath: stats.diagnosticsPath || '',
+        diagnostics: stats.diagnostics || {},
+        stopReason: stats.stopReason || '',
+        maxAuditAttempts: stats.maxAuditAttempts || 0,
+        maxRunMinutes: stats.maxRunMinutes || 0,
         underTargetReason: stats.underTargetReason || '',
         email,
         createdAt: new Date().toISOString(),
@@ -97,11 +129,11 @@ function createFileStorage() {
   };
 }
 
-function createDbStorage() {
+function createDbStorage(url) {
   let sqlPromise;
   async function sql() {
     if (!sqlPromise) {
-      sqlPromise = import('@neondatabase/serverless').then(({ neon }) => neon(process.env.DATABASE_URL));
+      sqlPromise = import('@neondatabase/serverless').then(({ neon }) => neon(url));
     }
     return sqlPromise;
   }
@@ -154,6 +186,8 @@ function createDbStorage() {
           next_follow_up_date DATE,
           archived_at TIMESTAMP,
           archive_reason TEXT,
+          tier TEXT NOT NULL DEFAULT 'standard',
+          signal_count INT NOT NULL DEFAULT 0,
           first_seen_at TIMESTAMP NOT NULL DEFAULT NOW(),
           last_seen_at TIMESTAMP NOT NULL DEFAULT NOW(),
           delivered_at TIMESTAMP NOT NULL DEFAULT NOW(),
@@ -166,6 +200,22 @@ function createDbStorage() {
       await db`CREATE INDEX IF NOT EXISTS idx_latchly_leads_status ON latchly_leads (status)`;
       await db`ALTER TABLE latchly_leads ADD COLUMN IF NOT EXISTS archived_at TIMESTAMP`;
       await db`ALTER TABLE latchly_leads ADD COLUMN IF NOT EXISTS archive_reason TEXT`;
+      await db`ALTER TABLE latchly_leads ADD COLUMN IF NOT EXISTS tier TEXT NOT NULL DEFAULT 'standard'`;
+      await db`ALTER TABLE latchly_leads ADD COLUMN IF NOT EXISTS signal_count INT NOT NULL DEFAULT 0`;
+      await db`
+        DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM information_schema.table_constraints
+            WHERE table_name = 'latchly_leads'
+              AND constraint_name = 'latchly_leads_tier_check'
+          ) THEN
+            ALTER TABLE latchly_leads
+              ADD CONSTRAINT latchly_leads_tier_check CHECK (tier IN ('premium', 'standard'));
+          END IF;
+        END $$`;
+      await db`CREATE INDEX IF NOT EXISTS idx_latchly_leads_tier ON latchly_leads (tier)`;
+      await db`CREATE INDEX IF NOT EXISTS idx_latchly_leads_tier_score ON latchly_leads (tier, score DESC)`;
       await db`CREATE INDEX IF NOT EXISTS idx_latchly_leads_score ON latchly_leads (score DESC)`;
       await db`CREATE INDEX IF NOT EXISTS idx_latchly_leads_delivered_at ON latchly_leads (delivered_at DESC)`;
       await db`CREATE INDEX IF NOT EXISTS idx_latchly_leads_local_market ON latchly_leads (is_local_market)`;
@@ -227,7 +277,7 @@ function createDbStorage() {
             phone, email, website, website_status, source_name, source_record_id,
             decision_maker_name, decision_maker_title, decision_maker_confidence,
             score, score_reasons, score_blockers, pitch, is_local_market,
-            source_payload, audit_payload
+            source_payload, audit_payload, tier, signal_count
           )
           VALUES (
             ${row.businessKey}, ${row.businessName}, ${row.normalizedName}, ${row.niche},
@@ -236,7 +286,8 @@ function createDbStorage() {
             ${row.decisionMakerName}, ${row.decisionMakerTitle}, ${row.decisionMakerConfidence},
             ${row.score}, ${JSON.stringify(row.scoreReasons)}::jsonb, ${JSON.stringify(row.scoreBlockers)}::jsonb,
             ${JSON.stringify(row.pitch)}::jsonb, ${row.isLocalMarket},
-            ${JSON.stringify(row.sourcePayload)}::jsonb, ${JSON.stringify(row.auditPayload)}::jsonb
+            ${JSON.stringify(row.sourcePayload)}::jsonb, ${JSON.stringify(row.auditPayload)}::jsonb,
+            ${row.tier}, ${row.signalCount}
           )
           ON CONFLICT (business_key) DO UPDATE SET
             business_name = EXCLUDED.business_name,
@@ -250,9 +301,9 @@ function createDbStorage() {
             website_status = EXCLUDED.website_status,
             source_name = EXCLUDED.source_name,
             source_record_id = EXCLUDED.source_record_id,
-            decision_maker_name = COALESCE(NULLIF(latchly_leads.decision_maker_name, ''), EXCLUDED.decision_maker_name),
-            decision_maker_title = COALESCE(NULLIF(latchly_leads.decision_maker_title, ''), EXCLUDED.decision_maker_title),
-            decision_maker_confidence = COALESCE(latchly_leads.decision_maker_confidence, EXCLUDED.decision_maker_confidence),
+            decision_maker_name = COALESCE(NULLIF(EXCLUDED.decision_maker_name, ''), latchly_leads.decision_maker_name),
+            decision_maker_title = COALESCE(NULLIF(EXCLUDED.decision_maker_title, ''), latchly_leads.decision_maker_title),
+            decision_maker_confidence = COALESCE(EXCLUDED.decision_maker_confidence, latchly_leads.decision_maker_confidence),
             score = EXCLUDED.score,
             score_reasons = EXCLUDED.score_reasons,
             score_blockers = EXCLUDED.score_blockers,
@@ -260,6 +311,8 @@ function createDbStorage() {
             is_local_market = EXCLUDED.is_local_market,
             source_payload = EXCLUDED.source_payload,
             audit_payload = EXCLUDED.audit_payload,
+            tier = EXCLUDED.tier,
+            signal_count = EXCLUDED.signal_count,
             last_seen_at = NOW(),
             updated_at = NOW()`;
       }
@@ -315,7 +368,20 @@ function createDbStorage() {
             sourceCounts: stats.sourceCounts || {},
             scoreDistribution: stats.scoreDistribution || {},
             websiteStatusCounts: stats.websiteStatusCounts || {},
+            tierMode: stats.tierMode || 'both',
+            premiumQualified: stats.premiumQualified || 0,
+            premiumDelivered: stats.premiumDelivered || 0,
+            standardDelivered: stats.standardDelivered || 0,
+            premiumGateIssues: stats.premiumGateIssues || [],
             selectionNotes: stats.selectionNotes || [],
+            candidateOpportunityCounts: stats.candidateOpportunityCounts || {},
+            waveStats: stats.waveStats || [],
+            diagnosticsPath: stats.diagnosticsPath || '',
+            diagnostics: stats.diagnostics || {},
+            topRejectionsBySource: stats.topRejectionsBySource || [],
+            stopReason: stats.stopReason || '',
+            maxAuditAttempts: stats.maxAuditAttempts || 0,
+            maxRunMinutes: stats.maxRunMinutes || 0,
           })}::jsonb
         )`;
     },
@@ -325,6 +391,14 @@ function createDbStorage() {
 function toCrmRecord(lead, meta = {}) {
   const decisionMaker = lead.decisionMaker || {};
   const rawPayload = lead.rawPayload || lead.sourcePayload || {};
+  const dmConfidence = decisionMaker.confidence;
+  // decision_maker_confidence column is NUMERIC(4,1) — store the 0..10 view
+  // for display, but premium gate uses the 0..1 normalized value upstream.
+  const dmConfidenceColumn = dmConfidence == null
+    ? null
+    : Number(dmConfidence) <= 1
+      ? Number(dmConfidence) * 10
+      : Number(dmConfidence);
   return {
     businessKey: businessKey(lead),
     businessName: lead.businessName || '',
@@ -340,12 +414,14 @@ function toCrmRecord(lead, meta = {}) {
     sourceRecordId: lead.sourceRecordId || '',
     decisionMakerName: decisionMaker.name || lead.ownerName || lead.contactName || '',
     decisionMakerTitle: decisionMaker.title || lead.ownerTitle || lead.contactTitle || '',
-    decisionMakerConfidence: decisionMaker.confidence || null,
+    decisionMakerConfidence: dmConfidenceColumn,
     score: lead.score || 0,
     scoreReasons: lead.reasons || [],
     scoreBlockers: lead.blockers || [],
     pitch: lead.pitch || {},
     isLocalMarket: Boolean(lead.isLocalMarket),
+    tier: lead.tier === 'premium' ? 'premium' : 'standard',
+    signalCount: Number(lead.signalCount || 0),
     sourcePayload: {
       meta,
       sourceName: lead.sourceName || '',

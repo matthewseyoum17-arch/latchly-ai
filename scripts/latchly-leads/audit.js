@@ -8,6 +8,11 @@ const {
   isLocalMarket,
   siteIssueFindings,
 } = require('./scoring');
+const { extractDecisionMaker } = require('./decision-maker');
+
+const NAV_TIMEOUT_MS = Math.max(3000, parseInt(process.env.LATCHLY_AUDIT_NAV_TIMEOUT_MS || '12000', 10));
+const FETCH_TIMEOUT_MS = Math.max(3000, parseInt(process.env.LATCHLY_AUDIT_FETCH_TIMEOUT_MS || '8000', 10));
+const PAGE_SETTLE_MS = Math.max(0, parseInt(process.env.LATCHLY_AUDIT_PAGE_SETTLE_MS || '300', 10));
 
 const AUDIT_JS = `
 (() => {
@@ -38,6 +43,26 @@ function hasBrowserUse() {
   }
 }
 
+function createAuditSession(options = {}) {
+  const chromiumInstance = options.chromiumInstance || chromium;
+  let browserPromise = null;
+  return {
+    async newContext(contextOptions = {}) {
+      if (!browserPromise) {
+        browserPromise = chromiumInstance.launch({ headless: true });
+      }
+      const browser = await browserPromise;
+      return browser.newContext(contextOptions);
+    },
+    async close() {
+      if (!browserPromise) return;
+      const browser = await browserPromise.catch(() => null);
+      if (browser) await browser.close().catch(() => {});
+      browserPromise = null;
+    },
+  };
+}
+
 // Two-stage audit:
 //   Stage 1 (browser-use → playwright fallback) — single-page initial read
 //      ↓ extract signals from homepage
@@ -47,26 +72,26 @@ function hasBrowserUse() {
 async function auditLead(lead, options = {}) {
   const website = normalizeWebsite(lead.website);
   if (!website) {
-    const audit = decorateAudit(lead, {
+    const audit = decorateAudit(lead, await attachDecisionMaker(lead, {
       status: 'no_website',
       finalUrl: '',
       html: '',
       signals: {},
       pagesChecked: [],
       auditor: 'none',
-    });
+    }));
     return { ...audit, promising: true, promisingReason: 'no_site', auditStage: 'skip-no-site' };
   }
 
   if (process.env.LATCHLY_SKIP_WEBSITE_FETCH === '1') {
-    const audit = decorateAudit(lead, {
+    const audit = decorateAudit(lead, await attachDecisionMaker(lead, {
       status: 'skipped',
       finalUrl: website,
       html: '',
       signals: {},
       pagesChecked: [],
       auditor: 'skipped',
-    });
+    }));
     return { ...audit, promising: false, promisingReason: 'skipped', auditStage: 'skipped' };
   }
 
@@ -79,13 +104,14 @@ async function auditLead(lead, options = {}) {
   // Stage 1
   let stage1Raw;
   try {
-    stage1Raw = await initialReadStage1(website);
+    stage1Raw = await initialReadStage1(website, options);
   } catch (err) {
     if (process.env.LATCHLY_BROWSER_AUDIT_STRICT === '1') throw err;
     const audit = await auditByFetch(website, lead);
     const verdict = evaluatePromising(audit, audit.signals || {});
     return { ...audit, promising: !verdict.notPromising, promisingReason: verdict.reason, promisingNegatives: verdict.negatives, auditStage: 'fetch-fallback' };
   }
+  stage1Raw = await attachDecisionMaker(lead, stage1Raw);
   const stage1Audit = decorateAudit(lead, stage1Raw);
   const stage1Signals = stage1Raw.signals || {};
   const verdict = evaluatePromising(stage1Audit, stage1Signals);
@@ -112,10 +138,24 @@ async function auditLead(lead, options = {}) {
     };
   }
 
+  const plausible = evaluatePlausibleStage2(stage1Audit, stage1Signals);
+  if (!plausible.plausible) {
+    return {
+      ...stage1Audit,
+      promising: false,
+      promisingReason: plausible.reason,
+      promisingNegatives: verdict.negatives,
+      auditStage: 'stage1-rejected',
+    };
+  }
+
   // Stage 2: full multi-page playwright audit on promising real-site candidates.
   let stage2Raw;
   try {
-    stage2Raw = await auditWithPlaywright(website);
+    stage2Raw = await auditWithPlaywright(website, {
+      auditSession: options.auditSession,
+      links: stage1Raw.links || [],
+    });
   } catch {
     return {
       ...stage1Audit,
@@ -125,6 +165,7 @@ async function auditLead(lead, options = {}) {
       auditStage: 'stage1-only',
     };
   }
+  stage2Raw = await attachDecisionMaker(lead, stage2Raw);
   const stage2Audit = decorateAudit(lead, stage2Raw);
   return {
     ...stage2Audit,
@@ -136,8 +177,10 @@ async function auditLead(lead, options = {}) {
   };
 }
 
-async function initialReadStage1(website) {
-  const wantBU = hasBrowserUse() && process.env.LATCHLY_DISABLE_BROWSER_USE !== '1';
+async function initialReadStage1(website, options = {}) {
+  const wantBU = process.env.LATCHLY_USE_BROWSER_USE === '1'
+    && hasBrowserUse()
+    && process.env.LATCHLY_DISABLE_BROWSER_USE !== '1';
   if (wantBU) {
     try {
       return await readSinglePageBrowserUse(website);
@@ -145,7 +188,7 @@ async function initialReadStage1(website) {
       // fall through to playwright
     }
   }
-  return await readSinglePagePlaywright(website);
+  return await readSinglePagePlaywright(website, options);
 }
 
 async function readSinglePageBrowserUse(website) {
@@ -169,24 +212,25 @@ async function readSinglePageBrowserUse(website) {
   return mergePageAudits([parsed], 'browser-use');
 }
 
-async function readSinglePagePlaywright(website) {
-  const browser = await chromium.launch({ headless: true });
+async function readSinglePagePlaywright(website, options = {}) {
+  const ownsSession = !options.auditSession;
+  const auditSession = options.auditSession || createAuditSession();
   try {
-    const context = await browser.newContext({
+    const context = await auditSession.newContext({
       viewport: { width: 390, height: 844 },
       userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile Safari/604.1',
     });
     const page = await context.newPage();
     try {
-      await page.goto(website, { timeout: 20000, waitUntil: 'domcontentloaded' });
-      await page.waitForTimeout(400);
+      await page.goto(website, { timeout: NAV_TIMEOUT_MS, waitUntil: 'domcontentloaded' });
+      await page.waitForTimeout(PAGE_SETTLE_MS);
       const parsed = JSON.parse(await page.evaluate(AUDIT_JS));
       return mergePageAudits([parsed], 'playwright');
     } finally {
       await context.close().catch(() => {});
     }
   } finally {
-    await browser.close().catch(() => {});
+    if (ownsSession) await auditSession.close();
   }
 }
 
@@ -213,6 +257,20 @@ function evaluatePromising(audit, signals = {}) {
     return { notPromising: false, reason: `negatives=${negatives}>=${threshold}`, negatives: negList };
   }
   return { notPromising: true, reason: `negatives=${negatives}<${threshold}`, negatives: negList };
+}
+
+function evaluatePlausibleStage2(audit, signals = {}) {
+  const findings = siteIssueFindings(signals);
+  const concrete = findings.filter(finding => finding.weight >= 0.6);
+  const severe = findings.filter(finding => finding.weight >= 0.9);
+  const weight = concrete.reduce((sum, finding) => sum + finding.weight, 0);
+  if (concrete.length >= 4 && severe.length >= 2 && weight >= 4.2) {
+    return { plausible: true, reason: `stage1_weight=${weight.toFixed(1)}` };
+  }
+  return {
+    plausible: false,
+    reason: `stage1_insufficient_evidence:${concrete.length}_concrete:${severe.length}_severe:${weight.toFixed(1)}_weight`,
+  };
 }
 
 async function auditWithBrowserUse(website) {
@@ -243,20 +301,21 @@ async function auditWithBrowserUse(website) {
   return mergePageAudits(pageAudits, 'browser-use');
 }
 
-async function auditWithPlaywright(website) {
-  const browser = await chromium.launch({ headless: true });
-  const pages = await candidatePages(website);
+async function auditWithPlaywright(website, options = {}) {
+  const ownsSession = !options.auditSession;
+  const auditSession = options.auditSession || createAuditSession();
+  const pages = await candidatePages(website, { links: options.links });
   const pageAudits = [];
   try {
     for (const url of pages) {
-      const context = await browser.newContext({
+      const context = await auditSession.newContext({
         viewport: { width: 390, height: 844 },
         userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile Safari/604.1',
       });
       const page = await context.newPage();
       try {
-        await page.goto(url, { timeout: 25000, waitUntil: 'domcontentloaded' });
-        await page.waitForTimeout(800);
+        await page.goto(url, { timeout: NAV_TIMEOUT_MS, waitUntil: 'domcontentloaded' });
+        await page.waitForTimeout(PAGE_SETTLE_MS);
         const parsed = await page.evaluate(AUDIT_JS);
         pageAudits.push(JSON.parse(parsed));
       } finally {
@@ -264,7 +323,7 @@ async function auditWithPlaywright(website) {
       }
     }
   } finally {
-    await browser.close().catch(() => {});
+    if (ownsSession) await auditSession.close();
   }
   return mergePageAudits(pageAudits, 'playwright');
 }
@@ -274,7 +333,7 @@ async function auditByFetch(website, lead = {}) {
   const pageAudits = [];
   for (const url of pages) {
     try {
-      const res = await fetchText(url, 18000);
+      const res = await fetchText(url, FETCH_TIMEOUT_MS);
       if (!res.ok || !res.text) continue;
       pageAudits.push({
         html: res.text,
@@ -287,19 +346,61 @@ async function auditByFetch(website, lead = {}) {
       });
     } catch {}
   }
-  return decorateAudit(lead, mergePageAudits(pageAudits, 'fetch'));
+  return decorateAudit(lead, await attachDecisionMaker(lead, mergePageAudits(pageAudits, 'fetch')));
 }
 
-async function candidatePages(website) {
+async function candidatePages(website, options = {}) {
   const base = normalizeWebsite(website);
-  return [
+  const maxPages = Math.max(1, parseInt(process.env.LATCHLY_STAGE2_MAX_PAGES || '3', 10));
+  return uniqueUrls([
     base,
+    ...relevantInternalLinks(base, options.links || []),
     absoluteUrl(base, '/contact'),
     absoluteUrl(base, '/contact-us'),
-    absoluteUrl(base, '/about'),
-    absoluteUrl(base, '/about-us'),
     absoluteUrl(base, '/services'),
-  ].filter(Boolean);
+  ]).slice(0, maxPages);
+}
+
+function relevantInternalLinks(base, links = []) {
+  const baseHost = hostOf(base);
+  return links
+    .map(link => ({
+      href: normalizeWebsite(link.href || ''),
+      text: String(link.text || ''),
+    }))
+    .filter(link => link.href && hostOf(link.href) === baseHost)
+    .filter(link => /contact|quote|estimate|service|repair|about/i.test(`${link.href} ${link.text}`))
+    .sort((a, b) => linkPriority(a) - linkPriority(b))
+    .map(link => link.href);
+}
+
+function linkPriority(link) {
+  const text = `${link.href} ${link.text}`;
+  if (/quote|estimate|request/i.test(text)) return 0;
+  if (/contact/i.test(text)) return 1;
+  if (/service|repair/i.test(text)) return 2;
+  if (/about/i.test(text)) return 3;
+  return 4;
+}
+
+function hostOf(url) {
+  try {
+    return new URL(normalizeWebsite(url)).hostname.replace(/^www\./i, '').toLowerCase();
+  } catch {
+    return '';
+  }
+}
+
+function uniqueUrls(urls) {
+  const seen = new Set();
+  const out = [];
+  for (const url of urls.filter(Boolean)) {
+    const key = url.replace(/\/+$/, '');
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(key);
+  }
+  return out;
 }
 
 function parseBrowserUseJson(raw) {
@@ -337,6 +438,19 @@ function mergePageAudits(pageAudits, auditor) {
   };
 }
 
+async function attachDecisionMaker(lead, audit) {
+  const urls = audit.pagesChecked?.length
+    ? audit.pagesChecked
+    : [audit.finalUrl || normalizeWebsite(lead.website)].filter(Boolean);
+  const decisionMaker = await extractDecisionMaker(lead, audit.html || '', urls);
+  return {
+    ...audit,
+    decisionMaker,
+    contactName: decisionMaker.name || audit.contactName || '',
+    contactTitle: decisionMaker.title || audit.contactTitle || '',
+  };
+}
+
 function decorateAudit(lead = {}, audit = {}) {
   const status = audit.status || 'skipped';
   const signals = audit.signals || {};
@@ -347,6 +461,7 @@ function decorateAudit(lead = {}, audit = {}) {
   const positiveSignals = buildPositiveSignalEvidence(signals, audit, pagesChecked);
   const contactTruth = buildContactTruth(lead, audit, pagesChecked);
   const businessTruth = buildBusinessTruth(lead);
+  const signalSummary = buildSignalSummary(lead, audit, contactTruth, websiteTruth, negativeSignals);
   const integrityIssues = [];
 
   if (status === 'skipped') integrityIssues.push('Website fetch/audit was skipped');
@@ -376,11 +491,18 @@ function decorateAudit(lead = {}, audit = {}) {
       },
       contactTruth,
       businessTruth,
+      signalSummary,
       evidenceIntegrity: {
         verifiable: integrityIssues.length === 0,
         issues: integrityIssues,
       },
     },
+    decisionMaker: audit.decisionMaker || { name: contactTruth.contactName.value, title: contactTruth.contactName.title, confidence: contactTruth.contactName.confidence, sources: [] },
+    signalCount: signalSummary.count,
+    noWebsite: signalSummary.noWebsite,
+    poorWebsite: signalSummary.poorWebsite,
+    websiteIssue: signalSummary.websiteIssue,
+    decisionMakerConfidence: signalSummary.decisionMakerConfidence,
   };
 }
 
@@ -470,6 +592,11 @@ function buildContactTruth(lead, audit, pagesChecked) {
   const leadPhone = normalizePhone(lead.phone);
   const auditPhone = normalizePhone(audit.phone);
   const phone = leadPhone || auditPhone;
+  const decisionMaker = audit.decisionMaker || {};
+  const decisionMakerName = decisionMaker.name || audit.contactName || lead.ownerName || lead.contactName || '';
+  const decisionMakerTitle = decisionMaker.title || audit.contactTitle || lead.ownerTitle || lead.contactTitle || '';
+  const decisionMakerConfidence = Number(decisionMaker.confidence || 0)
+    || (audit.contactName ? 0.75 : lead.ownerName ? 0.65 : 0);
   return {
     phone: {
       value: phone,
@@ -479,11 +606,86 @@ function buildContactTruth(lead, audit, pagesChecked) {
     },
     emails: (audit.emails || []).map(email => ({ value: email, confidence: 0.85, source: audit.auditor || 'website', url: pagesChecked[0] || audit.finalUrl || '' })),
     contactName: {
-      value: audit.contactName || lead.ownerName || lead.contactName || '',
-      title: audit.contactTitle || lead.ownerTitle || lead.contactTitle || '',
-      confidence: audit.contactName ? 0.75 : lead.ownerName ? 0.65 : 0,
+      value: decisionMakerName,
+      title: decisionMakerTitle,
+      confidence: decisionMakerConfidence,
+      sources: decisionMaker.sources || [],
     },
   };
+}
+
+function buildSignalSummary(lead, audit, contactTruth, websiteTruth, negativeSignals = []) {
+  const flags = {
+    phonePresent: Boolean(contactTruth.phone?.value),
+    emailPresent: Boolean((contactTruth.emails || []).length || lead.email || lead.rawPayload?.email || lead.rawPayload?.Email),
+    socialProfile: hasSocialProfile(lead, audit),
+    gbpPhotos: googleBusinessPhotoCount(lead) >= 3,
+    recentReview: hasRecentReview(lead),
+    decisionMaker: Boolean(contactTruth.contactName?.value && Number(contactTruth.contactName?.confidence || 0) > 0),
+    businessHours: hasBusinessHours(lead),
+    latLngAccuracy: hasLatLng(lead),
+  };
+  const count = Object.values(flags).filter(Boolean).length;
+  const noWebsite = websiteTruth.status === 'no_site';
+  const poorWebsite = websiteTruth.status === 'real_business_website'
+    && negativeSignals.filter(signal => signal.weight >= 0.6 && Number(signal.confidence || 0) >= 0.7).length >= 4;
+  return {
+    count,
+    flags,
+    noWebsite,
+    poorWebsite,
+    websiteIssue: noWebsite || poorWebsite,
+    decisionMakerConfidence: Number(contactTruth.contactName?.confidence || 0),
+  };
+}
+
+function hasSocialProfile(lead, audit) {
+  const values = [
+    lead.facebook,
+    lead.instagram,
+    lead.linkedin,
+    lead.social,
+    lead.socialUrl,
+    lead.rawPayload?.facebook,
+    lead.rawPayload?.instagram,
+    ...(audit.links || []).map(link => link.href || ''),
+  ];
+  return values.some(value => /facebook\.com|instagram\.com|linkedin\.com|x\.com|twitter\.com|youtube\.com/i.test(String(value || '')));
+}
+
+function googleBusinessPhotoCount(lead) {
+  const raw = lead.rawPayload || {};
+  return Number(
+    lead.gbpPhotoCount
+      || lead.googlePhotoCount
+      || lead.photoCount
+      || raw.gbpPhotoCount
+      || raw.googlePhotoCount
+      || raw.photo_count
+      || raw.photos
+      || 0,
+  );
+}
+
+function hasRecentReview(lead) {
+  const raw = lead.rawPayload || {};
+  const value = lead.latestReviewDate || lead.recentReviewDate || lead.lastReviewDate || raw.latestReviewDate || raw.recentReviewDate || raw.last_review_date;
+  if (!value) return Boolean(lead.hasRecentReview || raw.hasRecentReview);
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return false;
+  return Date.now() - date.getTime() <= 60 * 24 * 60 * 60 * 1000;
+}
+
+function hasBusinessHours(lead) {
+  const raw = lead.rawPayload || {};
+  return Boolean(lead.businessHours || lead.hours || lead.openingHours || raw.businessHours || raw.hours || raw.opening_hours);
+}
+
+function hasLatLng(lead) {
+  const raw = lead.rawPayload || {};
+  const lat = lead.lat ?? lead.latitude ?? raw.lat ?? raw.latitude;
+  const lng = lead.lng ?? lead.lon ?? lead.longitude ?? raw.lng ?? raw.lon ?? raw.longitude;
+  return Number.isFinite(Number(lat)) && Number.isFinite(Number(lng));
 }
 
 function buildBusinessTruth(lead) {
@@ -561,12 +763,16 @@ function extractEmails(text) {
 
 module.exports = {
   auditLead,
+  createAuditSession,
   hasBrowserUse,
   auditByFetch,
   auditWithBrowserUse,
   auditWithPlaywright,
+  candidatePages,
   extractContact,
   decorateAudit,
   evaluatePromising,
+  evaluatePlausibleStage2,
   initialReadStage1,
+  readSinglePagePlaywright,
 };

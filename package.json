@@ -23,6 +23,7 @@
     "leads:funnel:daily:email": "node scripts/latchly-leads/pipeline.js",
     "leads:funnel:daily:verbose": "LATCHLY_VERBOSE=1 SKIP_EMAIL=1 node scripts/latchly-leads/pipeline.js",
     "leads:funnel:dry": "DRY_RUN=true LATCHLY_SKIP_LIVE_DISCOVERY=1 LATCHLY_SKIP_BROWSER_AUDIT=1 LATCHLY_SKIP_WEBSITE_FETCH=1 LATCHLY_LEADS_SKIP_DB=1 node scripts/latchly-leads/pipeline.js",
+    "leads:funnel:smoke": "LATCHLY_DAILY_TARGET=10 LATCHLY_DAILY_MINIMUM=10 LATCHLY_MAX_AUDIT_ATTEMPTS=40 LATCHLY_MAX_RUN_MINUTES=10 LATCHLY_DIAGNOSTICS=1 SKIP_EMAIL=1 node scripts/latchly-leads/pipeline.js",
     "leads:funnel:archive-bad-import": "node scripts/latchly-leads/archive-bad-import.js",
     "leads:funnel:quality": "node scripts/latchly-leads/quality-gate.js",
     "leads:funnel:test": "node --test scripts/latchly-leads/tests/*.test.js",

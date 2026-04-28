@@ -11,10 +11,13 @@ const {
   SOURCE_PER_QUERY_LIMIT,
   SUNBELT_MARKETS,
   TARGET_DAILY_LEADS,
+  WEBSITE_RICH_MARKET_CAP,
+  WEBSITE_RICH_SOURCE_CAP,
 } = require('./config');
 const {
   businessKey,
   domainFromWebsite,
+  fetchFormText,
   fetchText,
   normalizeKey,
   normalizePhone,
@@ -32,40 +35,62 @@ async function discoverCandidates(options = {}) {
   const seen = new Set(deliveredKeys);
   const seeds = loadSeedCandidates();
   const liveEnabled = process.env.LATCHLY_SKIP_LIVE_DISCOVERY !== '1';
+  const discoveryOnly = process.env.LATCHLY_DISCOVERY_ONLY || '';
+  const useSource = source => !discoveryOnly || discoveryOnly === source;
   const localCandidateLimit = Math.min(
     limit,
     parseInt(process.env.LATCHLY_LOCAL_CANDIDATE_LIMIT || String(Math.max(TARGET_DAILY_LEADS * 3, 150)), 10),
   );
 
-  const finalize = () => mergeSoftDupes(candidates).slice(0, limit);
+  const finalize = () => orderCandidatesForAudit(mergeSoftDupes(candidates)).slice(0, limit);
 
   if (liveEnabled) {
-    await collectCandidates(candidates, seen, localCandidateLimit, scrapePublicDirectories(localCandidateLimit, LOCAL_MARKETS));
+    if (useSource('directories')) {
+      await collectCandidates(candidates, seen, localCandidateLimit, scrapePublicDirectories(localCandidateLimit, LOCAL_MARKETS));
+    }
+    if (useSource('dbpr')) {
+      await collectCandidates(candidates, seen, localCandidateLimit, scrapeFloridaDBPR(localCandidateLimit - candidates.length, LOCAL_MARKETS));
+    }
     // OSM Overpass adds local supply for Gainesville/Tallahassee — niche
     // balance is mediocre (OSM `craft=roofer` over-tagged vs other crafts)
     // but for LOCAL it's pure additional volume.
-    await collectCandidates(candidates, seen, localCandidateLimit, scrapeOpenStreetMap(localCandidateLimit - candidates.length, LOCAL_MARKETS));
-    await collectCandidates(candidates, seen, localCandidateLimit, scrapePaidFallback(localCandidateLimit - candidates.length, LOCAL_MARKETS));
+    if (useSource('osm')) {
+      await collectCandidates(candidates, seen, localCandidateLimit, scrapeOpenStreetMap(localCandidateLimit - candidates.length, LOCAL_MARKETS));
+    }
+    if (useSource('paid')) {
+      await collectCandidates(candidates, seen, localCandidateLimit, scrapePaidFallback(localCandidateLimit - candidates.length, LOCAL_MARKETS));
+    }
   }
 
-  for (const lead of seeds.filter(isLocalLead)) {
-    addCandidate(candidates, seen, lead);
-    if (candidates.length >= limit) return finalize();
+  if (!discoveryOnly) {
+    for (const lead of seeds.filter(isLocalLead)) {
+      addCandidate(candidates, seen, lead);
+      if (candidates.length >= limit) return finalize();
+    }
   }
 
   if (liveEnabled) {
     const broadMarkets = nonLocalMarkets();
-    await collectCandidates(candidates, seen, limit, scrapePublicDirectories(Math.max(0, limit - candidates.length), broadMarkets));
+    if (useSource('directories')) {
+      await collectCandidates(candidates, seen, limit, scrapePublicDirectories(Math.max(0, limit - candidates.length), broadMarkets));
+    }
+    if (useSource('dbpr')) {
+      await collectCandidates(candidates, seen, limit, scrapeFloridaDBPR(Math.max(0, limit - candidates.length), broadMarkets));
+    }
     // OSM in broader Sunbelt pass is opt-in — adds 8-15 min to daily runs.
-    if (process.env.LATCHLY_ENABLE_OSM_BROAD === '1') {
+    if (useSource('osm') && process.env.LATCHLY_ENABLE_OSM_BROAD === '1') {
       await collectCandidates(candidates, seen, limit, scrapeOpenStreetMap(Math.max(0, limit - candidates.length), broadMarkets));
     }
-    await collectCandidates(candidates, seen, limit, scrapePaidFallback(Math.max(0, limit - candidates.length), broadMarkets));
+    if (useSource('paid')) {
+      await collectCandidates(candidates, seen, limit, scrapePaidFallback(Math.max(0, limit - candidates.length), broadMarkets));
+    }
   }
 
-  for (const lead of seeds.filter(lead => !isLocalLead(lead))) {
-    addCandidate(candidates, seen, lead);
-    if (candidates.length >= limit) return finalize();
+  if (!discoveryOnly) {
+    for (const lead of seeds.filter(lead => !isLocalLead(lead))) {
+      addCandidate(candidates, seen, lead);
+      if (candidates.length >= limit) return finalize();
+    }
   }
 
   return finalize();
@@ -169,10 +194,14 @@ async function* scrapePublicDirectories(limit, marketsOverride = null) {
 
   for (const { niche, market } of sourcePlan(markets)) {
     if (yielded >= limit) return;
-    const results = [
-      ...await scrapeBBB(niche, market.city, market.state).catch(() => []),
-      ...await scrapeYellowPages(niche, market.city, market.state).catch(() => []),
-    ];
+    const [bbbResults, yellowPagesResults] = await Promise.all([
+      scrapeBBB(niche, market.city, market.state).catch(() => []),
+      scrapeYellowPages(niche, market.city, market.state).catch(() => []),
+    ]);
+    const results = orderCandidatesForAudit([
+      ...yellowPagesResults,
+      ...bbbResults,
+    ]);
     for (const lead of results) {
       if (yielded >= limit) return;
       if (!keepCandidate(lead)) continue;
@@ -258,8 +287,8 @@ function nonLocalMarkets() {
 
 function sourcePlan(markets) {
   const plan = [];
-  for (const niche of HOME_SERVICE_NICHES) {
-    for (const market of markets) {
+  for (const market of markets) {
+    for (const niche of HOME_SERVICE_NICHES) {
       plan.push({ niche, market });
     }
   }
@@ -352,10 +381,8 @@ async function* scrapeOpenStreetMap(limit, marketsOverride = null) {
 }
 
 // Florida DBPR public license search. Florida-only (filters markets by state).
-// Best lever for Gainesville/Tallahassee local supply since it lists every
-// licensed contractor statewide regardless of how they market themselves.
-// Endpoint format may need iteration — defensive: silently yields nothing
-// if the endpoint shape changes.
+// DBPR gives licensed names/addresses but no phone, so each result is enriched
+// through YellowPages before it can pass the normal phone-required gate.
 async function* scrapeFloridaDBPR(limit, marketsOverride = null) {
   if (limit <= 0) return;
   if (process.env.LATCHLY_SKIP_DBPR_DISCOVERY === '1') return;
@@ -365,42 +392,60 @@ async function* scrapeFloridaDBPR(limit, marketsOverride = null) {
   const markets = (marketsOverride || prioritizeMarkets()).filter(m => m.state === 'FL');
   if (!markets.length) return;
   let yielded = 0;
+  const dbprNiches = HOME_SERVICE_NICHES
+    .filter(niche => FLORIDA_DBPR_LICENSE_TYPES[niche]?.length)
+    .sort((a, b) => Number(a === 'roofing contractor') - Number(b === 'roofing contractor'));
+  const maxLicenseSearches = parseInt(
+    process.env.LATCHLY_DBPR_MAX_LICENSE_SEARCHES || String(Math.min(8, Math.max(3, limit))),
+    10,
+  );
+  const dbprTimeoutMs = parseInt(process.env.LATCHLY_DBPR_TIMEOUT_MS || '10000', 10);
+  let licenseSearches = 0;
 
   for (const market of markets) {
     if (yielded >= limit) return;
 
-    for (const niche of HOME_SERVICE_NICHES) {
+    for (const niche of dbprNiches) {
       if (yielded >= limit) return;
       const licenseTypes = FLORIDA_DBPR_LICENSE_TYPES[niche];
-      if (!licenseTypes || !licenseTypes.length) continue;
+      const directoryResults = await scrapeYellowPages(niche, market.city, market.state).catch(() => []);
+      if (!directoryResults.length) continue;
 
-      for (const licenseType of licenseTypes) {
+      for (const licenseSearch of licenseTypes) {
         if (yielded >= limit) return;
-        // Public DBPR business search query — POST-style fields encoded as GET.
-        const params = new URLSearchParams({
-          professionId: 'all',
-          licenseTypeCode: licenseType,
-          city: market.city,
-          status: 'Current',
+        if (licenseSearches >= maxLicenseSearches) return;
+        licenseSearches++;
+
+        const form = new URLSearchParams({
+          hSearchType: 'City',
+          hDivision: 'ALL',
+          Board: licenseSearch.board,
+          LicenseType: licenseSearch.licenseType,
+          City: market.city,
+          County: '',
+          State: 'FL',
+          SpecQual2: '',
+          SearchHistoric: '',
+          RecsPerPage: '50',
+          Search1: 'Search',
         });
-        const url = `https://www.myfloridalicense.com/wl11.asp?${params.toString()}`;
+        const url = 'https://www.myfloridalicense.com/wl11.asp?mode=2&search=City&SID=&brd=&typ=';
 
         let res;
         try {
-          res = await fetchText(url, 25000);
+          res = await fetchFormText(url, form, dbprTimeoutMs);
         } catch {
           continue;
         }
         if (!res?.ok || !res.text) continue;
 
-        // The DBPR results page is HTML with a table of licensees. Parse rows
-        // looking for company/individual name + city + license number.
-        const rows = parseDbprResults(res.text, niche, licenseType, market);
-        for (const lead of rows.slice(0, SOURCE_PER_QUERY_LIMIT)) {
+        const rows = parseDbprResults(res.text, niche, licenseSearch, market);
+        for (const dbprLead of rows.slice(0, SOURCE_PER_QUERY_LIMIT)) {
           if (yielded >= limit) return;
-          if (!keepCandidate(lead)) continue;
+          const enriched = enrichDbprCandidate(dbprLead, directoryResults);
+          if (!enriched || !keepCandidate(enriched)) continue;
           yielded++;
-          yield lead;
+          yield enriched;
         }
         await sleep(400);
       }
@@ -411,26 +456,32 @@ async function* scrapeFloridaDBPR(limit, marketsOverride = null) {
 function parseDbprResults(html, niche, licenseType, market) {
   const leads = [];
   if (!html) return leads;
-  // Find table rows; pattern is loose to tolerate DBPR HTML variations.
-  const rowPattern = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+  const rowPattern = /<tr\s+height=['"]40['"][^>]*>\s*<td\s+colspan=['"]1['"][^>]*\s+width=['"]20%['"][\s\S]*?(?=<tr\s+height=['"]40['"][^>]*>\s*<td\s+colspan=['"]1['"][^>]*\s+width=['"]20%['"]|<tr>\s*<td\s+colspan=["']7["']|<\/table>\s*<\/td>\s*<\/tr>)/gi;
   let match;
   while ((match = rowPattern.exec(html))) {
-    const rowHtml = match[1];
+    const rowHtml = match[0];
     const cells = [];
     const cellPattern = /<td[^>]*>([\s\S]*?)<\/td>/gi;
     let cellMatch;
     while ((cellMatch = cellPattern.exec(rowHtml))) {
       cells.push(stripHtml(cellMatch[1]).trim());
     }
-    if (cells.length < 3) continue;
-    const businessName = cells.find(c => /\b(LLC|INC|CORP|CO\.?|COMPANY|CONTRACTORS?|SERVICES?)\b/i.test(c)) || cells[1];
+    if (cells.length < 5) continue;
+    const licenseName = clean(cells[1]);
+    const relation = clean(cells[2]);
+    const licenseNumber = clean(cells[3]).split(/\s+/)[0];
+    const status = clean(cells[4]);
+    if (!/Current\s*,?\s*Active/i.test(status)) continue;
+    if (!isDbprBusinessName(licenseName, relation)) continue;
+
+    const businessName = normalizeDbprBusinessName(licenseName);
     if (!businessName || businessName.length < 4) continue;
-    if (/^\s*Name\s*$/i.test(businessName)) continue; // header row
-    const city = cells.find(c => c.toUpperCase() === market.city.toUpperCase()) || market.city;
+    const address = extractDbprAddress(rowHtml) || '';
+    const city = market.city;
     leads.push({
       sourceName: 'florida-dbpr',
-      sourceRecordId: `dbpr-${licenseType}-${businessName}|${city}`,
-      rawPayload: { licenseType, cells },
+      sourceRecordId: `dbpr-${licenseType.licenseType}-${licenseNumber || businessName}|${city}`,
+      rawPayload: { licenseSearch: licenseType, licenseNumber, relation, status, address, cells },
       businessName,
       normalizedName: businessName.toLowerCase(),
       niche,
@@ -441,6 +492,51 @@ function parseDbprResults(html, niche, licenseType, market) {
     });
   }
   return leads;
+}
+
+function enrichDbprCandidate(dbprLead, directoryResults = []) {
+  const yp = findDirectoryBusinessMatch(dbprLead.businessName, directoryResults);
+  if (!yp || !yp.phone) return null;
+  return {
+    ...dbprLead,
+    sourceName: 'florida-dbpr',
+    sourceRecordId: dbprLead.sourceRecordId,
+    rawPayload: {
+      ...dbprLead.rawPayload,
+      enrichmentSource: yp.sourceName,
+      enrichmentRecordId: yp.sourceRecordId,
+      enrichmentPayload: yp.rawPayload,
+    },
+    phone: yp.phone,
+    website: yp.website || dbprLead.website,
+    ownerName: yp.ownerName || '',
+    ownerTitle: yp.ownerTitle || '',
+  };
+}
+
+function findDirectoryBusinessMatch(businessName, results = []) {
+  const expected = normalizeKey(businessName);
+  return results.find(result => {
+    const actual = normalizeKey(result.businessName);
+    return actual === expected || actual.includes(expected) || expected.includes(actual);
+  }) || null;
+}
+
+function isDbprBusinessName(name, relation) {
+  if (/DBA/i.test(relation)) return true;
+  return /\b(LLC|L\.L\.C\.|INC|INC\.|CORP|CORPORATION|CO\.?|COMPANY|CONTRACTORS?|CONSTRUCTION|SERVICES?|PLUMBING|ELECTRIC|ELECTRICAL|ROOFING|AIR|HVAC|MECHANICAL|POOL|SPA)\b/i.test(name);
+}
+
+function normalizeDbprBusinessName(name) {
+  return clean(name)
+    .replace(/\s+/g, ' ')
+    .replace(/\s*,\s*(LLC|INC|CORP)\b/ig, ' $1')
+    .trim();
+}
+
+function extractDbprAddress(rowHtml) {
+  const addressMatch = String(rowHtml || '').match(/(?:License Location Address\*:[\s\S]*?|Main Address\*:[\s\S]*?)<\/font><\/td>\s*<td[^>]*><font[^>]*>([\s\S]*?)<\/font>/i);
+  return clean(addressMatch?.[1] || '');
 }
 
 async function* scrapePaidFallback(limit, marketsOverride = null) {
@@ -497,16 +593,21 @@ async function scrapeYellowPages(niche, city, state) {
   const url = `https://www.yellowpages.com/search?search_terms=${encodeURIComponent(niche)}&geo_location_terms=${encodeURIComponent(`${city}, ${state}`)}`;
   const res = await fetchText(url, 20000);
   if (!res.ok) return [];
-  const html = res.text;
-  const chunks = html.split(/<div[^>]+class=["'][^"']*(?:result|search-results-organic)[^"']*["'][^>]*>/i).slice(1, SOURCE_PER_QUERY_LIMIT + 1);
+  return parseYellowPagesSearch(res.text, niche, city, state, url);
+}
+
+function parseYellowPagesSearch(html, niche, city, state, url = '') {
+  const chunks = String(html || '')
+    .split(/<div[^>]+class=["'](?:result(?:\s[^"']*)?|search-results-organic[^"']*)["'][^>]*>/i)
+    .slice(1, SOURCE_PER_QUERY_LIMIT + 1);
   const leads = [];
 
   for (const chunk of chunks) {
     const name = clean(extract(chunk, /class=["'][^"']*business-name[^"']*["'][^>]*>([\s\S]*?)<\/a>/i))
       || clean(extract(chunk, /<a[^>]+class=["'][^"']*business-name[^"']*["'][^>]*>([\s\S]*?)<\/a>/i));
-    const phone = normalizePhone(clean(extract(chunk, /class=["'][^"']*phones[^"']*["'][^>]*>([\s\S]*?)<\/div>/i)));
+    const phone = normalizePhone(clean(extract(chunk, /class=["'][^"']*phones?[^"']*["'][^>]*>([\s\S]*?)<\/div>/i)));
     const website = normalizeWebsite(clean(extract(chunk, /href=["'](https?:\/\/(?!www\.yellowpages\.com)[^"']+)["'][^>]*>(?:Website|Visit Website)/i)));
-    if (!name || !phone) continue;
+    if (!name || !phone || isYellowPagesAdLead(name)) continue;
     leads.push({
       sourceName: 'yellowpages',
       sourceRecordId: `${name}|${city}|${state}`,
@@ -524,6 +625,15 @@ async function scrapeYellowPages(niche, city, state) {
   }
 
   return leads;
+}
+
+function isYellowPagesAdLead(name) {
+  return [
+    /^compare\b.*\b(experts|pros|contractors|companies|services)\b/i,
+    /^best\s+home\s+savings\b/i,
+    /\bfind\s+(a|the)\s+(pro|contractor|service)\b/i,
+    /\btop\s+rated\b.*\b(experts|pros|contractors|companies|services)\b/i,
+  ].some(pattern => pattern.test(String(name || '')));
 }
 
 function parseBBBSearch(html) {
@@ -590,9 +700,147 @@ function addCandidate(candidates, seen, lead) {
   if (!lead || !keepCandidate(lead)) return false;
   const key = businessKey(lead);
   if (!key || seen.has(key)) return false;
+  const candidate = annotateSourceOpportunity(lead);
+  if (!candidateAdmissionAllowed(candidates, candidate)) return false;
   seen.add(key);
-  candidates.push(lead);
+  candidates.push(candidate);
   return true;
+}
+
+function candidateAdmissionAllowed(candidates, candidate) {
+  if (candidate.sourceOpportunity !== 'website_rich_low_priority') return true;
+  const sourceKey = candidate.sourceName || 'unknown';
+  const marketKey = `${candidate.sourceName || 'unknown'}|${candidate.city || ''}|${candidate.state || ''}`.toLowerCase();
+  const sourceCount = candidates.filter(item =>
+    item.sourceOpportunity === 'website_rich_low_priority'
+    && (item.sourceName || 'unknown') === sourceKey).length;
+  const marketCount = candidates.filter(item =>
+    item.sourceOpportunity === 'website_rich_low_priority'
+    && `${item.sourceName || 'unknown'}|${item.city || ''}|${item.state || ''}`.toLowerCase() === marketKey).length;
+  return sourceCount < WEBSITE_RICH_SOURCE_CAP && marketCount < WEBSITE_RICH_MARKET_CAP;
+}
+
+function annotateSourceOpportunity(lead = {}) {
+  const sourceOpportunity = classifySourceOpportunity(lead);
+  return {
+    ...lead,
+    sourceOpportunity,
+    opportunityBucket: sourceOpportunity,
+  };
+}
+
+function classifySourceOpportunity(lead = {}) {
+  if (!normalizeWebsite(lead.website)) return 'no_source_website';
+
+  const sourceName = String(lead.sourceName || '').toLowerCase();
+  const payload = lead.rawPayload || {};
+  const sourceIssues = String(lead.sourceIssues || '');
+  const yearsInBusiness = Number(payload.yearsInBusiness || 0);
+  const establishedBbb = sourceName === 'bbb'
+    && (yearsInBusiness >= 5 || payload.bbbMember || payload.bbbRating || payload.rating);
+
+  if (establishedBbb) return 'website_rich_low_priority';
+  if (sourceName === 'bbb' && normalizeWebsite(lead.website)) return 'website_rich_low_priority';
+  if (/poor|outdated|old|mobile|slow|no\s+(?:form|cta|quote|estimate)|stale/i.test(sourceIssues)) {
+    return 'possible_poor_site';
+  }
+  return 'possible_poor_site';
+}
+
+function orderCandidatesForAudit(candidates = [], options = {}) {
+  const sourceCap = Number(options.websiteRichSourceCap || WEBSITE_RICH_SOURCE_CAP);
+  const marketCap = Number(options.websiteRichMarketCap || WEBSITE_RICH_MARKET_CAP);
+  const indexed = candidates.map((candidate, index) => ({
+    candidate: annotateSourceOpportunity(candidate),
+    index,
+  }));
+  indexed.sort((a, b) => opportunityRank(a.candidate) - opportunityRank(b.candidate)
+    || localRank(a.candidate) - localRank(b.candidate)
+    || sourceRank(a.candidate) - sourceRank(b.candidate)
+    || a.index - b.index);
+
+  const primary = [];
+  const deferred = [];
+  const bySource = new Map();
+  const byMarket = new Map();
+
+  for (const entry of indexed) {
+    const candidate = entry.candidate;
+    if (candidate.sourceOpportunity !== 'website_rich_low_priority') {
+      primary.push(candidate);
+      continue;
+    }
+
+    const sourceKey = candidate.sourceName || 'unknown';
+    const marketKey = `${candidate.sourceName || 'unknown'}|${candidate.city || ''}|${candidate.state || ''}`.toLowerCase();
+    const sourceCount = bySource.get(sourceKey) || 0;
+    const marketCount = byMarket.get(marketKey) || 0;
+    if (sourceCount >= sourceCap || marketCount >= marketCap) {
+      deferred.push(candidate);
+      continue;
+    }
+    bySource.set(sourceKey, sourceCount + 1);
+    byMarket.set(marketKey, marketCount + 1);
+    primary.push(candidate);
+  }
+
+  return [
+    ...interleaveOpportunityBuckets(primary),
+    ...interleaveOpportunityBuckets(deferred),
+  ];
+}
+
+function opportunityRank(lead) {
+  return ({
+    no_source_website: 0,
+    possible_poor_site: 1,
+    website_rich_low_priority: 2,
+  })[lead.sourceOpportunity] ?? 1;
+}
+
+function localRank(lead) {
+  return isLocalLead(lead) ? 0 : 1;
+}
+
+function sourceRank(lead) {
+  const source = String(lead.sourceName || '').toLowerCase();
+  if (source === 'yellowpages') return 0;
+  if (source === 'florida-dbpr') return 1;
+  if (source === 'osm-overpass') return 2;
+  if (source === 'serpapi-google-maps') return 3;
+  if (source === 'seed-list') return 4;
+  if (source === 'bbb') return 5;
+  return 6;
+}
+
+function interleaveOpportunityBuckets(candidates) {
+  const buckets = ['no_source_website', 'possible_poor_site', 'website_rich_low_priority'];
+  return buckets.flatMap(bucket => roundRobinByNiche(
+    candidates.filter(candidate => candidate.sourceOpportunity === bucket),
+  ));
+}
+
+function roundRobinByNiche(candidates) {
+  const groups = new Map();
+  for (const candidate of candidates) {
+    const niche = normalizeKey(candidate.niche || 'unknown') || 'unknown';
+    if (!groups.has(niche)) groups.set(niche, []);
+    groups.get(niche).push(candidate);
+  }
+  const orderedKeys = [...groups.keys()];
+  const out = [];
+  while (orderedKeys.length) {
+    for (let i = 0; i < orderedKeys.length; i++) {
+      const key = orderedKeys[i];
+      const next = groups.get(key).shift();
+      if (next) out.push(next);
+      if (!groups.get(key).length) {
+        orderedKeys.splice(i, 1);
+        i--;
+      }
+    }
+  }
+  return out;
 }
 
 function inferNiche(name) {
@@ -639,8 +887,14 @@ module.exports = {
   scrapeOpenStreetMap,
   scrapeFloridaDBPR,
   normalizeSeedRow,
+  sourcePlan,
+  parseYellowPagesSearch,
   parseBBBSearch,
   parseBBBProfile,
   parseDbprResults,
   mergeSoftDupes,
+  annotateSourceOpportunity,
+  classifySourceOpportunity,
+  roundRobinByNiche,
+  orderCandidatesForAudit,
 };

@@ -30,6 +30,8 @@ function isLocalMarket(lead) {
 
 function pickDecisionMaker(lead) {
   const candidates = [
+    { name: lead.decisionMaker?.name, title: lead.decisionMaker?.title, rank: normalizeDmConfidence(lead.decisionMaker?.confidence) * 100, confidence: lead.decisionMaker?.confidence },
+    { name: lead.decisionMakerName, title: lead.decisionMakerTitle, rank: normalizeDmConfidence(lead.decisionMakerConfidence) * 100, confidence: lead.decisionMakerConfidence },
     { name: lead.ownerName, title: lead.ownerTitle || 'Owner', rank: 100 },
     { name: lead.decisionMaker, title: lead.title, rank: titleRank(lead.title) },
     { name: lead.contactName, title: lead.contactTitle, rank: titleRank(lead.contactTitle) },
@@ -41,7 +43,7 @@ function pickDecisionMaker(lead) {
   return {
     name: best.name,
     title: best.title || '',
-    confidence: best.rank >= 80 ? 10 : best.rank >= 55 ? 8 : 6,
+    confidence: best.confidence == null ? (best.rank >= 80 ? 10 : best.rank >= 55 ? 8 : 6) : best.confidence,
   };
 }
 
@@ -103,7 +105,13 @@ function scoreLead(lead, audit = {}) {
   const verified = audit.verifiedSignals || {};
   const phone = normalizePhone(lead.phone || verified.contactTruth?.phone?.value || audit.phone || '');
   const website = normalizeWebsite(lead.website || audit.finalUrl || '');
-  const decisionMaker = pickDecisionMaker(lead);
+  const decisionMaker = pickDecisionMaker({
+    ...lead,
+    decisionMaker: lead.decisionMaker || audit.decisionMaker,
+    decisionMakerName: lead.decisionMakerName || audit.decisionMaker?.name,
+    decisionMakerTitle: lead.decisionMakerTitle || audit.decisionMaker?.title,
+    decisionMakerConfidence: lead.decisionMakerConfidence || audit.decisionMaker?.confidence,
+  });
   const reasons = [];
   const blockers = [];
   const homeService = isHomeService(lead);
@@ -202,7 +210,7 @@ function scoreLead(lead, audit = {}) {
     reasons.push('High-ticket home service niche');
   }
   if (decisionMaker.name) {
-    score += decisionMaker.confidence >= 8 ? 0.7 : 0.4;
+    score += normalizeDmConfidence(decisionMaker.confidence) >= 0.8 ? 0.7 : 0.4;
     reasons.push(`Decision-maker/contact available: ${decisionMaker.name}${decisionMaker.title ? ` (${decisionMaker.title})` : ''}`);
   }
   if (phone) {
@@ -227,19 +235,103 @@ function scoreLead(lead, audit = {}) {
   const rounded = Math.max(1, Math.min(10, Math.round(score * 10) / 10));
   const pitch = buildPitchRecommendation({ ...lead, phone, website }, audit, reasons, decisionMaker);
 
+  const signalCount = computeSignalCount({ ...lead, phone, website, websiteStatus, leadType }, audit, decisionMaker);
+  const websiteIssue = leadType === 'no_website_creation' || leadType === 'poor_website_redesign';
+  const dmConfidence = normalizeDmConfidence(decisionMaker.confidence);
+
   return {
     score: rounded,
-    qualified: rounded >= 8 && blockers.length === 0 && (leadType === 'no_website_creation' || leadType === 'poor_website_redesign'),
+    qualified: rounded >= 8 && blockers.length === 0 && websiteIssue,
     reasons: unique(reasons).slice(0, 8),
     blockers,
-    decisionMaker,
+    decisionMaker: { ...decisionMaker, confidence: dmConfidence },
     pitch,
     isLocalMarket: localMarket,
     phone,
     website,
     websiteStatus,
     leadType,
+    signalCount,
+    websiteIssue,
+    decisionMakerConfidence: dmConfidence,
   };
+}
+
+// Counts concrete, discrete facts about a lead. Premium tier requires >=3.
+function computeSignalCount(lead, audit = {}, decisionMaker = {}) {
+  if (Number.isFinite(Number(audit.signalCount))) return Number(audit.signalCount);
+  const summary = audit.verifiedSignals?.signalSummary;
+  if (Number.isFinite(Number(summary?.count))) return Number(summary.count);
+  const flags = [
+    Boolean(lead.phone && /\d{3}/.test(String(lead.phone))),
+    Boolean((lead.email || lead.rawPayload?.email || lead.rawPayload?.Email || '').includes('@')),
+    hasSocialProfile(lead, audit),
+    googleBusinessPhotoCount(lead) >= 3,
+    hasRecentReview(lead),
+    Boolean(decisionMaker.name && normalizeDmConfidence(decisionMaker.confidence) >= 0.6),
+    hasBusinessHours(lead),
+    hasLatLng(lead),
+  ];
+  return flags.filter(Boolean).length;
+}
+
+// pickDecisionMaker uses an integer scale (10/8/6/0). Normalize all confidence
+// inputs to 0..1 so the premium gate can compare consistently.
+function normalizeDmConfidence(value) {
+  const num = Number(value || 0);
+  if (!Number.isFinite(num) || num <= 0) return 0;
+  if (num <= 1) return num;
+  if (num <= 10) return num / 10;
+  return 1;
+}
+
+function hasSocialProfile(lead, audit) {
+  const values = [
+    lead.facebook,
+    lead.instagram,
+    lead.linkedin,
+    lead.social,
+    lead.socialUrl,
+    lead.rawPayload?.facebook,
+    lead.rawPayload?.instagram,
+    ...(audit.links || []).map(link => link.href || ''),
+  ];
+  return values.some(value => /facebook\.com|instagram\.com|linkedin\.com|x\.com|twitter\.com|youtube\.com/i.test(String(value || '')));
+}
+
+function googleBusinessPhotoCount(lead) {
+  const raw = lead.rawPayload || {};
+  return Number(
+    lead.gbpPhotoCount
+      || lead.googlePhotoCount
+      || lead.photoCount
+      || raw.gbpPhotoCount
+      || raw.googlePhotoCount
+      || raw.photo_count
+      || raw.photos
+      || 0,
+  );
+}
+
+function hasRecentReview(lead) {
+  const raw = lead.rawPayload || {};
+  const value = lead.latestReviewDate || lead.recentReviewDate || lead.lastReviewDate || raw.latestReviewDate || raw.recentReviewDate || raw.last_review_date;
+  if (!value) return Boolean(lead.hasRecentReview || raw.hasRecentReview);
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return false;
+  return Date.now() - date.getTime() <= 60 * 24 * 60 * 60 * 1000;
+}
+
+function hasBusinessHours(lead) {
+  const raw = lead.rawPayload || {};
+  return Boolean(lead.businessHours || lead.hours || lead.openingHours || raw.businessHours || raw.hours || raw.opening_hours);
+}
+
+function hasLatLng(lead) {
+  const raw = lead.rawPayload || {};
+  const lat = lead.lat ?? lead.latitude ?? raw.lat ?? raw.latitude;
+  const lng = lead.lng ?? lead.lon ?? lead.longitude ?? raw.lng ?? raw.lon ?? raw.longitude;
+  return Number.isFinite(Number(lat)) && Number.isFinite(Number(lng));
 }
 
 function sourceIssueReasons(sourceIssues) {
@@ -413,4 +505,6 @@ module.exports = {
   hasStrongSiteSignals,
   positiveSiteSignalCount,
   hardNegativeSignalCount,
+  computeSignalCount,
+  normalizeDmConfidence,
 };

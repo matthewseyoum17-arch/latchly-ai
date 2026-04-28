@@ -16,6 +16,8 @@ const STATUSES = new Set([
   "lost",
 ]);
 
+const TIERS = new Set(["premium", "standard"]);
+
 const NO_STORE_HEADERS = {
   "Cache-Control": "private, no-store, max-age=0, must-revalidate",
 };
@@ -65,6 +67,12 @@ export async function GET(request: NextRequest) {
       where.push(`status = $${params.length}`);
     }
 
+    const tier = searchParams.get("tier") || "all";
+    if (tier !== "all" && TIERS.has(tier)) {
+      params.push(tier);
+      where.push(`tier = $${params.length}`);
+    }
+
     const minScore = Number(searchParams.get("minScore") || "0");
     if (Number.isFinite(minScore) && minScore > 0) {
       params.push(minScore);
@@ -87,11 +95,14 @@ export async function GET(request: NextRequest) {
       where.push("(state = 'FL' AND city IN ('Gainesville', 'Tallahassee'))");
     }
 
-    if (isTruthy(searchParams.get("noWebsite"))) {
+    const wantsNoWebsite = isTruthy(searchParams.get("noWebsite"));
+    const wantsPoorWebsite = isTruthy(searchParams.get("poorWebsite"));
+    const wantsWebsiteIssue = isTruthy(searchParams.get("websiteIssue"));
+    if (wantsWebsiteIssue || (wantsNoWebsite && wantsPoorWebsite)) {
+      where.push("((website IS NULL OR website = '' OR website_status = 'no_website') OR website_status = 'poor_website')");
+    } else if (wantsNoWebsite) {
       where.push("(website IS NULL OR website = '' OR website_status = 'no_website')");
-    }
-
-    if (isTruthy(searchParams.get("poorWebsite"))) {
+    } else if (wantsPoorWebsite) {
       where.push("website_status = 'poor_website'");
     }
 
@@ -111,6 +122,7 @@ export async function GET(request: NextRequest) {
         phone, email, website, website_status, source_name, source_record_id,
         decision_maker_name, decision_maker_title, decision_maker_confidence,
         score, score_reasons, score_blockers, pitch, is_local_market,
+        tier, signal_count,
         status, notes, last_contacted_at, next_follow_up_date,
         archived_at, archive_reason,
         first_seen_at, last_seen_at, delivered_at, created_at, updated_at
@@ -126,8 +138,12 @@ export async function GET(request: NextRequest) {
           SELECT
             COUNT(*)::int AS total,
             COUNT(*) FILTER (WHERE status = 'new')::int AS new_count,
+            COUNT(*) FILTER (WHERE status = 'contacted')::int AS contacted_count,
             COUNT(*) FILTER (WHERE status IN ('contacted', 'interested', 'follow_up'))::int AS active_count,
             COUNT(*) FILTER (WHERE status = 'won')::int AS won_count,
+            COUNT(*) FILTER (WHERE status = 'lost')::int AS lost_count,
+            COUNT(*) FILTER (WHERE tier = 'premium')::int AS premium_count,
+            COUNT(*) FILTER (WHERE tier = 'standard')::int AS standard_count,
             COUNT(*) FILTER (WHERE score >= 9)::int AS high_score_count,
             COUNT(*) FILTER (WHERE state = 'FL' AND city IN ('Gainesville', 'Tallahassee'))::int AS local_count,
             COUNT(*) FILTER (WHERE website IS NULL OR website = '' OR website_status = 'no_website')::int AS no_website_count,
@@ -143,8 +159,12 @@ export async function GET(request: NextRequest) {
           SELECT
             COUNT(*)::int AS total,
             COUNT(*) FILTER (WHERE status = 'new')::int AS new_count,
+            COUNT(*) FILTER (WHERE status = 'contacted')::int AS contacted_count,
             COUNT(*) FILTER (WHERE status IN ('contacted', 'interested', 'follow_up'))::int AS active_count,
             COUNT(*) FILTER (WHERE status = 'won')::int AS won_count,
+            COUNT(*) FILTER (WHERE status = 'lost')::int AS lost_count,
+            COUNT(*) FILTER (WHERE tier = 'premium')::int AS premium_count,
+            COUNT(*) FILTER (WHERE tier = 'standard')::int AS standard_count,
             COUNT(*) FILTER (WHERE score >= 9)::int AS high_score_count,
             COUNT(*) FILTER (WHERE state = 'FL' AND city IN ('Gainesville', 'Tallahassee'))::int AS local_count,
             COUNT(*) FILTER (WHERE website IS NULL OR website = '' OR website_status = 'no_website')::int AS no_website_count,
@@ -216,8 +236,12 @@ export async function GET(request: NextRequest) {
       stats: {
         total: Number(summary?.total || 0),
         new: Number(summary?.new_count || 0),
+        contacted: Number(summary?.contacted_count || 0),
         active: Number(summary?.active_count || 0),
         won: Number(summary?.won_count || 0),
+        lost: Number(summary?.lost_count || 0),
+        premium: Number(summary?.premium_count || 0),
+        standard: Number(summary?.standard_count || 0),
         highScore: Number(summary?.high_score_count || 0),
         local: Number(summary?.local_count || 0),
         noWebsite: Number(summary?.no_website_count || 0),
@@ -296,6 +320,8 @@ function mapLead(row: any) {
     scoreBlockers: normalizeJsonArray(row.score_blockers),
     pitch: normalizeJsonObject(row.pitch),
     isLocalMarket: Boolean(row.is_local_market) || isLocalRow(row),
+    tier: row.tier === "premium" ? "premium" : "standard",
+    signalCount: row.signal_count == null ? 0 : Number(row.signal_count),
     status: row.status,
     notes: row.notes || "",
     lastContactedAt: row.last_contacted_at,
@@ -328,6 +354,9 @@ function mapRun(row: any) {
     emailSent: Boolean(row.email_sent),
     dryRun: Boolean(row.dry_run),
     metadata: normalizeJsonObject(row.metadata),
+    status: normalizeJsonObject(row.metadata).status || "completed",
+    premiumDelivered: Number(normalizeJsonObject(row.metadata).premiumDelivered || 0),
+    standardDelivered: Number(normalizeJsonObject(row.metadata).standardDelivered || 0),
     createdAt: row.created_at,
   };
 }

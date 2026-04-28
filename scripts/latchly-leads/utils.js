@@ -165,6 +165,50 @@ function fetchText(url, timeoutMs = 20000, hops = 0) {
   });
 }
 
+function fetchFormText(url, form, timeoutMs = 20000, hops = 0) {
+  if (hops > 5) return Promise.reject(new Error('too_many_redirects'));
+  const body = form instanceof URLSearchParams ? form.toString() : new URLSearchParams(form).toString();
+  return new Promise((resolve, reject) => {
+    const mod = /^https:/i.test(url) ? https : http;
+    const req = mod.request(url, {
+      method: 'POST',
+      timeout: timeoutMs,
+      headers: {
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36',
+        accept: 'text/html,application/xhtml+xml,application/json,*/*;q=0.8',
+        'accept-language': 'en-US,en;q=0.9',
+        'accept-encoding': 'identity',
+        'content-type': 'application/x-www-form-urlencoded',
+        'content-length': Buffer.byteLength(body),
+      },
+    }, res => {
+      if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location) {
+        const next = absoluteUrl(url, res.headers.location);
+        res.resume();
+        fetchFormText(next, form, timeoutMs, hops + 1).then(resolve, reject);
+        return;
+      }
+      const chunks = [];
+      res.on('data', chunk => chunks.push(chunk));
+      res.on('end', () => {
+        resolve({
+          ok: res.statusCode >= 200 && res.statusCode < 300,
+          status: res.statusCode,
+          url,
+          text: Buffer.concat(chunks).toString('utf8'),
+        });
+      });
+    });
+    req.on('timeout', () => {
+      req.destroy();
+      reject(new Error('timeout'));
+    });
+    req.on('error', reject);
+    req.write(body);
+    req.end();
+  });
+}
+
 function todayInET() {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'America/New_York',
@@ -202,6 +246,7 @@ module.exports = {
   stripHtml,
   absoluteUrl,
   fetchText,
+  fetchFormText,
   todayInET,
   currentHourET,
   sleep,
