@@ -53,6 +53,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           LEAD_DIGEST_TO: matthewseyoum17@gmail.com
           LEAD_DIGEST_FROM: Latchly Lead Digest <notifications@latchlyai.com>

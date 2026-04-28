@@ -37,6 +37,7 @@ async function discoverCandidates(options = {}) {
   const liveEnabled = process.env.LATCHLY_SKIP_LIVE_DISCOVERY !== '1';
   const discoveryOnly = process.env.LATCHLY_DISCOVERY_ONLY || '';
   const useSource = source => !discoveryOnly || discoveryOnly === source;
+  const preferPaid = Boolean(options.preferPaid);
   const localCandidateLimit = Math.min(
     limit,
     parseInt(process.env.LATCHLY_LOCAL_CANDIDATE_LIMIT || String(Math.max(TARGET_DAILY_LEADS * 3, 150)), 10),
@@ -45,6 +46,9 @@ async function discoverCandidates(options = {}) {
   const finalize = () => orderCandidatesForAudit(mergeSoftDupes(candidates)).slice(0, limit);
 
   if (liveEnabled) {
+    if (preferPaid && useSource('paid')) {
+      await collectCandidates(candidates, seen, localCandidateLimit, scrapePaidFallback(localCandidateLimit, LOCAL_MARKETS));
+    }
     if (useSource('directories')) {
       await collectCandidates(candidates, seen, localCandidateLimit, scrapePublicDirectories(localCandidateLimit, LOCAL_MARKETS));
     }
@@ -57,7 +61,7 @@ async function discoverCandidates(options = {}) {
     if (useSource('osm')) {
       await collectCandidates(candidates, seen, localCandidateLimit, scrapeOpenStreetMap(localCandidateLimit - candidates.length, LOCAL_MARKETS));
     }
-    if (useSource('paid')) {
+    if (!preferPaid && useSource('paid')) {
       await collectCandidates(candidates, seen, localCandidateLimit, scrapePaidFallback(localCandidateLimit - candidates.length, LOCAL_MARKETS));
     }
   }
@@ -71,6 +75,9 @@ async function discoverCandidates(options = {}) {
 
   if (liveEnabled) {
     const broadMarkets = nonLocalMarkets();
+    if (preferPaid && useSource('paid')) {
+      await collectCandidates(candidates, seen, limit, scrapePaidFallback(Math.max(0, limit - candidates.length), broadMarkets));
+    }
     if (useSource('directories')) {
       await collectCandidates(candidates, seen, limit, scrapePublicDirectories(Math.max(0, limit - candidates.length), broadMarkets));
     }
@@ -81,7 +88,7 @@ async function discoverCandidates(options = {}) {
     if (useSource('osm') && process.env.LATCHLY_ENABLE_OSM_BROAD === '1') {
       await collectCandidates(candidates, seen, limit, scrapeOpenStreetMap(Math.max(0, limit - candidates.length), broadMarkets));
     }
-    if (useSource('paid')) {
+    if (!preferPaid && useSource('paid')) {
       await collectCandidates(candidates, seen, limit, scrapePaidFallback(Math.max(0, limit - candidates.length), broadMarkets));
     }
   }
@@ -575,6 +582,7 @@ async function scrapeSerpApiMaps(niche, city, state) {
       sourceName: 'serpapi-google-maps',
       sourceRecordId: result.place_id || result.data_id || `${businessName}|${city}|${state}`,
       rawPayload: result,
+      placeId: result.place_id || result.data_id || '',
       businessName,
       normalizedName: businessName.toLowerCase(),
       niche,
@@ -582,6 +590,11 @@ async function scrapeSerpApiMaps(niche, city, state) {
       state,
       phone: normalizePhone(result.phone || ''),
       website: normalizeWebsite(result.website || ''),
+      lat: result.gps_coordinates?.latitude ?? null,
+      lng: result.gps_coordinates?.longitude ?? null,
+      businessHours: result.hours || result.operating_hours || result.open_state || '',
+      gbpPhotoCount: Array.isArray(result.photos) ? result.photos.length : Number(result.photos || result.photo_count || 0),
+      latestReviewDate: Array.isArray(result.reviews) ? (result.reviews[0]?.date || result.reviews[0]?.iso_date || '') : '',
       ownerName: '',
       ownerTitle: '',
     };
@@ -754,7 +767,7 @@ function orderCandidatesForAudit(candidates = [], options = {}) {
     candidate: annotateSourceOpportunity(candidate),
     index,
   }));
-  indexed.sort((a, b) => opportunityRank(a.candidate) - opportunityRank(b.candidate)
+  indexed.sort((a, b) => opportunityRank(a.candidate, options) - opportunityRank(b.candidate, options)
     || localRank(a.candidate) - localRank(b.candidate)
     || sourceRank(a.candidate) - sourceRank(b.candidate)
     || a.index - b.index);
@@ -790,12 +803,19 @@ function orderCandidatesForAudit(candidates = [], options = {}) {
   ];
 }
 
-function opportunityRank(lead) {
-  return ({
+function opportunityRank(lead, options = {}) {
+  const ranks = options.preferWebsiteLeads
+    ? {
+      possible_poor_site: 0,
+      website_rich_low_priority: 1,
+      no_source_website: 2,
+    }
+    : {
     no_source_website: 0,
     possible_poor_site: 1,
     website_rich_low_priority: 2,
-  })[lead.sourceOpportunity] ?? 1;
+    };
+  return ranks[lead.sourceOpportunity] ?? 1;
 }
 
 function localRank(lead) {

@@ -48,9 +48,13 @@ async function main() {
   const storage = createStorage();
   await storage.init();
   const deliveredKeys = await storage.deliveredKeys();
+  const premiumSeeking = tierMode === 'premium' || tierMode === 'both';
 
   const candidateLimit = parseInt(process.env.LATCHLY_CANDIDATE_LIMIT || String(targetLeads * 8), 10);
-  const candidates = orderCandidatesForAudit(await discoverCandidates({ limit: candidateLimit, deliveredKeys }));
+  const candidates = orderCandidatesForAudit(
+    await discoverCandidates({ limit: candidateLimit, deliveredKeys, preferPaid: premiumSeeking }),
+    { preferWebsiteLeads: premiumSeeking },
+  );
   const verbose = process.env.LATCHLY_VERBOSE === '1';
   if (verbose) console.log(`[discovery] candidates=${candidates.length}`);
   const diagnosticsPath = diagnosticsEnabled()
@@ -73,6 +77,7 @@ async function main() {
     maxQualified: targetLeads * 3,
     targetLeads,
     requireQualifiedMix: true,
+    preferWebsiteLeads: premiumSeeking,
     diagnosticsPath,
     diagnosticInterval: DIAGNOSTIC_INTERVAL,
   });
@@ -284,7 +289,11 @@ async function auditAndScoreCandidates(candidates, deliveredKeys = new Set(), op
   const maxAuditAttempts = Number(options.maxAuditAttempts || MAX_AUDIT_ATTEMPTS);
   const maxRunMs = Number(options.maxRunMs || MAX_RUN_MINUTES * 60 * 1000);
   const startedAt = Date.now();
-  const waves = buildAuditWaves(orderCandidatesForAudit(candidates));
+  const waves = buildAuditWaves(orderCandidatesForAudit(candidates, {
+    preferWebsiteLeads: Boolean(options.preferWebsiteLeads),
+  }), {
+    preferWebsiteLeads: Boolean(options.preferWebsiteLeads),
+  });
   const diagnostics = createDiagnosticsWriter(options.diagnosticsPath, {
     interval: options.diagnosticInterval || DIAGNOSTIC_INTERVAL,
   });
@@ -532,12 +541,18 @@ function normalizeAuditConcurrency(value) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
 }
 
-function buildAuditWaves(candidates = []) {
-  const groups = [
+function buildAuditWaves(candidates = [], options = {}) {
+  const groups = (options.preferWebsiteLeads
+    ? [
+      { name: 'possible_poor_site', candidates: [], indexes: [] },
+      { name: 'website_rich_low_priority', candidates: [], indexes: [] },
+      { name: 'no_source_website', candidates: [], indexes: [] },
+    ]
+    : [
     { name: 'no_source_website', candidates: [], indexes: [] },
     { name: 'possible_poor_site', candidates: [], indexes: [] },
     { name: 'website_rich_low_priority', candidates: [], indexes: [] },
-  ];
+    ]);
   const byName = new Map(groups.map(group => [group.name, group]));
   candidates.forEach((candidate, index) => {
     const name = candidate.sourceOpportunity || (candidate.website ? 'possible_poor_site' : 'no_source_website');

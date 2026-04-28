@@ -389,16 +389,12 @@ function createDbStorage(url) {
 }
 
 function toCrmRecord(lead, meta = {}) {
-  const decisionMaker = lead.decisionMaker || {};
+  const decisionMaker = normalizeDecisionMaker(lead);
   const rawPayload = lead.rawPayload || lead.sourcePayload || {};
   const dmConfidence = decisionMaker.confidence;
-  // decision_maker_confidence column is NUMERIC(4,1) — store the 0..10 view
-  // for display, but premium gate uses the 0..1 normalized value upstream.
   const dmConfidenceColumn = dmConfidence == null
     ? null
-    : Number(dmConfidence) <= 1
-      ? Number(dmConfidence) * 10
-      : Number(dmConfidence);
+    : normalizeDmConfidence(dmConfidence);
   return {
     businessKey: businessKey(lead),
     businessName: lead.businessName || '',
@@ -434,6 +430,32 @@ function toCrmRecord(lead, meta = {}) {
     },
     auditPayload: lead.audit || {},
   };
+}
+
+function normalizeDecisionMaker(lead = {}) {
+  const source = typeof lead.decisionMaker === 'object' && lead.decisionMaker
+    ? lead.decisionMaker
+    : {};
+  return {
+    name: cleanDecisionMakerName(source.name || lead.ownerName || lead.contactName || ''),
+    title: cleanDecisionMakerName(source.title || lead.ownerTitle || lead.contactTitle || ''),
+    confidence: source.confidence ?? lead.decisionMakerConfidence ?? null,
+  };
+}
+
+function normalizeDmConfidence(value) {
+  const num = Number(value || 0);
+  if (!Number.isFinite(num) || num <= 0) return 0;
+  if (num <= 1) return num;
+  if (num <= 10) return num / 10;
+  return 1;
+}
+
+function cleanDecisionMakerName(value) {
+  if (typeof value !== 'string') return '';
+  const trimmed = value.replace(/\s+/g, ' ').trim();
+  if (!trimmed || /^[\[{]/.test(trimmed)) return '';
+  return trimmed;
 }
 
 module.exports = { createStorage };

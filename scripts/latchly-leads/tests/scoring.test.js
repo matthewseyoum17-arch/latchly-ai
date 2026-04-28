@@ -196,6 +196,14 @@ test('decision-maker selection prefers owner over office contact', () => {
   assert.equal(picked.confidence, 10);
 });
 
+test('decision-maker selection ignores object payloads as legacy names', () => {
+  const picked = pickDecisionMaker({
+    decisionMaker: { name: '', title: '', confidence: 0, sources: [] },
+  });
+  assert.equal(picked.name, '');
+  assert.equal(picked.confidence, 0);
+});
+
 test('daily selection keeps Gainesville/Tallahassee near target share when available', () => {
   const leads = [];
   for (let i = 0; i < 20; i++) {

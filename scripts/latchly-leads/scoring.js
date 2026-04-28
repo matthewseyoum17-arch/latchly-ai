@@ -29,13 +29,17 @@ function isLocalMarket(lead) {
 }
 
 function pickDecisionMaker(lead) {
+  const legacyDecisionMakerName = typeof lead.decisionMaker === 'string'
+    ? lead.decisionMaker
+    : '';
   const candidates = [
     { name: lead.decisionMaker?.name, title: lead.decisionMaker?.title, rank: normalizeDmConfidence(lead.decisionMaker?.confidence) * 100, confidence: lead.decisionMaker?.confidence },
     { name: lead.decisionMakerName, title: lead.decisionMakerTitle, rank: normalizeDmConfidence(lead.decisionMakerConfidence) * 100, confidence: lead.decisionMakerConfidence },
     { name: lead.ownerName, title: lead.ownerTitle || 'Owner', rank: 100 },
-    { name: lead.decisionMaker, title: lead.title, rank: titleRank(lead.title) },
+    { name: legacyDecisionMakerName, title: lead.title, rank: titleRank(lead.title) },
     { name: lead.contactName, title: lead.contactTitle, rank: titleRank(lead.contactTitle) },
-  ].filter(item => item.name);
+  ].map(item => ({ ...item, name: cleanPersonName(item.name) }))
+    .filter(item => item.name);
 
   if (!candidates.length) return { name: '', title: '', confidence: 0 };
   candidates.sort((a, b) => b.rank - a.rank);
@@ -301,7 +305,7 @@ function hasSocialProfile(lead, audit) {
 
 function googleBusinessPhotoCount(lead) {
   const raw = lead.rawPayload || {};
-  return Number(
+  const value =
     lead.gbpPhotoCount
       || lead.googlePhotoCount
       || lead.photoCount
@@ -309,13 +313,23 @@ function googleBusinessPhotoCount(lead) {
       || raw.googlePhotoCount
       || raw.photo_count
       || raw.photos
-      || 0,
-  );
+      || raw.images
+      || 0;
+  if (Array.isArray(value)) return value.length;
+  return Number(value || 0);
 }
 
 function hasRecentReview(lead) {
   const raw = lead.rawPayload || {};
-  const value = lead.latestReviewDate || lead.recentReviewDate || lead.lastReviewDate || raw.latestReviewDate || raw.recentReviewDate || raw.last_review_date;
+  const latestReview = Array.isArray(raw.reviews) ? raw.reviews[0] : null;
+  const value = lead.latestReviewDate
+    || lead.recentReviewDate
+    || lead.lastReviewDate
+    || raw.latestReviewDate
+    || raw.recentReviewDate
+    || raw.last_review_date
+    || latestReview?.date
+    || latestReview?.iso_date;
   if (!value) return Boolean(lead.hasRecentReview || raw.hasRecentReview);
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return false;
@@ -324,14 +338,30 @@ function hasRecentReview(lead) {
 
 function hasBusinessHours(lead) {
   const raw = lead.rawPayload || {};
-  return Boolean(lead.businessHours || lead.hours || lead.openingHours || raw.businessHours || raw.hours || raw.opening_hours);
+  return Boolean(
+    lead.businessHours
+      || lead.hours
+      || lead.openingHours
+      || raw.businessHours
+      || raw.hours
+      || raw.opening_hours
+      || raw.operating_hours
+      || raw.open_state
+  );
 }
 
 function hasLatLng(lead) {
   const raw = lead.rawPayload || {};
-  const lat = lead.lat ?? lead.latitude ?? raw.lat ?? raw.latitude;
-  const lng = lead.lng ?? lead.lon ?? lead.longitude ?? raw.lng ?? raw.lon ?? raw.longitude;
+  const lat = lead.lat ?? lead.latitude ?? raw.lat ?? raw.latitude ?? raw.gps_coordinates?.latitude;
+  const lng = lead.lng ?? lead.lon ?? lead.longitude ?? raw.lng ?? raw.lon ?? raw.longitude ?? raw.gps_coordinates?.longitude;
   return Number.isFinite(Number(lat)) && Number.isFinite(Number(lng));
+}
+
+function cleanPersonName(value) {
+  if (typeof value !== 'string') return '';
+  const trimmed = value.replace(/\s+/g, ' ').trim();
+  if (!trimmed || /^[\[{]/.test(trimmed)) return '';
+  return trimmed;
 }
 
 function sourceIssueReasons(sourceIssues) {
