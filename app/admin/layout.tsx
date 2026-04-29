@@ -9,7 +9,6 @@ import {
   Mail,
   Menu,
   Send,
-  TrendingUp,
   Users,
   X,
 } from "lucide-react";
@@ -27,19 +26,13 @@ const NAV: NavItem[] = [
     href: "/admin/leads-crm",
     label: "CRM",
     icon: <Users size={16} />,
-    description: "Scored leads + status workflow",
+    description: "Scored leads + status workflow + outreach state inline",
   },
   {
     href: "/admin/cold-email",
     label: "Cold Email",
     icon: <Send size={16} />,
-    description: "Autonomous outreach inbox",
-  },
-  {
-    href: "/admin/pipeline",
-    label: "Pipeline",
-    icon: <TrendingUp size={16} />,
-    description: "Drip funnel + engagement",
+    description: "Pending QA · Sent history",
   },
 ];
 

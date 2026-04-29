@@ -518,6 +518,24 @@ export default function LeadsCrmPage() {
   );
 }
 
+// Tight outreach label for the in-row chip. The detail panel and the Cold
+// Email page show the full label with timestamps; here we just want a single
+// word so the row stays scannable.
+function compactOutreachLabel(lead: Lead): string {
+  switch (lead.outreachStatus) {
+    case "draft":           return "Pending QA";
+    case "queued":          return "Queued";
+    case "sending":         return "Sending";
+    case "day_zero_sent":   return "Sent";
+    case "day_zero_failed": return "Failed";
+    case "rejected":        return "Rejected";
+    case "unsubscribed":    return "Unsub";
+    case "no_email":        return "No email";
+    case "no_demo":         return "No demo";
+    default:                return String(lead.outreachStatus || "");
+  }
+}
+
 interface LeadRowProps {
   lead: Lead;
   selected: boolean;
@@ -567,6 +585,16 @@ function LeadRow({ lead, selected, onSelect, onMarkContacted, markingContacted }
             <span className={`inline-flex border px-2 py-1 rounded-md text-[11px] font-bold ${opportunityTone(lead)}`}>
               {opportunityLabel(lead)}
             </span>
+            {lead.outreachStatus && lead.outreachStatus !== "none" && (
+              <a
+                href={`/admin/cold-email?leadId=${lead.id}&tab=${lead.outreachStatus === "draft" ? "pending" : "sent"}`}
+                onClick={(event) => event.stopPropagation()}
+                className={`inline-flex border px-2 py-1 rounded-md text-[11px] font-bold ${outreachStatusTone(lead.outreachStatus)} hover:opacity-80`}
+                title={outreachStatusLabel(lead)}
+              >
+                {compactOutreachLabel(lead)}
+              </a>
+            )}
           </div>
         </div>
         <div className="flex items-center justify-end gap-2">

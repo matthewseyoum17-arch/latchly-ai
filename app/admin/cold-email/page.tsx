@@ -4,15 +4,15 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   Check,
-  ChevronDown,
   ChevronRight,
   Clock,
+  Edit3,
   ExternalLink,
-  Filter,
   Inbox,
   Loader2,
   RefreshCw,
   Rocket,
+  Save,
   Search,
   Send,
   ShieldCheck,
@@ -22,24 +22,27 @@ import { AuthGate, isClientAuthed } from "@/components/admin/auth-gate";
 import { StatPill } from "@/components/admin/stat-tile";
 import {
   formatDateTime,
-  groupByDay,
   outreachStatusTone,
   qualityChipTone,
   timeUntil,
 } from "@/components/admin/lead-helpers";
 import type { CrmData, Lead, OutreachStats } from "@/components/admin/types";
 
-type GroupKey = "draft" | "queued" | "sending" | "sent_today" | "day_zero_sent" | "day_zero_failed" | "rejected" | "unsubscribed";
+type Tab = "pending" | "sent";
 
-const GROUP_META: { key: GroupKey; label: string; description: string; tone: string; icon: React.ReactNode; outreachStatus: string }[] = [
-  { key: "draft",          label: "Pending QA",         description: "Awaiting your approval before they queue for send",            tone: "border-violet-200 bg-violet-50",   icon: <ShieldCheck size={14} />, outreachStatus: "draft" },
-  { key: "queued",         label: "Queued",             description: "Approved · waiting for the next 7-9am-local send window",     tone: "border-blue-200 bg-blue-50",        icon: <Inbox size={14} />,       outreachStatus: "queued" },
-  { key: "sending",        label: "Sending",            description: "Drain cron has the row in flight right now",                  tone: "border-amber-200 bg-amber-50",      icon: <Send size={14} />,        outreachStatus: "sending" },
-  { key: "sent_today",     label: "Sent today",         description: "Confirmed deliveries since midnight",                          tone: "border-emerald-200 bg-emerald-50",  icon: <Check size={14} />,       outreachStatus: "sent_today" },
-  { key: "day_zero_sent",  label: "Sent (recent)",      description: "Day-0 emails delivered prior to today",                        tone: "border-emerald-100 bg-emerald-50/50", icon: <Check size={14} />,    outreachStatus: "day_zero_sent" },
-  { key: "day_zero_failed",label: "Failed",             description: "Resend errored — investigate, then retry via Send now",        tone: "border-rose-200 bg-rose-50",        icon: <AlertTriangle size={14} />, outreachStatus: "day_zero_failed" },
-  { key: "rejected",       label: "Rejected drafts",    description: "Marked unfit during QA. Kept for learning.",                   tone: "border-zinc-200 bg-zinc-50",        icon: <X size={14} />,           outreachStatus: "rejected" },
-  { key: "unsubscribed",   label: "Unsubscribed",       description: "Recipients who opted out — never re-contact",                  tone: "border-zinc-200 bg-zinc-50",        icon: <X size={14} />,           outreachStatus: "unsubscribed" },
+const TABS: { value: Tab; label: string; description: string; icon: React.ReactNode }[] = [
+  {
+    value: "pending",
+    label: "Pending",
+    description: "Drafts awaiting approval — edit, then Approve & Send",
+    icon: <ShieldCheck size={16} />,
+  },
+  {
+    value: "sent",
+    label: "Sent",
+    description: "Every email actually delivered (and any send failures)",
+    icon: <Send size={16} />,
+  },
 ];
 
 export default function ColdEmailPage() {
@@ -49,16 +52,11 @@ export default function ColdEmailPage() {
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
   const [query, setQuery] = useState("");
-  const [activeGroup, setActiveGroup] = useState<GroupKey | "all">("all");
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<GroupKey>>(
-    () => new Set<GroupKey>(["day_zero_sent", "rejected", "unsubscribed"]),
-  );
+  const [tab, setTab] = useState<Tab>("pending");
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [outreachActionId, setOutreachActionId] = useState<number | null>(null);
-  const [sendNowId, setSendNowId] = useState<number | null>(null);
-  // Ticking timer for queued countdowns. Re-render every 30s so "in 13h 27m"
-  // doesn't freeze on first paint. Cheap — the row component just rebuilds
-  // the timeUntil() string. Codex review #10.
+  const [actionInFlightId, setActionInFlightId] = useState<number | null>(null);
+  const [savingDraftId, setSavingDraftId] = useState<number | null>(null);
+  // Re-render every 30s so timeUntil() text on queued rows ticks down.
   const [, setTick] = useState(0);
   useEffect(() => {
     const handle = window.setInterval(() => setTick((n) => (n + 1) % 1_000_000), 30_000);
@@ -71,40 +69,44 @@ export default function ColdEmailPage() {
       const params = new URLSearchParams(window.location.search);
       const lid = Number(params.get("leadId") || "");
       if (Number.isFinite(lid) && lid > 0) setSelectedId(lid);
+      const t = params.get("tab");
+      if (t === "pending" || t === "sent") setTab(t);
     }
   }, []);
+
+  // Sync the active tab to the URL so refreshes preserve view.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (tab === "pending") params.delete("tab");
+    else params.set("tab", tab);
+    const next = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
+    window.history.replaceState(null, "", next);
+  }, [tab]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const params = new URLSearchParams({
-        q: query,
-        limit: "200",
-      });
-      // Pull every lead that has any outreach state attached. The /api accepts
-      // outreachStatus=active for the union (draft|queued|sending|failed),
-      // but for the inbox we want sent + rejected + unsub too — so we just
-      // fetch a large window and bucket client-side.
+      const params = new URLSearchParams({ q: query, limit: "300" });
       params.set("includeArchived", "1");
+      // Tab determines the slice we ask the server for. The API sorts
+      // outreach-relevant rows first when an outreach filter is set.
+      if (tab === "pending") params.set("outreachStatus", "draft");
+      else params.set("outreachStatus", "active");
       const res = await fetch(`/api/admin/latchly-leads?${params.toString()}`);
-      if (res.status === 401) {
-        setAuthed(false);
-        return;
-      }
+      if (res.status === 401) { setAuthed(false); return; }
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to load");
       setData(json);
     } catch (err: any) {
-      setError(err.message || "Failed to load outreach inbox");
+      setError(err.message || "Failed to load");
     } finally {
       setLoading(false);
     }
-  }, [query]);
+  }, [query, tab]);
 
-  useEffect(() => {
-    if (authed) fetchData();
-  }, [authed, fetchData]);
+  useEffect(() => { if (authed) fetchData(); }, [authed, fetchData]);
 
   useEffect(() => {
     if (!toast) return;
@@ -112,109 +114,46 @@ export default function ColdEmailPage() {
     return () => window.clearTimeout(t);
   }, [toast]);
 
-  // Codex review #9: when the user lands via ?leadId=N and that lead's group
-  // is collapsed, expand the group so they can actually see the row. Also
-  // route unknown statuses into the existing buckets fallback (#13).
-  useEffect(() => {
-    if (!selectedId || !data?.leads) return;
-    const lead = data.leads.find((l) => l.id === selectedId);
-    if (!lead) return;
-    const status = lead.outreachStatus || "none";
-    let groupKey: GroupKey | null = null;
-    if (status === "draft") groupKey = "draft";
-    else if (status === "queued") groupKey = "queued";
-    else if (status === "sending") groupKey = "sending";
-    else if (status === "day_zero_sent") {
-      const sentAt = lead.emailSentAt ? new Date(lead.emailSentAt) : null;
-      const today = new Date(); today.setHours(0, 0, 0, 0);
-      groupKey = sentAt && sentAt.getTime() >= today.getTime() ? "sent_today" : "day_zero_sent";
-    } else if (status === "day_zero_failed") groupKey = "day_zero_failed";
-    else if (status === "rejected") groupKey = "rejected";
-    else if (status === "unsubscribed") groupKey = "unsubscribed";
-    if (groupKey) {
-      setCollapsedGroups((prev) => {
-        if (!prev.has(groupKey!)) return prev;
-        const next = new Set(prev);
-        next.delete(groupKey!);
-        return next;
+  // Derive the row list per tab. Server does the heavy filtering; we just
+  // bucket sent vs failed for the Sent tab so the UI can group them.
+  const rows = useMemo(() => {
+    const all = data?.leads || [];
+    if (tab === "pending") {
+      return all.filter((lead) => lead.outreachStatus === "draft");
+    }
+    // Sent tab includes day_zero_sent, day_zero_failed, sending — anything
+    // with a real attempt history. Order: failures first (need attention),
+    // then most-recent sent.
+    return all
+      .filter((lead) => ["day_zero_sent", "day_zero_failed", "sending", "queued"].includes(String(lead.outreachStatus)))
+      .sort((a, b) => {
+        const order = (lead: Lead) => {
+          if (lead.outreachStatus === "day_zero_failed") return 0;
+          if (lead.outreachStatus === "sending") return 1;
+          if (lead.outreachStatus === "queued") return 2;
+          return 3;
+        };
+        const oa = order(a);
+        const ob = order(b);
+        if (oa !== ob) return oa - ob;
+        const ta = new Date(a.emailSentAt || a.outreachScheduledFor || a.outreachQueuedAt || 0).getTime();
+        const tb = new Date(b.emailSentAt || b.outreachScheduledFor || b.outreachQueuedAt || 0).getTime();
+        return tb - ta;
       });
-    }
-  }, [selectedId, data?.leads]);
+  }, [data?.leads, tab]);
 
-  const grouped = useMemo(() => {
-    const buckets: Record<GroupKey, Lead[]> = {
-      draft: [], queued: [], sending: [], sent_today: [],
-      day_zero_sent: [], day_zero_failed: [], rejected: [], unsubscribed: [],
-    };
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayMs = today.getTime();
-    for (const lead of data?.leads || []) {
-      const status = lead.outreachStatus || "none";
-      if (status === "draft") buckets.draft.push(lead);
-      else if (status === "queued") buckets.queued.push(lead);
-      else if (status === "sending") buckets.sending.push(lead);
-      else if (status === "day_zero_sent") {
-        const sentMs = lead.emailSentAt ? new Date(lead.emailSentAt).getTime() : 0;
-        if (sentMs >= todayMs) buckets.sent_today.push(lead);
-        else buckets.day_zero_sent.push(lead);
-      }
-      else if (status === "day_zero_failed") buckets.day_zero_failed.push(lead);
-      else if (status === "rejected") buckets.rejected.push(lead);
-      else if (status === "unsubscribed") buckets.unsubscribed.push(lead);
-    }
-    return buckets;
-  }, [data?.leads]);
+  const selectedLead = useMemo(() => {
+    return (data?.leads || []).find((l) => l.id === selectedId) || null;
+  }, [data?.leads, selectedId]);
 
   const outreachStats: OutreachStats = data?.stats.outreach || {
     draft: 0, queued: 0, sending: 0, sent: 0, sentToday: 0, failed: 0, rejected: 0, unsubscribed: 0,
   };
 
-  const selectedLead = useMemo(() => {
-    if (!data?.leads) return null;
-    return data.leads.find(l => l.id === selectedId) || null;
-  }, [data?.leads, selectedId]);
-
-  const visibleGroups = useMemo(() => {
-    const groups = activeGroup === "all" ? GROUP_META : GROUP_META.filter(g => g.key === activeGroup);
-    return groups.map(group => ({
-      ...group,
-      rows: filterRows(grouped[group.key], query),
-    }));
-  }, [activeGroup, grouped, query]);
-
-  const toggleCollapse = (key: GroupKey) => {
-    setCollapsedGroups(prev => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  };
-
-  const approveOutreach = async (lead: Lead) => {
-    setOutreachActionId(lead.id);
-    try {
-      const res = await fetch(`/api/admin/latchly-leads/${lead.id}/approve-outreach`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Approve failed");
-      setToast("Approved · queued for next send window");
-      await fetchData();
-    } catch (err: any) {
-      setError(err.message || "Approve failed");
-    } finally {
-      setOutreachActionId(null);
-    }
-  };
-
-  const rejectOutreach = async (lead: Lead) => {
+  const rejectDraft = async (lead: Lead) => {
     const reason = window.prompt("Reason for rejecting (optional):", "rejected_in_qa");
     if (reason === null) return;
-    setOutreachActionId(lead.id);
+    setActionInFlightId(lead.id);
     try {
       const res = await fetch(`/api/admin/latchly-leads/${lead.id}/reject-outreach`, {
         method: "POST",
@@ -228,23 +167,63 @@ export default function ColdEmailPage() {
     } catch (err: any) {
       setError(err.message || "Reject failed");
     } finally {
-      setOutreachActionId(null);
+      setActionInFlightId(null);
     }
   };
 
-  const sendNow = async (lead: Lead) => {
-    if (!window.confirm(`Send to ${lead.email} right now? Bypasses the 7-9am-local schedule.`)) return;
-    setSendNowId(lead.id);
+  // "Approve & Send" — explicit operator action that bypasses the 7-9am
+  // schedule and ships immediately. The save-draft endpoint is called first
+  // if the operator was editing, so any in-flight changes ride along.
+  const approveAndSend = async (lead: Lead, edits?: { subject?: string; body?: string; email?: string }) => {
+    const confirmText = lead.emailStatus === "guessed"
+      ? `This email was pattern-guessed (${lead.email}). Sending may bounce — confirm?`
+      : `Send to ${lead.email} now? Bypasses the 7-9am-local schedule.`;
+    if (!window.confirm(confirmText)) return;
+    setActionInFlightId(lead.id);
     try {
-      const res = await fetch(`/api/admin/latchly-leads/${lead.id}/send-now`, { method: "POST" });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Send failed");
+      // Persist any in-flight edits before the send so we know what
+      // actually shipped.
+      if (edits && (edits.subject != null || edits.body != null || edits.email != null)) {
+        const saveRes = await fetch(`/api/admin/latchly-leads/${lead.id}/draft`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(edits),
+        });
+        const saveJson = await saveRes.json();
+        if (!saveRes.ok) throw new Error(saveJson.error || "Save failed before send");
+      }
+      const sendRes = await fetch(`/api/admin/latchly-leads/${lead.id}/send-now`, {
+        method: "POST",
+      });
+      const sendJson = await sendRes.json();
+      if (!sendRes.ok) throw new Error(sendJson.error || "Send failed");
       setToast(`Sent to ${lead.email}`);
       await fetchData();
     } catch (err: any) {
       setError(err.message || "Send failed");
     } finally {
-      setSendNowId(null);
+      setActionInFlightId(null);
+    }
+  };
+
+  const saveDraft = async (lead: Lead, edits: { subject?: string; body?: string; email?: string }) => {
+    setSavingDraftId(lead.id);
+    try {
+      const res = await fetch(`/api/admin/latchly-leads/${lead.id}/draft`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(edits),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Save failed");
+      setToast("Draft saved");
+      await fetchData();
+      return true;
+    } catch (err: any) {
+      setError(err.message || "Save failed");
+      return false;
+    } finally {
+      setSavingDraftId(null);
     }
   };
 
@@ -252,8 +231,7 @@ export default function ColdEmailPage() {
 
   return (
     <div className="min-h-screen">
-      {/* Page header */}
-      <header className="sticky top-0 lg:top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-200">
+      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-200">
         <div className="max-w-[1500px] mx-auto px-4 sm:px-6 py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-9 h-9 rounded-lg bg-violet-100 text-violet-700 flex items-center justify-center">
@@ -280,9 +258,8 @@ export default function ColdEmailPage() {
       </header>
 
       <div className="max-w-[1500px] mx-auto px-4 sm:px-6 py-5 space-y-5">
-        {/* Stat strip */}
         <section className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-          <StatPill icon={<ShieldCheck size={14} />}    label="Drafts"      value={outreachStats.draft}        tone="text-violet-700" />
+          <StatPill icon={<ShieldCheck size={14} />}    label="Pending"     value={outreachStats.draft}        tone="text-violet-700" />
           <StatPill icon={<Inbox size={14} />}          label="Queued"      value={outreachStats.queued}       tone="text-blue-700" />
           <StatPill icon={<Send size={14} />}           label="Sending"     value={outreachStats.sending}      tone="text-amber-700" />
           <StatPill icon={<Clock size={14} />}          label="Sent today"  value={outreachStats.sentToday}    tone="text-emerald-700" />
@@ -292,41 +269,50 @@ export default function ColdEmailPage() {
           <StatPill icon={<X size={14} />}              label="Unsub"       value={outreachStats.unsubscribed} tone="text-zinc-600" />
         </section>
 
-        {/* Send-rate progress (real warmup cap from API; was hardcoded 50). */}
         <section className="bg-white border border-slate-200 rounded-lg p-4">
           <SendRateBar sent={outreachStats.sentToday} cap={outreachStats.dailyCap ?? 50} />
         </section>
 
-        {/* Filter pills */}
-        <section className="bg-white border border-slate-200 rounded-lg p-3 flex flex-wrap items-center gap-2">
-          <div className="relative flex-1 min-w-[200px]">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search business, owner, email"
-              className="w-full rounded-md border border-slate-200 pl-9 pr-3 py-2 text-sm outline-none focus:border-teal-500"
-            />
+        {/* Tab bar */}
+        <section className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+          <div className="flex border-b border-slate-100">
+            {TABS.map((t) => {
+              const active = tab === t.value;
+              const count = t.value === "pending" ? outreachStats.draft : outreachStats.sent + outreachStats.failed;
+              return (
+                <button
+                  key={t.value}
+                  type="button"
+                  onClick={() => { setTab(t.value); setSelectedId(null); }}
+                  className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold transition-colors ${
+                    active
+                      ? "bg-slate-950 text-white"
+                      : "bg-white text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  {t.icon}
+                  {t.label}
+                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${active ? "bg-white/15 text-white" : "bg-slate-100 text-slate-700"}`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
           </div>
-          <button
-            onClick={() => setActiveGroup("all")}
-            className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-bold transition-colors ${activeGroup === "all" ? "bg-slate-950 text-white" : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"}`}
-          >
-            <Filter size={13} /> All
-          </button>
-          {GROUP_META.map(group => (
-            <button
-              key={group.key}
-              onClick={() => setActiveGroup(group.key)}
-              className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-bold transition-colors ${activeGroup === group.key ? "bg-slate-950 text-white" : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"}`}
-            >
-              {group.icon}
-              {group.label}
-              <span className={`ml-1 rounded-full px-1.5 text-[10px] ${activeGroup === group.key ? "bg-white/15 text-white" : "bg-slate-100 text-slate-600"}`}>
-                {grouped[group.key].length}
-              </span>
-            </button>
-          ))}
+          <div className="px-4 py-2.5 bg-slate-50 text-xs text-slate-600 border-b border-slate-100">
+            {TABS.find((t) => t.value === tab)?.description}
+          </div>
+          <div className="p-3 flex flex-wrap items-center gap-2">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search business, owner, email"
+                className="w-full rounded-md border border-slate-200 pl-9 pr-3 py-2 text-sm outline-none focus:border-teal-500"
+              />
+            </div>
+          </div>
         </section>
 
         {error && (
@@ -340,163 +326,74 @@ export default function ColdEmailPage() {
           </div>
         )}
 
-        {/* Inbox + detail */}
-        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_440px] gap-5 items-start">
-          <section className="space-y-4 min-w-0">
-            {visibleGroups.map(group => {
-              const collapsed = collapsedGroups.has(group.key);
-              return (
-                <GroupCard
-                  key={group.key}
-                  meta={group}
-                  collapsed={collapsed}
-                  onToggle={() => toggleCollapse(group.key)}
-                  selectedId={selectedId}
-                  onSelect={setSelectedId}
-                  onApprove={approveOutreach}
-                  onReject={rejectOutreach}
-                  onSendNow={sendNow}
-                  approveInFlightId={outreachActionId}
-                  sendInFlightId={sendNowId}
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_460px] gap-5 items-start">
+          <section className="bg-white border border-slate-200 rounded-lg overflow-hidden min-w-0">
+            {rows.length === 0 && !loading ? (
+              <div className="py-16 text-center text-sm text-slate-500">
+                {tab === "pending" ? "Inbox zero — no drafts awaiting approval" : "No emails sent yet"}
+              </div>
+            ) : (
+              rows.map((lead) => (
+                <RowCard
+                  key={lead.id}
+                  lead={lead}
+                  tab={tab}
+                  selected={selectedId === lead.id}
+                  onSelect={() => setSelectedId(lead.id)}
                 />
-              );
-            })}
-            {!loading && visibleGroups.every(g => g.rows.length === 0) && (
-              <div className="bg-white border border-dashed border-slate-200 rounded-lg p-12 text-center text-sm text-slate-500">
-                Nothing in this view yet.
+              ))
+            )}
+            {loading && (
+              <div className="px-4 py-3 border-t border-slate-100 flex items-center gap-2 text-xs text-slate-500">
+                <Loader2 size={13} className="animate-spin" /> Loading…
               </div>
             )}
           </section>
 
-          <OutreachDetail
-            lead={selectedLead}
-            onApprove={approveOutreach}
-            onReject={rejectOutreach}
-            onSendNow={sendNow}
-            approveInFlight={Boolean(selectedLead && outreachActionId === selectedLead.id)}
-            sendInFlight={Boolean(selectedLead && sendNowId === selectedLead.id)}
-          />
+          {tab === "pending" ? (
+            <PendingDetail
+              lead={selectedLead}
+              onSaveDraft={saveDraft}
+              onApproveAndSend={approveAndSend}
+              onReject={rejectDraft}
+              actionInFlight={Boolean(selectedLead && actionInFlightId === selectedLead.id)}
+              savingDraft={Boolean(selectedLead && savingDraftId === selectedLead.id)}
+            />
+          ) : (
+            <SentDetail lead={selectedLead} />
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-function filterRows(rows: Lead[], query: string): Lead[] {
-  if (!query.trim()) return rows;
-  const q = query.toLowerCase();
-  return rows.filter(lead => {
-    return (
-      (lead.businessName || "").toLowerCase().includes(q)
-      || (lead.email || "").toLowerCase().includes(q)
-      || (lead.decisionMakerName || "").toLowerCase().includes(q)
-      || (lead.city || "").toLowerCase().includes(q)
-      || (lead.niche || "").toLowerCase().includes(q)
-    );
-  });
-}
+// ── List rows ───────────────────────────────────────────────────────────────
 
-interface GroupCardProps {
-  meta: typeof GROUP_META[number] & { rows: Lead[] };
-  collapsed: boolean;
-  onToggle: () => void;
-  selectedId: number | null;
-  onSelect: (id: number) => void;
-  onApprove: (lead: Lead) => void;
-  onReject: (lead: Lead) => void;
-  onSendNow: (lead: Lead) => void;
-  approveInFlightId: number | null;
-  sendInFlightId: number | null;
-}
-
-function GroupCard({ meta, collapsed, onToggle, selectedId, onSelect, onApprove, onReject, onSendNow, approveInFlightId, sendInFlightId }: GroupCardProps) {
-  const showQueueGrouping = meta.key === "queued" && meta.rows.length > 0;
-  const dayGroups = showQueueGrouping
-    ? groupByDay(meta.rows, lead => lead.outreachScheduledFor || null)
-    : null;
-
-  return (
-    <div className={`bg-white border rounded-lg overflow-hidden ${meta.tone}`}>
-      <button
-        type="button"
-        onClick={onToggle}
-        className="w-full px-4 py-3 flex items-center justify-between gap-3 hover:bg-white/50 transition-colors"
-      >
-        <div className="flex items-center gap-2.5 min-w-0">
-          <span className="w-7 h-7 rounded-md bg-white/70 flex items-center justify-center text-slate-700 shrink-0">
-            {meta.icon}
-          </span>
-          <div className="min-w-0 text-left">
-            <div className="text-sm font-black text-slate-950">
-              {meta.label}
-              <span className="ml-2 text-slate-600 font-bold">{meta.rows.length}</span>
-            </div>
-            <div className="text-[11px] text-slate-600 truncate">{meta.description}</div>
-          </div>
-        </div>
-        {collapsed ? <ChevronRight size={16} className="text-slate-500" /> : <ChevronDown size={16} className="text-slate-500" />}
-      </button>
-      {!collapsed && meta.rows.length > 0 && (
-        <div className="border-t border-slate-200 bg-white">
-          {dayGroups ? (
-            dayGroups.map(day => (
-              <div key={day.key}>
-                <div className="px-4 py-2 bg-slate-50 border-b border-slate-100 text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                  {day.label} · {day.items.length}
-                </div>
-                {day.items.map(lead => (
-                  <OutreachRow
-                    key={lead.id}
-                    lead={lead}
-                    selected={selectedId === lead.id}
-                    onSelect={() => onSelect(lead.id)}
-                    onApprove={onApprove}
-                    onReject={onReject}
-                    onSendNow={onSendNow}
-                    approveInFlight={approveInFlightId === lead.id}
-                    sendInFlight={sendInFlightId === lead.id}
-                  />
-                ))}
-              </div>
-            ))
-          ) : (
-            meta.rows.map(lead => (
-              <OutreachRow
-                key={lead.id}
-                lead={lead}
-                selected={selectedId === lead.id}
-                onSelect={() => onSelect(lead.id)}
-                onApprove={onApprove}
-                onReject={onReject}
-                onSendNow={onSendNow}
-                approveInFlight={approveInFlightId === lead.id}
-                sendInFlight={sendInFlightId === lead.id}
-              />
-            ))
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-interface OutreachRowProps {
+function RowCard({
+  lead, tab, selected, onSelect,
+}: {
   lead: Lead;
+  tab: Tab;
   selected: boolean;
   onSelect: () => void;
-  onApprove: (lead: Lead) => void;
-  onReject: (lead: Lead) => void;
-  onSendNow: (lead: Lead) => void;
-  approveInFlight: boolean;
-  sendInFlight: boolean;
-}
-
-function OutreachRow({ lead, selected, onSelect, onApprove, onReject, onSendNow, approveInFlight, sendInFlight }: OutreachRowProps) {
+}) {
   const status = lead.outreachStatus || "none";
-  const showApprove = status === "draft";
-  const showSendNow = status === "queued" || status === "day_zero_failed";
-  const countdown = status === "queued" ? timeUntil(lead.outreachScheduledFor) : "";
-  const sentAt = status === "day_zero_sent" ? formatDateTime(lead.emailSentAt) : "";
+  const statusLabel = status === "day_zero_sent"
+    ? "sent"
+    : status === "day_zero_failed"
+      ? "failed"
+      : status === "queued"
+        ? (timeUntil(lead.outreachScheduledFor) || "queued")
+        : status;
+  const timestampText =
+    status === "day_zero_sent"
+      ? formatDateTime(lead.emailSentAt)
+      : status === "day_zero_failed"
+        ? "needs retry"
+        : status === "queued"
+          ? `scheduled ${formatDateTime(lead.outreachScheduledFor)}`
+          : "";
 
   return (
     <div
@@ -522,94 +419,85 @@ function OutreachRow({ lead, selected, onSelect, onApprove, onReject, onSendNow,
                 Premium
               </span>
             )}
-          </div>
-          <div className="mt-1 text-xs text-slate-700 truncate">
-            {lead.emailSubject || <span className="text-slate-400 italic">No subject yet</span>}
-          </div>
-          <div className="mt-1 text-[11px] text-slate-500 truncate flex items-center gap-1.5 flex-wrap">
-            <span>{lead.email || "no email"}</span>
             {lead.emailStatus === "guessed" && (
               <span
-                className="inline-flex border border-amber-300 bg-amber-50 text-amber-800 px-1.5 py-0.5 rounded text-[10px] font-bold"
-                title="Pattern-guessed email · domain MX validated, mailbox unverified"
+                className="inline-flex border border-amber-300 bg-amber-50 text-amber-800 px-1.5 py-0.5 rounded-md text-[10px] font-bold"
+                title="Pattern-guessed · domain MX validated, mailbox unverified"
               >
                 ⚠ guessed
               </span>
             )}
-            <span>· {lead.decisionMakerName || "no owner"}{lead.city ? ` · ${lead.city}` : ""}</span>
+          </div>
+          <div className="mt-1 text-xs text-slate-700 truncate">
+            {lead.emailSubject || <span className="text-slate-400 italic">No subject yet</span>}
+          </div>
+          <div className="mt-1 text-[11px] text-slate-500 truncate">
+            {lead.email || "no email"} · {lead.decisionMakerName || "no owner"}
+            {lead.city ? ` · ${lead.city}` : ""}
+            {tab === "sent" && timestampText ? ` · ${timestampText}` : ""}
           </div>
           {lead.outreachError && (
-            <div className="mt-1 text-[11px] text-rose-700 truncate">
-              ⚠ {lead.outreachError}
-            </div>
+            <div className="mt-1 text-[11px] text-rose-700 truncate">⚠ {lead.outreachError}</div>
           )}
         </div>
-        <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
+        <div className="text-right shrink-0">
           <span className={`inline-flex border px-2 py-0.5 rounded-md text-[10px] font-bold ${outreachStatusTone(status)}`}>
-            {status === "queued" && countdown ? countdown : status === "day_zero_sent" ? "sent" : status}
+            {statusLabel}
           </span>
-          {sentAt && <span className="text-[10px] text-slate-500">{sentAt}</span>}
-          <div className="flex gap-1.5">
-            {showApprove && (
-              <>
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); onApprove(lead); }}
-                  disabled={approveInFlight}
-                  className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
-                >
-                  {approveInFlight ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}
-                  Approve
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); onReject(lead); }}
-                  disabled={approveInFlight}
-                  className="inline-flex items-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-bold text-rose-700 hover:bg-rose-100 disabled:opacity-50"
-                >
-                  <X size={11} /> Reject
-                </button>
-              </>
-            )}
-            {showSendNow && (
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); onSendNow(lead); }}
-                disabled={sendInFlight}
-                className="inline-flex items-center gap-1 rounded-md bg-slate-950 px-2 py-1 text-[11px] font-bold text-white hover:bg-slate-800 disabled:opacity-50"
-              >
-                {sendInFlight ? <Loader2 size={11} className="animate-spin" /> : <Send size={11} />}
-                Send now
-              </button>
-            )}
-          </div>
         </div>
       </div>
     </div>
   );
 }
 
-interface OutreachDetailProps {
-  lead: Lead | null;
-  onApprove: (lead: Lead) => void;
-  onReject: (lead: Lead) => void;
-  onSendNow: (lead: Lead) => void;
-  approveInFlight: boolean;
-  sendInFlight: boolean;
-}
+// ── Pending detail (editable + approve & send) ──────────────────────────────
 
-function OutreachDetail({ lead, onApprove, onReject, onSendNow, approveInFlight, sendInFlight }: OutreachDetailProps) {
+function PendingDetail({
+  lead, onSaveDraft, onApproveAndSend, onReject, actionInFlight, savingDraft,
+}: {
+  lead: Lead | null;
+  onSaveDraft: (lead: Lead, edits: { subject?: string; body?: string; email?: string }) => Promise<boolean>;
+  onApproveAndSend: (lead: Lead, edits?: { subject?: string; body?: string; email?: string }) => void;
+  onReject: (lead: Lead) => void;
+  actionInFlight: boolean;
+  savingDraft: boolean;
+}) {
+  const [subjectDraft, setSubjectDraft] = useState("");
+  const [bodyDraft, setBodyDraft] = useState("");
+  const [emailDraft, setEmailDraft] = useState("");
+  const [editing, setEditing] = useState(false);
+
+  // Reset form whenever a different lead is selected.
+  useEffect(() => {
+    if (!lead) return;
+    setSubjectDraft(lead.emailSubject || "");
+    setBodyDraft(lead.emailBodyPreview || "");
+    setEmailDraft(lead.email || "");
+    setEditing(false);
+  }, [lead?.id, lead?.emailSubject, lead?.emailBodyPreview, lead?.email]);
+
   if (!lead) {
     return (
       <aside className="bg-white border border-slate-200 rounded-lg min-h-[420px] flex items-center justify-center text-sm text-slate-500 sticky top-24">
-        Select an outreach row to inspect the full email.
+        Select a draft to review and approve.
       </aside>
     );
   }
 
-  const status = lead.outreachStatus || "none";
-  const showApprove = status === "draft";
-  const showSendNow = status === "queued" || status === "day_zero_failed";
+  const dirty =
+    subjectDraft !== (lead.emailSubject || "")
+    || bodyDraft !== (lead.emailBodyPreview || "")
+    || emailDraft !== (lead.email || "");
+
+  const handleSend = () => {
+    onApproveAndSend(lead, dirty
+      ? {
+          subject: subjectDraft !== (lead.emailSubject || "") ? subjectDraft : undefined,
+          body: bodyDraft !== (lead.emailBodyPreview || "") ? bodyDraft : undefined,
+          email: emailDraft !== (lead.email || "") ? emailDraft : undefined,
+        }
+      : undefined);
+  };
 
   return (
     <aside className="bg-white border border-slate-200 rounded-lg overflow-hidden sticky top-24 max-h-[calc(100vh-7rem)] flex flex-col">
@@ -621,13 +509,9 @@ function OutreachDetail({ lead, onApprove, onReject, onSendNow, approveInFlight,
               {[lead.city, lead.state].filter(Boolean).join(", ") || "—"} · {lead.niche || "—"}
             </p>
           </div>
-          <span className={`shrink-0 inline-flex border px-2 py-1 rounded-md text-[11px] font-bold ${outreachStatusTone(status)}`}>
-            {status}
+          <span className="shrink-0 inline-flex border border-violet-200 bg-violet-50 text-violet-800 px-2 py-1 rounded-md text-[11px] font-bold">
+            Draft
           </span>
-        </div>
-        <div className="mt-2 text-xs text-slate-600">
-          To <span className="font-mono text-slate-900">{lead.email || "—"}</span>
-          {lead.decisionMakerName && <> · {lead.decisionMakerName}</>}
         </div>
       </div>
 
@@ -636,7 +520,7 @@ function OutreachDetail({ lead, onApprove, onReject, onSendNow, approveInFlight,
           <div className="font-bold flex items-center gap-1.5">⚠ Pattern-guessed email</div>
           <div className="mt-1 leading-relaxed">
             We MX-validated <span className="font-mono">{lead.email}</span> but did not verify the mailbox itself.
-            Sending may bounce. Confirm the address before approving — a hard bounce damages Resend warmup.
+            Sending may bounce. Edit the address below or reject the draft if you can't confirm it.
           </div>
         </div>
       )}
@@ -653,6 +537,113 @@ function OutreachDetail({ lead, onApprove, onReject, onSendNow, approveInFlight,
           </a>
         )}
 
+        <div>
+          <label className="text-[10px] font-bold uppercase text-slate-500 mb-1 block">To</label>
+          <input
+            value={emailDraft}
+            onChange={(event) => { setEmailDraft(event.target.value); setEditing(true); }}
+            className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-mono outline-none focus:border-teal-500"
+            placeholder="recipient@example.com"
+          />
+        </div>
+
+        <div>
+          <label className="text-[10px] font-bold uppercase text-slate-500 mb-1 block">Subject</label>
+          <input
+            value={subjectDraft}
+            onChange={(event) => { setSubjectDraft(event.target.value); setEditing(true); }}
+            className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold outline-none focus:border-teal-500"
+          />
+        </div>
+
+        <div>
+          <label className="text-[10px] font-bold uppercase text-slate-500 mb-1 block">Body</label>
+          <textarea
+            value={bodyDraft}
+            onChange={(event) => { setBodyDraft(event.target.value); setEditing(true); }}
+            rows={12}
+            className="w-full rounded-md border border-slate-200 bg-white px-3 py-2.5 text-xs leading-5 font-sans outline-none focus:border-teal-500 resize-y"
+          />
+          <p className="mt-1 text-[10px] text-slate-500">
+            {dirty ? "Unsaved edits — Save or Approve & Send to persist them." : "Tap inside any field to edit."}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-100">
+          <button
+            type="button"
+            onClick={handleSend}
+            disabled={actionInFlight || !emailDraft || !subjectDraft}
+            className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-500 disabled:opacity-50"
+          >
+            {actionInFlight ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+            Approve &amp; Send
+          </button>
+          <button
+            type="button"
+            onClick={() => onSaveDraft(lead, {
+              subject: dirty ? subjectDraft : undefined,
+              body: dirty ? bodyDraft : undefined,
+              email: dirty ? emailDraft : undefined,
+            })}
+            disabled={savingDraft || !dirty}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+          >
+            {savingDraft ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+            Save draft
+          </button>
+          <button
+            type="button"
+            onClick={() => onReject(lead)}
+            disabled={actionInFlight}
+            className="inline-flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100 disabled:opacity-50"
+          >
+            <X size={14} /> Reject
+          </button>
+          <a
+            href={`/admin/leads-crm?leadId=${lead.id}`}
+            className="ml-auto inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+          >
+            View in CRM <ChevronRight size={14} />
+          </a>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+// ── Sent detail (read-only full body view) ──────────────────────────────────
+
+function SentDetail({ lead }: { lead: Lead | null }) {
+  if (!lead) {
+    return (
+      <aside className="bg-white border border-slate-200 rounded-lg min-h-[420px] flex items-center justify-center text-sm text-slate-500 sticky top-24">
+        Select a row to inspect the email and timestamps.
+      </aside>
+    );
+  }
+  const status = lead.outreachStatus || "none";
+  return (
+    <aside className="bg-white border border-slate-200 rounded-lg overflow-hidden sticky top-24 max-h-[calc(100vh-7rem)] flex flex-col">
+      <div className="p-5 border-b border-slate-100">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="text-base font-black text-slate-950 leading-tight">{lead.businessName}</h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {[lead.city, lead.state].filter(Boolean).join(", ") || "—"} · {lead.niche || "—"}
+            </p>
+          </div>
+          <span className={`shrink-0 inline-flex border px-2 py-1 rounded-md text-[11px] font-bold ${outreachStatusTone(status)}`}>
+            {status === "day_zero_sent" ? "sent" : status}
+          </span>
+        </div>
+        <div className="mt-2 text-xs text-slate-600">
+          To <span className="font-mono text-slate-900">{lead.email || "—"}</span>
+          {lead.decisionMakerName && <> · {lead.decisionMakerName}</>}
+        </div>
+      </div>
+
+      <div className="p-5 space-y-4 overflow-y-auto">
         {lead.emailSubject && (
           <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
             <div className="text-[10px] font-bold uppercase text-slate-500 mb-1">Subject</div>
@@ -694,42 +685,10 @@ function OutreachDetail({ lead, onApprove, onReject, onSendNow, approveInFlight,
           )}
         </div>
 
-        <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-100">
-          {showApprove && (
-            <>
-              <button
-                type="button"
-                onClick={() => onApprove(lead)}
-                disabled={approveInFlight}
-                className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
-              >
-                {approveInFlight ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                Approve
-              </button>
-              <button
-                type="button"
-                onClick={() => onReject(lead)}
-                disabled={approveInFlight}
-                className="inline-flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100 disabled:opacity-50"
-              >
-                <X size={14} /> Reject
-              </button>
-            </>
-          )}
-          {showSendNow && (
-            <button
-              type="button"
-              onClick={() => onSendNow(lead)}
-              disabled={sendInFlight}
-              className="inline-flex items-center gap-2 rounded-lg bg-slate-950 px-3 py-2 text-xs font-bold text-white hover:bg-slate-800 disabled:opacity-50"
-            >
-              {sendInFlight ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-              Send now
-            </button>
-          )}
+        <div className="flex gap-2 pt-2 border-t border-slate-100">
           <a
             href={`/admin/leads-crm?leadId=${lead.id}`}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+            className="ml-auto inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
           >
             View in CRM <ChevronRight size={14} />
           </a>
@@ -752,7 +711,11 @@ function SendRateBar({ sent, cap }: { sent: number; cap: number }) {
         <div className={`h-full ${tone} transition-all`} style={{ width: `${pct}%` }} />
       </div>
       <div className="mt-1 text-[11px] text-slate-500">
-        {pct >= 95 ? "At cap — no more sends today" : pct >= 80 ? "Warmup capacity nearly used" : "Within warmup capacity"}
+        {cap === 0
+          ? "Pre-warmup — no sends until WARMUP_START hits"
+          : pct >= 95 ? "At cap — no more sends today"
+          : pct >= 80 ? "Warmup capacity nearly used"
+          : "Within warmup capacity"}
       </div>
     </div>
   );
