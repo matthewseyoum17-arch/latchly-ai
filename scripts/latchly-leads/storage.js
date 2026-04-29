@@ -481,23 +481,26 @@ function createDbStorage(url) {
           updated_at = NOW()
         WHERE business_key = ${businessKeyValue}`;
     },
-    async queueOutreach(businessKeyValue, { subject, body, bodyPreview, scheduledFor } = {}) {
+    async queueOutreach(businessKeyValue, { subject, body, bodyPreview, scheduledFor, status } = {}) {
       const db = await sql();
       const scheduled = scheduledFor instanceof Date ? scheduledFor.toISOString() : scheduledFor;
+      // Allowed initial statuses: 'queued' (autonomous send) or 'draft' (QA gate;
+      // requires manual Approve in the CRM before drain cron picks it up).
+      const initialStatus = status === 'draft' ? 'draft' : 'queued';
       const result = await db`
         UPDATE latchly_leads SET
           email_subject = ${subject || null},
           email_body = ${body || null},
           email_body_preview = ${bodyPreview || null},
-          outreach_status = 'queued',
+          outreach_status = ${initialStatus},
           outreach_step = 1,
           outreach_queued_at = NOW(),
           outreach_scheduled_for = ${scheduled || null}::timestamp,
           outreach_error = NULL,
           updated_at = NOW()
         WHERE business_key = ${businessKeyValue}
-          AND outreach_status NOT IN ('day_zero_sent', 'unsubscribed')
-        RETURNING id, outreach_scheduled_for`;
+          AND outreach_status NOT IN ('day_zero_sent', 'sending', 'unsubscribed')
+        RETURNING id, outreach_status, outreach_scheduled_for`;
       return result[0] || null;
     },
     async recordOutreach(businessKeyValue, { step, emailId, status, error } = {}) {

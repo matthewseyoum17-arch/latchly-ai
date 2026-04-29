@@ -301,10 +301,12 @@ function qualityChipTone(score: number) {
 
 function outreachStatusTone(status: string) {
   switch (status) {
+    case "draft":          return "border-violet-100 bg-violet-50 text-violet-700";
     case "queued":         return "border-blue-100 bg-blue-50 text-blue-700";
     case "sending":        return "border-amber-100 bg-amber-50 text-amber-700";
     case "day_zero_sent":  return "border-emerald-100 bg-emerald-50 text-emerald-700";
     case "day_zero_failed":return "border-rose-100 bg-rose-50 text-rose-700";
+    case "rejected":       return "border-zinc-200 bg-zinc-50 text-zinc-700";
     case "no_email":
     case "no_demo":        return "border-slate-100 bg-slate-50 text-slate-600";
     case "unsubscribed":   return "border-zinc-200 bg-zinc-50 text-zinc-700";
@@ -322,6 +324,8 @@ function outreachStatusLabel(lead: Lead) {
       const local = d.toLocaleString(undefined, { hour: "numeric", minute: "2-digit", month: "short", day: "numeric" });
       return `Queued · ${local}`;
     }
+    case "draft": return "Draft — awaiting approval";
+    case "rejected": return "Rejected";
     case "sending": return "Sending…";
     case "day_zero_sent": {
       const t = lead.emailSentAt;
@@ -347,12 +351,15 @@ function contactSummary(lead: Pick<Lead, "decisionMakerName" | "decisionMakerTit
   return "No contact";
 }
 
-function LeadRow({ lead, selected, onSelect, onMarkContacted, markingContacted }: {
+function LeadRow({ lead, selected, onSelect, onMarkContacted, markingContacted, onApproveOutreach, onRejectOutreach, outreachActionInFlight }: {
   lead: Lead;
   selected: boolean;
   onSelect: () => void;
   onMarkContacted: (lead: Lead) => void;
   markingContacted: boolean;
+  onApproveOutreach: (lead: Lead) => void;
+  onRejectOutreach: (lead: Lead) => void;
+  outreachActionInFlight: boolean;
 }) {
   return (
     <div
@@ -396,6 +403,27 @@ function LeadRow({ lead, selected, onSelect, onMarkContacted, markingContacted }
           </div>
         </div>
         <div className="flex items-center justify-end gap-2">
+          {lead.outreachStatus === "draft" && (
+            <>
+              <button
+                type="button"
+                onClick={(event) => { event.stopPropagation(); onApproveOutreach(lead); }}
+                disabled={outreachActionInFlight}
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+              >
+                {outreachActionInFlight ? <Loader2 size={13} className="animate-spin" /> : null}
+                Approve
+              </button>
+              <button
+                type="button"
+                onClick={(event) => { event.stopPropagation(); onRejectOutreach(lead); }}
+                disabled={outreachActionInFlight}
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100 disabled:opacity-50"
+              >
+                Reject
+              </button>
+            </>
+          )}
           {lead.status !== "contacted" && (
             <button
               type="button"
@@ -451,6 +479,27 @@ function LeadRow({ lead, selected, onSelect, onMarkContacted, markingContacted }
             </span>
           )}
         </div>
+        {lead.outreachStatus === "draft" && (
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={(event) => { event.stopPropagation(); onApproveOutreach(lead); }}
+              disabled={outreachActionInFlight}
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 disabled:opacity-50"
+            >
+              {outreachActionInFlight ? <Loader2 size={14} className="animate-spin" /> : null}
+              Approve outreach
+            </button>
+            <button
+              type="button"
+              onClick={(event) => { event.stopPropagation(); onRejectOutreach(lead); }}
+              disabled={outreachActionInFlight}
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 disabled:opacity-50"
+            >
+              Reject
+            </button>
+          </div>
+        )}
         {lead.status !== "contacted" && (
           <button
             type="button"
@@ -697,6 +746,7 @@ export default function LeadsCrmPage() {
   const [scrapeDispatching, setScrapeDispatching] = useState(false);
   const [scrapePending, setScrapePending] = useState(false);
   const [markingContactedId, setMarkingContactedId] = useState<number | null>(null);
+  const [outreachActionId, setOutreachActionId] = useState<number | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -787,6 +837,48 @@ export default function LeadsCrmPage() {
           : current.leads.filter((lead) => lead.id !== updated.id),
       };
     });
+  };
+
+  const approveOutreach = async (lead: Lead) => {
+    if (lead.outreachStatus !== "draft") return;
+    setOutreachActionId(lead.id);
+    try {
+      const res = await fetch(`/api/admin/latchly-leads/${lead.id}/approve-outreach`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Approve failed");
+      setToast(`Queued — sends ${json.scheduledFor ? new Date(json.scheduledFor).toLocaleString(undefined, { hour: "numeric", minute: "2-digit", month: "short", day: "numeric" }) : "next send window"}`);
+      await fetchData();
+    } catch (err: any) {
+      setError(err.message || "Approve failed");
+    } finally {
+      setOutreachActionId(null);
+    }
+  };
+
+  const rejectOutreach = async (lead: Lead) => {
+    if (lead.outreachStatus !== "draft") return;
+    const reason = window.prompt("Reason for rejecting this outreach (optional):", "rejected_in_qa");
+    if (reason === null) return;
+    setOutreachActionId(lead.id);
+    try {
+      const res = await fetch(`/api/admin/latchly-leads/${lead.id}/reject-outreach`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Reject failed");
+      setToast("Outreach rejected");
+      await fetchData();
+    } catch (err: any) {
+      setError(err.message || "Reject failed");
+    } finally {
+      setOutreachActionId(null);
+    }
   };
 
   const markContacted = async (lead: Lead) => {
@@ -1117,6 +1209,9 @@ export default function LeadsCrmPage() {
             ) : (
               data.leads.map((lead) => (
                 <LeadRow
+                  onApproveOutreach={approveOutreach}
+                  onRejectOutreach={rejectOutreach}
+                  outreachActionInFlight={outreachActionId === lead.id}
                   key={lead.id}
                   lead={lead}
                   selected={lead.id === selectedId}

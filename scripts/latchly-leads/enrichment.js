@@ -113,7 +113,10 @@ async function enrichLead(lead, opts = {}) {
   // 3) BBB profile signals already in source_payload from discovery
   applyBbbSignals(lead, result);
 
-  // 4) Owner inference from existing fields
+  // 4) Owner + email inference. Highest-trust source is the CRM scrape's
+  //    audit_payload.verifiedSignals.contactTruth (Playwright-verified),
+  //    then falls back to lead-level fields. Same data path the CRM uses.
+  applyAuditTruth(lead, result);
   applyOwner(lead, result);
 
   // 5) Service area = nearby cities from source payload (best-effort)
@@ -223,6 +226,57 @@ function applyBbbSignals(lead, result) {
   if (raw.yearsInBusiness && !result.yearsInBusiness) {
     const n = Number(raw.yearsInBusiness);
     if (Number.isFinite(n) && n > 0 && n < 200) result.yearsInBusiness = n;
+  }
+}
+
+function applyAuditTruth(lead, result) {
+  // Audit data may live on lead.audit (from in-memory pipeline run) or
+  // lead.auditPayload (from DB row). Either way, it's the same shape.
+  const audit = lead.audit || lead.auditPayload || lead.audit_payload || null;
+  if (!audit || typeof audit !== 'object') return;
+
+  const verified = audit.verifiedSignals || audit.verified_signals;
+  if (!verified || typeof verified !== 'object') return;
+
+  const contact = verified.contactTruth || verified.contact_truth || {};
+
+  // Owner / contact name (Playwright-verified, confidence-tagged)
+  const candidate = contact.contactName || contact.contact_name;
+  if (candidate && (candidate.confidence ?? 0) >= 0.6 && typeof candidate.value === 'string') {
+    const name = candidate.value.replace(/\s+/g, ' ').trim();
+    if (name && !/^[\[{]/.test(name)) {
+      result.ownerName = result.ownerName || name;
+      result.ownerFirstName = result.ownerFirstName || name.split(/\s+/)[0] || null;
+      result.ownerTitle = result.ownerTitle || candidate.title || null;
+    }
+  }
+
+  // Verified emails (from Playwright crawl) outrank discovery emails.
+  const emails = Array.isArray(contact.emails) ? contact.emails : [];
+  const verifiedEmails = emails
+    .filter(e => e && (typeof e === 'string' || e.value))
+    .map(e => (typeof e === 'string' ? e : e.value))
+    .filter(e => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e));
+  if (verifiedEmails.length) {
+    result.verifiedEmails = verifiedEmails.slice(0, 3);
+  }
+
+  // Niche refinement from businessTruth (overrides discovery niche only when
+  // confidence is high — discovery may have been generic).
+  const niche = (verified.businessTruth || verified.business_truth || {}).niche;
+  if (niche && (niche.confidence ?? 0) >= 0.7 && typeof niche.value === 'string') {
+    result.nicheVerified = niche.value;
+  }
+
+  // Negative signals from playwright website-quality audit. Useful in the
+  // demo+email so we can tell the lead WHY their site needs work — but only
+  // surface the labels, never as the email's hook (CAN-SPAM-friendly tone).
+  const quality = verified.websiteQuality || verified.website_quality || {};
+  if (Array.isArray(quality.negativeSignals)) {
+    result.siteIssues = quality.negativeSignals
+      .filter(s => s && (s.confidence ?? 0) >= 0.7)
+      .slice(0, 6)
+      .map(s => ({ key: s.key, reason: s.reason, weight: s.weight, confidence: s.confidence }));
   }
 }
 

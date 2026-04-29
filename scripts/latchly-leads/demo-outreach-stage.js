@@ -69,6 +69,10 @@ async function runDemoOutreachStage(leads, opts = {}) {
   const fromEmail = process.env.OUTREACH_FROM || 'Matthew @ Latchly <matt@latchlyai.com>';
   const testEmail = process.env.LATCHLY_OUTREACH_TEST_EMAIL || null;
   const testNow = process.env.LATCHLY_OUTREACH_TEST_NOW === '1';
+  // QA gate is ON by default — new outreach lands as 'draft' and waits for
+  // Approve/Reject in the CRM. Set LATCHLY_OUTREACH_REQUIRE_APPROVAL=0 to
+  // bypass and queue straight for autonomous send.
+  const requireApproval = process.env.LATCHLY_OUTREACH_REQUIRE_APPROVAL !== '0';
 
   for (const lead of leads) {
     const key = businessKey(lead) || lead.businessKey;
@@ -168,6 +172,7 @@ async function runDemoOutreachStage(leads, opts = {}) {
           siteBase: SITE_BASE,
           testEmail,
           testNow,
+          requireApproval,
         },
       );
 

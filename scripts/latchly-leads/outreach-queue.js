@@ -179,12 +179,18 @@ async function queueDayZeroForLead(lead, enrichment, opts = {}) {
   const businessKey = lead.businessKey || lead.business_key;
   if (!businessKey) return { ok: false, reason: 'no_business_key' };
 
+  // QA gate: fail-closed. Default to 'draft' unless the caller explicitly
+  // opts out with requireApproval === false. The drain cron only picks up
+  // 'queued', so drafts sit until approved through the CRM's Approve button.
+  const initialStatus = opts.requireApproval === false ? 'queued' : 'draft';
+
   if (opts.storage?.queueOutreach) {
     await opts.storage.queueOutreach(businessKey, {
       subject,
       body: plainText || body,
       bodyPreview: body.slice(0, 400),
       scheduledFor,
+      status: initialStatus,
     });
     if (opts.testEmail && opts.storage?.updateEmailForKey) {
       await opts.storage.updateEmailForKey(businessKey, opts.testEmail);
@@ -193,6 +199,7 @@ async function queueDayZeroForLead(lead, enrichment, opts = {}) {
 
   return {
     ok: true,
+    status: initialStatus,
     scheduledFor: scheduledFor.toISOString(),
     subject,
     hash: composed.hash,
