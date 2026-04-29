@@ -16,6 +16,8 @@ const { enrichLead } = require('./enrichment');
 const { generateSiteContent } = require('./site-content-engine');
 const { buildDemoForLead } = require('./design-engine');
 const { queueDayZeroForLead } = require('./outreach-queue');
+const { findEmail } = require('./email-finder');
+const { deriveBusinessDomain } = require('./email-utils');
 
 const SITE_BASE = (process.env.SITE_BASE || 'https://latchlyai.com').replace(/\/+$/, '');
 const DEMOS_DIR = path.join(process.cwd(), 'demos', 'prospects');
@@ -87,6 +89,31 @@ async function runDemoOutreachStage(leads, opts = {}) {
       ctx.stage = 'enrichment';
       const enrichment = await enrichLead(lead, { anthropic, googleApiKey: process.env.GOOGLE_MAPS_API_KEY });
       if (enrichment) stats.enriched += 1;
+
+      // 1a) Pattern-guess email when enrichment found an owner name + the lead
+      // has a domain but no real email. MX-validated against the domain to
+      // avoid shipping addresses to dead servers. Marked `pattern_guess_mx_only`
+      // so QA stays aware the mailbox wasn't directly verified.
+      const hasRealEmail =
+        Boolean(lead.email)
+        || Boolean(enrichment?.email)
+        || (Array.isArray(enrichment?.verifiedEmails) && enrichment.verifiedEmails.length > 0);
+      const ownerForGuess = enrichment?.ownerName || lead.decisionMakerName || lead.ownerName || '';
+      const domainForGuess = deriveBusinessDomain(lead.website || enrichment?.website || '');
+      if (!hasRealEmail && ownerForGuess && domainForGuess) {
+        try {
+          const guess = await findEmail({ ownerName: ownerForGuess, domain: domainForGuess });
+          if (guess?.ok && guess.email) {
+            enrichment.guessedEmail = guess.email;
+            enrichment.guessedEmailMethod = guess.method;
+            enrichment.email = enrichment.email || guess.email;
+            stats.outreachSkipped.no_email_recovered = (stats.outreachSkipped.no_email_recovered || 0) + 1;
+          }
+        } catch (err) {
+          // Pattern guess is best-effort; never block the lead on it.
+          stats.errors.push({ stage: 'email_guess', businessKey: key, error: err.message });
+        }
+      }
 
       if (opts.storage?.attachEnrichment) {
         await opts.storage.attachEnrichment(key, {

@@ -361,13 +361,27 @@ async function auditByFetch(website, lead = {}) {
 
 async function candidatePages(website, options = {}) {
   const base = normalizeWebsite(website);
-  const maxPages = Math.max(1, parseInt(process.env.LATCHLY_STAGE2_MAX_PAGES || '3', 10));
+  // Default cap raised from 3 to 5 so we can fit the landing page plus the
+  // four pages where home-service businesses actually publish their owner
+  // contact info: /contact, /about, /team, and (whichever of /services or a
+  // top internal link is most relevant). Bumping to 5 only adds 2 cheap
+  // fetches per audited site.
+  const maxPages = Math.max(1, parseInt(process.env.LATCHLY_STAGE2_MAX_PAGES || '5', 10));
+  // Order matters: cap drops the tail, so the explicit-contact URLs come
+  // BEFORE internal-link picks. Previously, a homepage with 3 unrelated
+  // internal links matching the relevance regex could push /contact and
+  // /about off the list entirely.
   return uniqueUrls([
     base,
-    ...relevantInternalLinks(base, options.links || []),
     absoluteUrl(base, '/contact'),
     absoluteUrl(base, '/contact-us'),
+    absoluteUrl(base, '/about'),
+    absoluteUrl(base, '/about-us'),
+    absoluteUrl(base, '/team'),
+    absoluteUrl(base, '/our-team'),
+    absoluteUrl(base, '/staff'),
     absoluteUrl(base, '/services'),
+    ...relevantInternalLinks(base, options.links || []),
   ]).slice(0, maxPages);
 }
 

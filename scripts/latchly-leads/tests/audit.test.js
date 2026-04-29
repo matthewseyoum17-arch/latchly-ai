@@ -158,7 +158,11 @@ test('shared Playwright audit session launches one browser for concurrent contex
   assert.equal(contexts, 3);
 });
 
-test('stage-2 page selection is capped to homepage plus high-signal internal pages', async () => {
+test('stage-2 page selection prioritizes /contact + /about over noisy internal links', async () => {
+  // Email coverage was leaking when 3 unrelated internal links pushed the
+  // explicit /contact and /about URLs past the cap. New ordering puts
+  // contact-pages first regardless of how many gallery/portfolio links the
+  // homepage advertises.
   const prior = process.env.LATCHLY_STAGE2_MAX_PAGES;
   process.env.LATCHLY_STAGE2_MAX_PAGES = '3';
   try {
@@ -173,8 +177,26 @@ test('stage-2 page selection is capped to homepage plus high-signal internal pag
 
     assert.deepEqual(pages, [
       'https://example.com',
-      'https://example.com/request-estimate',
+      'https://example.com/contact',
       'https://example.com/contact-us',
+    ]);
+  } finally {
+    if (prior == null) delete process.env.LATCHLY_STAGE2_MAX_PAGES;
+    else process.env.LATCHLY_STAGE2_MAX_PAGES = prior;
+  }
+});
+
+test('stage-2 page selection extends to /about + /team when the cap allows', async () => {
+  const prior = process.env.LATCHLY_STAGE2_MAX_PAGES;
+  process.env.LATCHLY_STAGE2_MAX_PAGES = '5';
+  try {
+    const pages = await candidatePages('https://example.com', { links: [] });
+    assert.deepEqual(pages, [
+      'https://example.com',
+      'https://example.com/contact',
+      'https://example.com/contact-us',
+      'https://example.com/about',
+      'https://example.com/about-us',
     ]);
   } finally {
     if (prior == null) delete process.env.LATCHLY_STAGE2_MAX_PAGES;
