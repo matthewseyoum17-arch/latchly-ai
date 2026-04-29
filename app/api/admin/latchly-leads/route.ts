@@ -18,6 +18,18 @@ const STATUSES = new Set([
 
 const TIERS = new Set(["premium", "standard"]);
 
+const OUTREACH_STATUSES = new Set([
+  "draft",
+  "queued",
+  "sending",
+  "day_zero_sent",
+  "day_zero_failed",
+  "rejected",
+  "unsubscribed",
+  "no_email",
+  "no_demo",
+]);
+
 const NO_STORE_HEADERS = {
   "Cache-Control": "private, no-store, max-age=0, must-revalidate",
 };
@@ -91,6 +103,20 @@ export async function GET(request: NextRequest) {
       where.push(`niche = $${params.length}`);
     }
 
+    const outreachStatus = searchParams.get("outreachStatus") || "all";
+    if (outreachStatus === "sent_today") {
+      where.push(
+        `outreach_status = 'day_zero_sent' AND email_sent_at >= date_trunc('day', NOW())`,
+      );
+    } else if (outreachStatus === "active") {
+      where.push(
+        `outreach_status IN ('draft', 'queued', 'sending', 'day_zero_failed')`,
+      );
+    } else if (outreachStatus !== "all" && OUTREACH_STATUSES.has(outreachStatus)) {
+      params.push(outreachStatus);
+      where.push(`outreach_status = $${params.length}`);
+    }
+
     if (isTruthy(searchParams.get("local"))) {
       where.push("(state = 'FL' AND city IN ('Gainesville', 'Tallahassee'))");
     }
@@ -157,6 +183,14 @@ export async function GET(request: NextRequest) {
               AND next_follow_up_date <= CURRENT_DATE
               AND status NOT IN ('not_fit', 'won', 'lost')
             )::int AS due_follow_up_count,
+            COUNT(*) FILTER (WHERE outreach_status = 'draft')::int AS outreach_draft,
+            COUNT(*) FILTER (WHERE outreach_status = 'queued')::int AS outreach_queued,
+            COUNT(*) FILTER (WHERE outreach_status = 'sending')::int AS outreach_sending,
+            COUNT(*) FILTER (WHERE outreach_status = 'day_zero_sent')::int AS outreach_sent,
+            COUNT(*) FILTER (WHERE outreach_status = 'day_zero_sent' AND email_sent_at >= date_trunc('day', NOW()))::int AS outreach_sent_today,
+            COUNT(*) FILTER (WHERE outreach_status = 'day_zero_failed')::int AS outreach_failed,
+            COUNT(*) FILTER (WHERE outreach_status = 'rejected')::int AS outreach_rejected,
+            COUNT(*) FILTER (WHERE outreach_status = 'unsubscribed')::int AS outreach_unsubscribed,
             ROUND(AVG(score)::numeric, 1) AS avg_score
           FROM latchly_leads`
       : await sql`
@@ -178,6 +212,14 @@ export async function GET(request: NextRequest) {
               AND next_follow_up_date <= CURRENT_DATE
               AND status NOT IN ('not_fit', 'won', 'lost')
             )::int AS due_follow_up_count,
+            COUNT(*) FILTER (WHERE outreach_status = 'draft')::int AS outreach_draft,
+            COUNT(*) FILTER (WHERE outreach_status = 'queued')::int AS outreach_queued,
+            COUNT(*) FILTER (WHERE outreach_status = 'sending')::int AS outreach_sending,
+            COUNT(*) FILTER (WHERE outreach_status = 'day_zero_sent')::int AS outreach_sent,
+            COUNT(*) FILTER (WHERE outreach_status = 'day_zero_sent' AND email_sent_at >= date_trunc('day', NOW()))::int AS outreach_sent_today,
+            COUNT(*) FILTER (WHERE outreach_status = 'day_zero_failed')::int AS outreach_failed,
+            COUNT(*) FILTER (WHERE outreach_status = 'rejected')::int AS outreach_rejected,
+            COUNT(*) FILTER (WHERE outreach_status = 'unsubscribed')::int AS outreach_unsubscribed,
             ROUND(AVG(score)::numeric, 1) AS avg_score
           FROM latchly_leads
           WHERE archived_at IS NULL`;
@@ -252,6 +294,16 @@ export async function GET(request: NextRequest) {
         poorWebsite: Number(summary?.poor_website_count || 0),
         dueFollowUp: Number(summary?.due_follow_up_count || 0),
         avgScore: summary?.avg_score == null ? null : Number(summary.avg_score),
+        outreach: {
+          draft: Number(summary?.outreach_draft || 0),
+          queued: Number(summary?.outreach_queued || 0),
+          sending: Number(summary?.outreach_sending || 0),
+          sent: Number(summary?.outreach_sent || 0),
+          sentToday: Number(summary?.outreach_sent_today || 0),
+          failed: Number(summary?.outreach_failed || 0),
+          rejected: Number(summary?.outreach_rejected || 0),
+          unsubscribed: Number(summary?.outreach_unsubscribed || 0),
+        },
       },
       statusCounts: statusCounts.map((row: any) => ({ status: row.status, count: Number(row.count || 0) })),
       filters: {

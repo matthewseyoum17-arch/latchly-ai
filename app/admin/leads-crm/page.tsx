@@ -2,15 +2,18 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  AlertTriangle,
   Building2,
   CalendarClock,
   Check,
   ChevronRight,
+  Clock,
   ExternalLink,
   Eye,
   EyeOff,
   Filter,
   Globe,
+  Inbox,
   Loader2,
   Lock,
   LogOut,
@@ -20,10 +23,14 @@ import {
   Phone,
   Play,
   RefreshCw,
+  Rocket,
   Save,
   Search,
+  Send,
+  ShieldCheck,
   Star,
   UserRound,
+  X,
 } from "lucide-react";
 
 type CrmStatus = "new" | "reviewed" | "contacted" | "interested" | "follow_up" | "not_fit" | "won" | "lost";
@@ -89,6 +96,17 @@ interface Lead {
   } | null;
 }
 
+interface OutreachStats {
+  draft: number;
+  queued: number;
+  sending: number;
+  sent: number;
+  sentToday: number;
+  failed: number;
+  rejected: number;
+  unsubscribed: number;
+}
+
 interface CrmData {
   leads: Lead[];
   stats: {
@@ -106,6 +124,7 @@ interface CrmData {
     poorWebsite: number;
     dueFollowUp: number;
     avgScore: number | null;
+    outreach?: OutreachStats;
   };
   statusCounts: { status: CrmStatus; count: number }[];
   filters: {
@@ -519,11 +538,16 @@ function LeadRow({ lead, selected, onSelect, onMarkContacted, markingContacted, 
   );
 }
 
-function LeadDetail({ lead, onSaved, onMarkContacted, markingContacted }: {
+function LeadDetail({ lead, onSaved, onMarkContacted, markingContacted, onApproveOutreach, onRejectOutreach, onSendNow, outreachActionInFlight, sendNowInFlight }: {
   lead: Lead | null;
   onSaved: (lead: Lead) => void;
   onMarkContacted: (lead: Lead) => void;
   markingContacted: boolean;
+  onApproveOutreach: (lead: Lead) => void;
+  onRejectOutreach: (lead: Lead) => void;
+  onSendNow: (lead: Lead) => void;
+  outreachActionInFlight: boolean;
+  sendNowInFlight: boolean;
 }) {
   const [draft, setDraft] = useState({
     status: "new" as CrmStatus,
@@ -712,6 +736,106 @@ function LeadDetail({ lead, onSaved, onMarkContacted, markingContacted }: {
           </div>
         </div>
 
+        {lead.outreachStatus && lead.outreachStatus !== "none" && (
+          <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-[11px] font-bold uppercase text-slate-500">
+                <Rocket size={14} /> Autonomous Email
+              </div>
+              <span className={`inline-flex border px-2 py-0.5 rounded-md text-[11px] font-bold ${outreachStatusTone(lead.outreachStatus)}`}>
+                {outreachStatusLabel(lead)}
+              </span>
+            </div>
+
+            {lead.demoUrl && (
+              <a
+                href={lead.demoUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-teal-700"
+              >
+                <ExternalLink size={12} /> Preview demo site
+              </a>
+            )}
+
+            {lead.emailSubject && (
+              <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
+                <div className="text-[10px] font-bold uppercase text-slate-500 mb-1">Subject</div>
+                <div className="text-sm font-semibold text-slate-900 break-words">{lead.emailSubject}</div>
+              </div>
+            )}
+
+            {lead.emailBodyPreview && (
+              <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
+                <div className="text-[10px] font-bold uppercase text-slate-500 mb-1">Body preview</div>
+                <pre className="whitespace-pre-wrap text-xs text-slate-800 leading-5 font-sans">{lead.emailBodyPreview}</pre>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              {lead.outreachScheduledFor && (
+                <div className="rounded-md bg-slate-50 border border-slate-100 px-3 py-2">
+                  <div className="text-[10px] font-bold uppercase text-slate-500">Scheduled</div>
+                  <div className="font-semibold text-slate-900">{new Date(lead.outreachScheduledFor).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</div>
+                </div>
+              )}
+              {lead.emailSentAt && (
+                <div className="rounded-md bg-emerald-50 border border-emerald-100 px-3 py-2">
+                  <div className="text-[10px] font-bold uppercase text-emerald-700">Sent</div>
+                  <div className="font-semibold text-emerald-900">{new Date(lead.emailSentAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</div>
+                </div>
+              )}
+              {lead.lastResendEmailId && (
+                <div className="rounded-md bg-slate-50 border border-slate-100 px-3 py-2 col-span-2 truncate">
+                  <div className="text-[10px] font-bold uppercase text-slate-500">Resend ID</div>
+                  <div className="font-mono text-[11px] text-slate-700 truncate">{lead.lastResendEmailId}</div>
+                </div>
+              )}
+              {lead.outreachError && (
+                <div className="rounded-md bg-rose-50 border border-rose-100 px-3 py-2 col-span-2">
+                  <div className="text-[10px] font-bold uppercase text-rose-700">Error</div>
+                  <div className="text-[11px] text-rose-900 break-words">{lead.outreachError}</div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {lead.outreachStatus === "draft" && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => onApproveOutreach(lead)}
+                    disabled={outreachActionInFlight}
+                    className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+                  >
+                    {outreachActionInFlight ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                    Approve
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onRejectOutreach(lead)}
+                    disabled={outreachActionInFlight}
+                    className="inline-flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100 disabled:opacity-50"
+                  >
+                    <X size={14} /> Reject
+                  </button>
+                </>
+              )}
+              {(lead.outreachStatus === "queued" || lead.outreachStatus === "day_zero_failed") && (
+                <button
+                  type="button"
+                  onClick={() => onSendNow(lead)}
+                  disabled={sendNowInFlight}
+                  className="inline-flex items-center gap-2 rounded-lg bg-slate-950 px-3 py-2 text-xs font-bold text-white hover:bg-slate-800 disabled:opacity-50"
+                >
+                  {sendNowInFlight ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                  Send now
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-3">
           <div className="text-[11px] font-bold uppercase text-slate-500">Pitch</div>
           <p className="text-sm text-slate-900 leading-6">{lead.pitch.opener || "-"}</p>
@@ -724,6 +848,114 @@ function LeadDetail({ lead, onSaved, onMarkContacted, markingContacted }: {
         </div>
       </div>
     </aside>
+  );
+}
+
+interface OutreachFilterOption {
+  value: string;
+  label: string;
+  count: number;
+  tone: string;
+}
+
+function OutreachPanel({ stats, activeFilter, onFilterChange }: {
+  stats?: OutreachStats;
+  activeFilter: string;
+  onFilterChange: (value: string) => void;
+}) {
+  const o = stats || { draft: 0, queued: 0, sending: 0, sent: 0, sentToday: 0, failed: 0, rejected: 0, unsubscribed: 0 };
+  const totalAttention = o.draft + o.failed;
+  const filters: OutreachFilterOption[] = [
+    { value: "all",            label: "All",        count: 0,             tone: "border-slate-200 bg-white text-slate-700" },
+    { value: "draft",          label: "Drafts (QA)", count: o.draft,       tone: "border-violet-200 bg-violet-50 text-violet-800" },
+    { value: "queued",         label: "Queued",     count: o.queued,      tone: "border-blue-200 bg-blue-50 text-blue-800" },
+    { value: "sending",        label: "Sending",    count: o.sending,     tone: "border-amber-200 bg-amber-50 text-amber-800" },
+    { value: "sent_today",     label: "Sent today", count: o.sentToday,   tone: "border-emerald-200 bg-emerald-50 text-emerald-800" },
+    { value: "day_zero_sent",  label: "Sent",       count: o.sent,        tone: "border-emerald-200 bg-emerald-50 text-emerald-800" },
+    { value: "day_zero_failed",label: "Failed",     count: o.failed,      tone: "border-rose-200 bg-rose-50 text-rose-800" },
+    { value: "rejected",       label: "Rejected",   count: o.rejected,    tone: "border-zinc-200 bg-zinc-50 text-zinc-700" },
+    { value: "unsubscribed",   label: "Unsub",      count: o.unsubscribed,tone: "border-zinc-200 bg-zinc-50 text-zinc-700" },
+  ];
+
+  return (
+    <section className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+      <div className="px-4 sm:px-5 py-4 border-b border-slate-100 flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-violet-100 text-violet-700 flex items-center justify-center">
+              <Rocket size={16} />
+            </div>
+            <div>
+              <h2 className="text-sm font-black text-slate-950 leading-tight">Autonomous Cold Email</h2>
+              <p className="text-xs text-slate-500 leading-tight">
+                Drafts → QA approval → 7-9am local · drains every 15min Mon-Fri 10:00-17:00 UTC
+              </p>
+            </div>
+          </div>
+        </div>
+        {totalAttention > 0 && (
+          <div className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">
+            <AlertTriangle size={14} />
+            {o.draft > 0 && <span>{o.draft} awaiting QA</span>}
+            {o.draft > 0 && o.failed > 0 && <span>·</span>}
+            {o.failed > 0 && <span>{o.failed} failed</span>}
+          </div>
+        )}
+      </div>
+
+      <div className="px-4 sm:px-5 py-4 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+        <OutreachStat icon={<ShieldCheck size={14} />} label="Drafts" value={o.draft} tone="text-violet-700" />
+        <OutreachStat icon={<Inbox size={14} />} label="Queued" value={o.queued} tone="text-blue-700" />
+        <OutreachStat icon={<Send size={14} />} label="Sending" value={o.sending} tone="text-amber-700" />
+        <OutreachStat icon={<Clock size={14} />} label="Sent today" value={o.sentToday} tone="text-emerald-700" />
+        <OutreachStat icon={<Check size={14} />} label="Sent total" value={o.sent} tone="text-emerald-700" />
+        <OutreachStat icon={<AlertTriangle size={14} />} label="Failed" value={o.failed} tone="text-rose-700" />
+        <OutreachStat icon={<X size={14} />} label="Rejected" value={o.rejected} tone="text-zinc-600" />
+        <OutreachStat icon={<X size={14} />} label="Unsub" value={o.unsubscribed} tone="text-zinc-600" />
+      </div>
+
+      <div className="px-4 sm:px-5 pb-4 flex flex-wrap gap-2">
+        {filters.map((option) => {
+          const active = activeFilter === option.value;
+          return (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => onFilterChange(option.value)}
+              className={`inline-flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs font-bold transition-colors ${
+                active
+                  ? "border-slate-950 bg-slate-950 text-white"
+                  : option.tone + " hover:opacity-80"
+              }`}
+            >
+              {option.label}
+              {option.value !== "all" && (
+                <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${active ? "bg-white/15 text-white" : "bg-white/60"}`}>
+                  {option.count}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function OutreachStat({ icon, label, value, tone }: {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+  tone: string;
+}) {
+  return (
+    <div className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2.5">
+      <div className={`flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide ${tone}`}>
+        {icon}
+        <span className="truncate">{label}</span>
+      </div>
+      <div className="text-xl font-black text-slate-950 mt-0.5">{value}</div>
+    </div>
   );
 }
 
@@ -747,6 +979,8 @@ export default function LeadsCrmPage() {
   const [scrapePending, setScrapePending] = useState(false);
   const [markingContactedId, setMarkingContactedId] = useState<number | null>(null);
   const [outreachActionId, setOutreachActionId] = useState<number | null>(null);
+  const [outreachFilter, setOutreachFilter] = useState<string>("all");
+  const [sendNowId, setSendNowId] = useState<number | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -797,6 +1031,7 @@ export default function LeadsCrmPage() {
       if (tier === "premium") params.set("websiteIssue", "1");
       if (noWebsite) params.set("noWebsite", "1");
       if (poorWebsite) params.set("poorWebsite", "1");
+      if (outreachFilter && outreachFilter !== "all") params.set("outreachStatus", outreachFilter);
 
       const res = await fetch(`/api/admin/latchly-leads?${params.toString()}`);
       const json = await res.json();
@@ -816,7 +1051,7 @@ export default function LeadsCrmPage() {
     } finally {
       setLoading(false);
     }
-  }, [city, localOnly, minScore, niche, noWebsite, poorWebsite, query, status, tier]);
+  }, [city, localOnly, minScore, niche, noWebsite, poorWebsite, outreachFilter, query, status, tier]);
 
   useEffect(() => {
     if (authed) fetchData();
@@ -856,6 +1091,35 @@ export default function LeadsCrmPage() {
       setError(err.message || "Approve failed");
     } finally {
       setOutreachActionId(null);
+    }
+  };
+
+  const sendOutreachNow = async (lead: Lead) => {
+    if (!lead.emailSubject || !lead.emailBodyPreview) {
+      setError("This lead has no composed email yet");
+      return;
+    }
+    if (lead.outreachStatus === "day_zero_sent") {
+      setError("Already sent to this lead");
+      return;
+    }
+    const ok = window.confirm(
+      `Send this email to ${lead.email} right now? (Bypasses the 7-9am-local schedule.)`,
+    );
+    if (!ok) return;
+    setSendNowId(lead.id);
+    try {
+      const res = await fetch(`/api/admin/latchly-leads/${lead.id}/send-now`, {
+        method: "POST",
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Send failed");
+      setToast(`Sent to ${lead.email}`);
+      await fetchData();
+    } catch (err: any) {
+      setError(err.message || "Send failed");
+    } finally {
+      setSendNowId(null);
     }
   };
 
@@ -1079,6 +1343,12 @@ export default function LeadsCrmPage() {
           </section>
         )}
 
+        {data && <OutreachPanel
+          stats={data.stats.outreach}
+          activeFilter={outreachFilter}
+          onFilterChange={(value) => setOutreachFilter(value)}
+        />}
+
         {toast && (
           <div className="rounded-lg border border-teal-100 bg-teal-50 px-4 py-3 text-sm font-semibold text-teal-800">
             {toast}
@@ -1228,6 +1498,11 @@ export default function LeadsCrmPage() {
             onSaved={handleSaved}
             onMarkContacted={markContacted}
             markingContacted={Boolean(selectedLead && markingContactedId === selectedLead.id)}
+            onApproveOutreach={approveOutreach}
+            onRejectOutreach={rejectOutreach}
+            onSendNow={sendOutreachNow}
+            outreachActionInFlight={Boolean(selectedLead && outreachActionId === selectedLead.id)}
+            sendNowInFlight={Boolean(selectedLead && sendNowId === selectedLead.id)}
           />
         </div>
       </main>
