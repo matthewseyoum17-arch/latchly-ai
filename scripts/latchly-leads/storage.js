@@ -79,6 +79,13 @@ function createFileStorage() {
       }
       fs.writeFileSync(deliveredFile, JSON.stringify([...byKey.values()], null, 2));
     },
+    async attachEnrichment() { /* file storage no-op */ },
+    async attachDemo() { /* file storage no-op */ },
+    async queueOutreach() { return null; },
+    async recordOutreach() { /* file storage no-op */ },
+    async dueOutreach() { return []; },
+    async countOutreachSentToday() { return 0; },
+    async findLeadById() { return null; },
     async recordRun(stats = {}, email = {}) {
       const file = path.join(LEADS_DIR, 'crm-runs.json');
       const existing = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : [];
@@ -226,6 +233,31 @@ function createDbStorage(url) {
       await db`CREATE INDEX IF NOT EXISTS idx_latchly_leads_niche ON latchly_leads (niche)`;
       await db`CREATE INDEX IF NOT EXISTS idx_latchly_leads_website_status ON latchly_leads (website_status)`;
       await db`CREATE INDEX IF NOT EXISTS idx_latchly_leads_archived_at ON latchly_leads (archived_at)`;
+
+      // Demo + outreach columns (Latchly v1: per-lead demos + cold email)
+      await db`ALTER TABLE latchly_leads ADD COLUMN IF NOT EXISTS place_id TEXT`;
+      await db`ALTER TABLE latchly_leads ADD COLUMN IF NOT EXISTS enrichment_data JSONB`;
+      await db`ALTER TABLE latchly_leads ADD COLUMN IF NOT EXISTS existing_site_clone JSONB`;
+      await db`ALTER TABLE latchly_leads ADD COLUMN IF NOT EXISTS demo_slug TEXT`;
+      await db`ALTER TABLE latchly_leads ADD COLUMN IF NOT EXISTS demo_url TEXT`;
+      await db`ALTER TABLE latchly_leads ADD COLUMN IF NOT EXISTS demo_direction TEXT`;
+      await db`ALTER TABLE latchly_leads ADD COLUMN IF NOT EXISTS demo_quality_score NUMERIC(4,1)`;
+      await db`ALTER TABLE latchly_leads ADD COLUMN IF NOT EXISTS demo_built_at TIMESTAMP`;
+      await db`ALTER TABLE latchly_leads ADD COLUMN IF NOT EXISTS outreach_step INT NOT NULL DEFAULT 0`;
+      await db`ALTER TABLE latchly_leads ADD COLUMN IF NOT EXISTS outreach_status TEXT NOT NULL DEFAULT 'none'`;
+      await db`ALTER TABLE latchly_leads ADD COLUMN IF NOT EXISTS email_subject TEXT`;
+      await db`ALTER TABLE latchly_leads ADD COLUMN IF NOT EXISTS email_body TEXT`;
+      await db`ALTER TABLE latchly_leads ADD COLUMN IF NOT EXISTS email_body_preview TEXT`;
+      await db`ALTER TABLE latchly_leads ADD COLUMN IF NOT EXISTS outreach_queued_at TIMESTAMP`;
+      await db`ALTER TABLE latchly_leads ADD COLUMN IF NOT EXISTS outreach_scheduled_for TIMESTAMP`;
+      await db`ALTER TABLE latchly_leads ADD COLUMN IF NOT EXISTS email_sent_at TIMESTAMP`;
+      await db`ALTER TABLE latchly_leads ADD COLUMN IF NOT EXISTS last_resend_email_id TEXT`;
+      await db`ALTER TABLE latchly_leads ADD COLUMN IF NOT EXISTS outreach_error TEXT`;
+      await db`CREATE INDEX IF NOT EXISTS idx_latchly_leads_demo_slug ON latchly_leads (demo_slug)`;
+      await db`CREATE INDEX IF NOT EXISTS idx_latchly_leads_outreach_status ON latchly_leads (outreach_status)`;
+      await db`CREATE INDEX IF NOT EXISTS idx_latchly_leads_place_id ON latchly_leads (place_id)`;
+      await db`CREATE INDEX IF NOT EXISTS idx_latchly_leads_outreach_due ON latchly_leads (outreach_status, outreach_scheduled_for)`;
+
       await db`
         CREATE TABLE IF NOT EXISTS latchly_lead_runs (
           id SERIAL PRIMARY KEY,
@@ -426,6 +458,96 @@ function createDbStorage(url) {
           ${stats.underTargetReason || stats.failureReason || null}, ${email.id || null}, ${Boolean(email.sent)},
           ${Boolean(email.dryRun)}, ${metadataJson}::jsonb
         )`;
+    },
+    async attachEnrichment(businessKeyValue, { placeId, enrichmentData, existingSiteClone } = {}) {
+      const db = await sql();
+      await db`
+        UPDATE latchly_leads SET
+          place_id = COALESCE(${placeId || null}, place_id),
+          enrichment_data = COALESCE(${enrichmentData ? JSON.stringify(enrichmentData) : null}::jsonb, enrichment_data),
+          existing_site_clone = COALESCE(${existingSiteClone ? JSON.stringify(existingSiteClone) : null}::jsonb, existing_site_clone),
+          updated_at = NOW()
+        WHERE business_key = ${businessKeyValue}`;
+    },
+    async attachDemo(businessKeyValue, { demoSlug, demoUrl, demoDirection, demoQualityScore } = {}) {
+      const db = await sql();
+      await db`
+        UPDATE latchly_leads SET
+          demo_slug = ${demoSlug || null},
+          demo_url = ${demoUrl || null},
+          demo_direction = ${demoDirection || null},
+          demo_quality_score = ${demoQualityScore == null ? null : Number(demoQualityScore)},
+          demo_built_at = NOW(),
+          updated_at = NOW()
+        WHERE business_key = ${businessKeyValue}`;
+    },
+    async queueOutreach(businessKeyValue, { subject, body, bodyPreview, scheduledFor } = {}) {
+      const db = await sql();
+      const scheduled = scheduledFor instanceof Date ? scheduledFor.toISOString() : scheduledFor;
+      const result = await db`
+        UPDATE latchly_leads SET
+          email_subject = ${subject || null},
+          email_body = ${body || null},
+          email_body_preview = ${bodyPreview || null},
+          outreach_status = 'queued',
+          outreach_step = 1,
+          outreach_queued_at = NOW(),
+          outreach_scheduled_for = ${scheduled || null}::timestamp,
+          outreach_error = NULL,
+          updated_at = NOW()
+        WHERE business_key = ${businessKeyValue}
+          AND outreach_status NOT IN ('day_zero_sent', 'unsubscribed')
+        RETURNING id, outreach_scheduled_for`;
+      return result[0] || null;
+    },
+    async recordOutreach(businessKeyValue, { step, emailId, status, error } = {}) {
+      const db = await sql();
+      const normalized = String(status || '').toLowerCase();
+      const isSent = normalized === 'day_zero_sent';
+      await db`
+        UPDATE latchly_leads SET
+          outreach_step = ${Number(step || 0)},
+          outreach_status = ${normalized || 'queued'},
+          last_resend_email_id = COALESCE(${emailId || null}, last_resend_email_id),
+          email_sent_at = CASE WHEN ${isSent} THEN NOW() ELSE email_sent_at END,
+          outreach_error = ${error || null},
+          updated_at = NOW()
+        WHERE business_key = ${businessKeyValue}`;
+    },
+    async dueOutreach({ limit = 8 } = {}) {
+      const db = await sql();
+      const cap = Math.max(1, Math.min(Number(limit) || 8, 100));
+      return db`
+        SELECT
+          id, business_key, business_name, city, state, niche, email,
+          email_subject, email_body, email_body_preview,
+          demo_url, demo_slug,
+          outreach_status, outreach_scheduled_for
+        FROM latchly_leads
+        WHERE outreach_status = 'queued'
+          AND outreach_scheduled_for IS NOT NULL
+          AND outreach_scheduled_for <= NOW()
+          AND email IS NOT NULL AND email <> ''
+          AND demo_url IS NOT NULL AND demo_url <> ''
+        ORDER BY outreach_scheduled_for ASC
+        LIMIT ${cap}`;
+    },
+    async countOutreachSentToday() {
+      const db = await sql();
+      const rows = await db`
+        SELECT COUNT(*)::int AS n FROM latchly_leads
+        WHERE outreach_status = 'day_zero_sent'
+          AND email_sent_at >= date_trunc('day', NOW())`;
+      return rows[0]?.n || 0;
+    },
+    async findLeadById(id) {
+      const db = await sql();
+      const rows = await db`
+        SELECT
+          id, business_key, business_name, city, state, niche, email,
+          email_subject, email_body, demo_url, demo_slug, outreach_status
+        FROM latchly_leads WHERE id = ${id} LIMIT 1`;
+      return rows[0] || null;
     },
   };
 }

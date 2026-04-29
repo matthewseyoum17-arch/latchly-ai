@@ -125,6 +125,10 @@ export async function GET(request: NextRequest) {
         tier, signal_count,
         status, notes, last_contacted_at, next_follow_up_date,
         archived_at, archive_reason,
+        place_id, demo_slug, demo_url, demo_direction, demo_quality_score, demo_built_at,
+        outreach_status, outreach_step, email_subject, email_body_preview,
+        outreach_queued_at, outreach_scheduled_for, email_sent_at,
+        last_resend_email_id, outreach_error, enrichment_data,
         first_seen_at, last_seen_at, delivered_at, created_at, updated_at
        FROM latchly_leads
        ${whereSql}
@@ -328,11 +332,48 @@ function mapLead(row: any) {
     nextFollowUpDate: row.next_follow_up_date,
     archivedAt: row.archived_at,
     archiveReason: row.archive_reason || "",
+    placeId: row.place_id || null,
+    demoSlug: row.demo_slug || null,
+    demoUrl: row.demo_url || null,
+    demoDirection: row.demo_direction || null,
+    demoQualityScore: row.demo_quality_score == null ? null : Number(row.demo_quality_score),
+    demoBuiltAt: row.demo_built_at || null,
+    outreachStatus: row.outreach_status || "none",
+    outreachStep: row.outreach_step == null ? 0 : Number(row.outreach_step),
+    emailSubject: row.email_subject || null,
+    emailBodyPreview: row.email_body_preview || null,
+    outreachQueuedAt: row.outreach_queued_at || null,
+    outreachScheduledFor: row.outreach_scheduled_for || null,
+    emailSentAt: row.email_sent_at || null,
+    lastResendEmailId: row.last_resend_email_id || null,
+    outreachError: row.outreach_error || null,
+    enrichmentSummary: summarizeEnrichment(row.enrichment_data),
     firstSeenAt: row.first_seen_at,
     lastSeenAt: row.last_seen_at,
     deliveredAt: row.delivered_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  };
+}
+
+function summarizeEnrichment(raw: any) {
+  if (!raw) return null;
+  let payload: any = raw;
+  if (typeof raw === "string") {
+    try { payload = JSON.parse(raw); } catch { return null; }
+  }
+  if (!payload || typeof payload !== "object") return null;
+  return {
+    ownerFirstName: payload.ownerFirstName || null,
+    ownerName: payload.ownerName || null,
+    yearsInBusiness: payload.yearsInBusiness || null,
+    averageRating: payload.averageRating ?? null,
+    reviewCount: payload.reviewCount ?? null,
+    topReview: Array.isArray(payload.reviews) && payload.reviews[0]
+      ? { author: payload.reviews[0].author, text: String(payload.reviews[0].text || "").slice(0, 240), rating: payload.reviews[0].rating }
+      : null,
+    bbbRating: payload.bbbAccreditation?.rating || null,
+    servicesVerified: Array.isArray(payload.servicesVerified) ? payload.servicesVerified.slice(0, 6) : [],
   };
 }
 

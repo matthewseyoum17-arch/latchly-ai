@@ -25,6 +25,7 @@ const { createStorage } = require('./storage');
 const { businessKey, currentHourET, ensureDir, loadEnv, todayInET } = require('./utils');
 const { scoreLead } = require('./scoring');
 const { enforcePremiumGate, enforceStandardGate } = require('./quality-gate');
+const { runDemoOutreachStage } = require('./demo-outreach-stage');
 
 async function main() {
   loadEnv();
@@ -138,6 +139,24 @@ async function main() {
     const digest = buildDigest(qualitySelected, stats);
     const files = await writeDigestFiles(digest, qualitySelected, stats);
     await storage.upsertLeads(qualitySelected, { date, stats });
+
+    // Demo + outreach stage (gated). Composes per-lead demos + Day-0 cold
+    // emails and queues them with 7-9am-local schedule. Sends are decoupled —
+    // the Vercel cron at /api/cron/latchly-outreach drains the queue.
+    if (process.env.LATCHLY_DEMO_OUTREACH === '1') {
+      try {
+        const demoStats = await runDemoOutreachStage(qualitySelected, {
+          storage,
+          dryRun: process.env.DRY_RUN === 'true',
+          verbose,
+        });
+        stats.demoOutreach = demoStats;
+      } catch (err) {
+        stats.demoOutreach = { error: err?.message || String(err) };
+        if (verbose) console.error('[demo-outreach] stage failed:', err);
+      }
+    }
+
     const sendResult = await sendDigest(digest, { dryRun: process.env.DRY_RUN === 'true' || process.env.SKIP_EMAIL === '1' });
 
     if (sendResult.sent) {

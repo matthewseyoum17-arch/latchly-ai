@@ -66,6 +66,22 @@ jobs:
           # leads cluster at 7.4-7.9 just under the 8.0 score gate.
           LATCHLY_PROMISING_NEG_THRESHOLD: '1'
           LATCHLY_QUALIFIED_SCORE: '7.5'
+          # Demo + outreach v1: composes per-lead demos + Day-0 cold emails and
+          # queues them for the Vercel cron to drain in 7-9am-local windows.
+          # Flip to '0' to disable end-to-end (e.g. before SPF/DKIM is verified
+          # for matt@latchlyai.com).
+          LATCHLY_DEMO_OUTREACH: '1'
+          LATCHLY_DEMO_QUALITY_FLOOR: '80'
+          LATCHLY_ENRICH_TIMEOUT_MS: '15000'
+          LATCHLY_OUTREACH_TICK_CAP: '8'
+          OUTREACH_FROM: ${{ secrets.OUTREACH_FROM }}
+          OUTREACH_REPLY_TO: ${{ secrets.OUTREACH_REPLY_TO }}
+          PHYSICAL_ADDRESS: 'Latchly · Gainesville, FL'
+          BOOKING_LINK: 'https://latchlyai.com/book'
+          SITE_BASE: 'https://latchlyai.com'
+          WARMUP_START: ${{ vars.WARMUP_START }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          DEMO_MAX_AGE_DAYS: '30'
           DRY_RUN: ${{ inputs.dry_run || 'false' }}
           SKIP_EMAIL: '1'
           SERPAPI_API_KEY: ${{ secrets.SERPAPI_API_KEY }}

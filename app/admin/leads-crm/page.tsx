@@ -62,6 +62,31 @@ interface Lead {
   nextFollowUpDate: string | null;
   deliveredAt: string;
   updatedAt: string;
+  placeId?: string | null;
+  demoSlug?: string | null;
+  demoUrl?: string | null;
+  demoDirection?: string | null;
+  demoQualityScore?: number | null;
+  demoBuiltAt?: string | null;
+  outreachStatus?: string;
+  outreachStep?: number;
+  emailSubject?: string | null;
+  emailBodyPreview?: string | null;
+  outreachQueuedAt?: string | null;
+  outreachScheduledFor?: string | null;
+  emailSentAt?: string | null;
+  lastResendEmailId?: string | null;
+  outreachError?: string | null;
+  enrichmentSummary?: {
+    ownerFirstName?: string | null;
+    ownerName?: string | null;
+    yearsInBusiness?: number | null;
+    averageRating?: number | null;
+    reviewCount?: number | null;
+    topReview?: { author?: string; text?: string; rating?: number } | null;
+    bbbRating?: string | null;
+    servicesVerified?: string[];
+  } | null;
 }
 
 interface CrmData {
@@ -268,6 +293,49 @@ function opportunityTone(lead: Pick<Lead, "website" | "websiteStatus">) {
   return "border-slate-200 bg-slate-50 text-slate-700";
 }
 
+function qualityChipTone(score: number) {
+  if (score >= 90) return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (score >= 80) return "border-amber-200 bg-amber-50 text-amber-700";
+  return "border-rose-200 bg-rose-50 text-rose-700";
+}
+
+function outreachStatusTone(status: string) {
+  switch (status) {
+    case "queued":         return "border-blue-100 bg-blue-50 text-blue-700";
+    case "day_zero_sent":  return "border-emerald-100 bg-emerald-50 text-emerald-700";
+    case "day_zero_failed":return "border-rose-100 bg-rose-50 text-rose-700";
+    case "no_email":
+    case "no_demo":        return "border-slate-100 bg-slate-50 text-slate-600";
+    case "unsubscribed":   return "border-zinc-200 bg-zinc-50 text-zinc-700";
+    default:               return "border-slate-100 bg-slate-50 text-slate-600";
+  }
+}
+
+function outreachStatusLabel(lead: Lead) {
+  switch (lead.outreachStatus) {
+    case "queued": {
+      const t = lead.outreachScheduledFor;
+      if (!t) return "Queued";
+      const d = new Date(t);
+      if (Number.isNaN(d.getTime())) return "Queued";
+      const local = d.toLocaleString(undefined, { hour: "numeric", minute: "2-digit", month: "short", day: "numeric" });
+      return `Queued · ${local}`;
+    }
+    case "day_zero_sent": {
+      const t = lead.emailSentAt;
+      if (!t) return "Sent";
+      const d = new Date(t);
+      if (Number.isNaN(d.getTime())) return "Sent";
+      return `Sent ${d.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`;
+    }
+    case "day_zero_failed": return "Send failed";
+    case "no_email":        return "No email";
+    case "no_demo":         return "No demo";
+    case "unsubscribed":    return "Unsubscribed";
+    default:                return lead.outreachStatus || "";
+  }
+}
+
 function contactSummary(lead: Pick<Lead, "decisionMakerName" | "decisionMakerTitle" | "phone" | "email">) {
   if (lead.decisionMakerName) {
     return `${lead.decisionMakerName}${lead.decisionMakerTitle ? `, ${lead.decisionMakerTitle}` : ""}`;
@@ -359,6 +427,27 @@ function LeadRow({ lead, selected, onSelect, onMarkContacted, markingContacted }
           {lead.isLocalMarket && <span className="inline-flex border border-teal-100 bg-teal-50 text-teal-700 px-2 py-1 rounded-md text-[11px] font-bold">Local</span>}
           <span className={`inline-flex border px-2 py-1 rounded-md text-[11px] font-bold ${tierTone(lead.tier)}`}>{tierLabel(lead.tier)}</span>
           <span className={`inline-flex border px-2 py-1 rounded-md text-[11px] font-bold ${opportunityTone(lead)}`}>{opportunityLabel(lead)}</span>
+          {lead.demoUrl && (
+            <a
+              href={lead.demoUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 px-2 py-1 rounded-md text-[11px] font-bold"
+            >
+              Demo
+            </a>
+          )}
+          {typeof lead.demoQualityScore === "number" && (
+            <span className={`inline-flex border px-2 py-1 rounded-md text-[11px] font-bold ${qualityChipTone(lead.demoQualityScore)}`}>
+              {lead.demoQualityScore.toFixed(0)}/100
+            </span>
+          )}
+          {lead.outreachStatus && lead.outreachStatus !== "none" && (
+            <span className={`inline-flex border px-2 py-1 rounded-md text-[11px] font-bold ${outreachStatusTone(lead.outreachStatus)}`}>
+              {outreachStatusLabel(lead)}
+            </span>
+          )}
         </div>
         {lead.status !== "contacted" && (
           <button

@@ -3,6 +3,14 @@
     {
       "path": "/api/cron/weekly-summary",
       "schedule": "0 13 * * 1"
+    },
+    {
+      "path": "/api/cron/latchly-outreach",
+      "schedule": "0,15,30,45 10-16 * * 1-5"
+    },
+    {
+      "path": "/api/cron/latchly-outreach",
+      "schedule": "0 17 * * 1-5"
     }
   ]
 }
