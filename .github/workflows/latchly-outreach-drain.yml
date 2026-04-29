@@ -1,0 +1,60 @@
+name: Latchly Outreach Drain
+
+# Vercel Hobby plan caps cron jobs at once per day, so we drive the
+# every-15-minute drain from GitHub Actions. This workflow curls the
+# /api/cron/latchly-outreach endpoint on Vercel, which then claims and
+# sends any queued rows whose 7-9am-local schedule has arrived.
+#
+# GitHub Actions cron is best-effort and may delay a few minutes under
+# load, but the queue is idempotent (atomic claim flips queued -> sending
+# in a single UPDATE), so duplicate ticks during retries are safe.
+#
+# Required GitHub secrets:
+#   CRON_SECRET   — same value as the Vercel env var; used as Bearer auth
+#   PROD_BASE_URL — public base URL of the deployed site (no trailing /)
+#                   defaults to https://latchlyai.com if unset
+
+on:
+  schedule:
+    # Every 15 minutes Mon-Fri 10:00-17:00 UTC. Covers 7-9am local across
+    # ET → PT (EST: 7am=12 UTC, EDT: 7am=11 UTC; PT: 9am=17 UTC EDT, 16 UTC EST).
+    - cron: '*/15 10-17 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      verbose:
+        description: Echo response body
+        required: false
+        default: 'true'
+        type: boolean
+
+concurrency:
+  group: latchly-outreach-drain
+  cancel-in-progress: false
+
+jobs:
+  drain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Drain outreach queue
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          BASE_URL: ${{ secrets.PROD_BASE_URL || 'https://latchlyai.com' }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::CRON_SECRET secret is not set in this repository."
+            echo "Add it under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          echo "Hitting $BASE_URL/api/cron/latchly-outreach"
+          response=$(curl -sS -w '\n%{http_code}' \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$BASE_URL/api/cron/latchly-outreach")
+          body=$(echo "$response" | head -n -1)
+          status=$(echo "$response" | tail -n 1)
+          echo "HTTP $status"
+          echo "$body"
+          if [ "$status" != "200" ]; then
+            echo "::error::Drain failed with HTTP $status"
+            exit 1
+          fi
