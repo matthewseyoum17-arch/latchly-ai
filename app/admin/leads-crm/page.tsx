@@ -719,7 +719,8 @@ export default function LeadsCrmPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to load runs");
       const latest = json.runs?.[0];
-      if (latest && !["pending", "running"].includes(latest.status)) {
+      // No runs at all, or latest has finished -> stop pending UI.
+      if (!latest || !["pending", "running"].includes(latest.status)) {
         setScrapePending(false);
       }
       await fetchData();
@@ -744,7 +745,7 @@ export default function LeadsCrmPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Dispatch failed");
       setScrapePending(true);
-      setToast("Scrape dispatched · runs at next slot");
+      setToast("Scrape dispatched · workflow takes ~30-60 minutes");
       await pollRuns();
     } catch (err: any) {
       setError(err.message || "Failed to dispatch scrape");
@@ -752,6 +753,16 @@ export default function LeadsCrmPage() {
       setScrapeDispatching(false);
     }
   };
+
+  // Auto-resume polling on mount/refresh if a scrape is already in flight
+  // (e.g. user reloaded mid-run). Stale pending rows are auto-expired
+  // server-side after 2h, so this only fires for genuinely-active runs.
+  useEffect(() => {
+    const status = data?.latestRun?.status;
+    if (status === "pending" || status === "running") {
+      setScrapePending(true);
+    }
+  }, [data?.latestRun?.status]);
 
   useEffect(() => {
     if (!authed || !scrapePending) return;

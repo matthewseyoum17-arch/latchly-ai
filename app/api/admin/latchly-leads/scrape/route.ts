@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     return jsonResponse({ error: `GitHub dispatch failed (${dispatch.status}): ${text || dispatch.statusText}` }, { status: 502 });
   }
 
-  const runId = await latestWorkflowRunId({ repo, workflow, token });
+  const runId = await latestWorkflowRunId({ repo, workflow, token, dispatchedAt });
   const pendingRunId = await insertPendingRun({
     tier,
     target,
@@ -101,16 +101,33 @@ function githubHeaders(token: string) {
   };
 }
 
-async function latestWorkflowRunId({ repo, workflow, token }: { repo: string; workflow: string; token: string }) {
-  const url = `https://api.github.com/repos/${repo}/actions/workflows/${workflow}/runs?event=workflow_dispatch&per_page=1`;
-  try {
-    const res = await fetch(url, { headers: githubHeaders(token) });
-    if (!res.ok) return null;
-    const json = await res.json();
-    return json.workflow_runs?.[0]?.id ?? null;
-  } catch {
-    return null;
+async function latestWorkflowRunId({
+  repo, workflow, token, dispatchedAt,
+}: { repo: string; workflow: string; token: string; dispatchedAt: string }) {
+  // GitHub doesn't always have the dispatched run queryable on the first call;
+  // poll briefly and pick the newest run created at/after dispatch time so we
+  // don't pin metadata to a stale prior run.
+  const dispatchTs = Date.parse(dispatchedAt);
+  const url = `https://api.github.com/repos/${repo}/actions/workflows/${workflow}/runs?event=workflow_dispatch&per_page=5`;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    if (attempt > 0) {
+      await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
+    }
+    try {
+      const res = await fetch(url, { headers: githubHeaders(token) });
+      if (!res.ok) continue;
+      const json = await res.json();
+      const runs = Array.isArray(json.workflow_runs) ? json.workflow_runs : [];
+      const candidate = runs
+        .map((r: any) => ({ id: r.id, ts: Date.parse(r.created_at || "") }))
+        .filter((r: any) => Number.isFinite(r.ts) && r.ts >= dispatchTs - 5000)
+        .sort((a: any, b: any) => b.ts - a.ts)[0];
+      if (candidate?.id != null) return candidate.id;
+    } catch {
+      // retry
+    }
   }
+  return null;
 }
 
 async function insertPendingRun(details: {

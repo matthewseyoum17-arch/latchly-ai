@@ -336,7 +336,21 @@ function mapLead(row: any) {
   };
 }
 
+// GitHub Actions workflow caps at 90 min. Any pending row older than this
+// will never resolve on its own — treat as failed so the dashboard unblocks.
+const PENDING_TTL_MS = 2 * 60 * 60 * 1000;
+
+function resolveRunStatus(rawStatus: any, createdAt: any) {
+  const status = String(rawStatus || "").toLowerCase() || "completed";
+  if (status !== "pending" && status !== "running") return status;
+  const created = createdAt instanceof Date ? createdAt : new Date(createdAt);
+  if (Number.isNaN(created.getTime())) return status;
+  return Date.now() - created.getTime() > PENDING_TTL_MS ? "failed" : status;
+}
+
 function mapRun(row: any) {
+  const metadata = normalizeJsonObject(row.metadata);
+  const status = resolveRunStatus(metadata.status, row.created_at);
   return {
     id: Number(row.id),
     runDate: row.run_date,
@@ -353,10 +367,10 @@ function mapRun(row: any) {
     resendEmailId: row.resend_email_id,
     emailSent: Boolean(row.email_sent),
     dryRun: Boolean(row.dry_run),
-    metadata: normalizeJsonObject(row.metadata),
-    status: normalizeJsonObject(row.metadata).status || "completed",
-    premiumDelivered: Number(normalizeJsonObject(row.metadata).premiumDelivered || 0),
-    standardDelivered: Number(normalizeJsonObject(row.metadata).standardDelivered || 0),
+    metadata,
+    status,
+    premiumDelivered: Number(metadata.premiumDelivered || 0),
+    standardDelivered: Number(metadata.standardDelivered || 0),
     createdAt: row.created_at,
   };
 }

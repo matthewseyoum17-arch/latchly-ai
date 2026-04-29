@@ -333,6 +333,77 @@ function createDbStorage(url) {
     },
     async recordRun(stats = {}, email = {}) {
       const db = await sql();
+      const githubRunId = process.env.GITHUB_RUN_ID ? String(process.env.GITHUB_RUN_ID) : null;
+      const metadataJson = JSON.stringify({
+        to: email.to || null,
+        auditAttempts: stats.auditAttempts || 0,
+        noWebsiteTarget: stats.noWebsiteTarget || 0,
+        poorWebsiteTarget: stats.poorWebsiteTarget || 0,
+        noWebsiteQualified: stats.noWebsiteQualified || 0,
+        poorWebsiteQualified: stats.poorWebsiteQualified || 0,
+        noWebsiteDelivered: stats.noWebsiteDelivered || 0,
+        poorWebsiteDelivered: stats.poorWebsiteDelivered || 0,
+        noWebsiteShortage: stats.noWebsiteShortage || 0,
+        poorWebsiteShortage: stats.poorWebsiteShortage || 0,
+        localQualified: stats.localQualified || 0,
+        localTargetMin: stats.localTargetMin || 0,
+        localTargetMax: stats.localTargetMax || 0,
+        localShortage: stats.localShortage || 0,
+        siteBucketMin: stats.siteBucketMin || 0,
+        siteBucketMax: stats.siteBucketMax || 0,
+        nicheCap: stats.nicheCap || 0,
+        nicheCounts: stats.nicheCounts || {},
+        sourceCounts: stats.sourceCounts || {},
+        scoreDistribution: stats.scoreDistribution || {},
+        websiteStatusCounts: stats.websiteStatusCounts || {},
+        tierMode: stats.tierMode || 'both',
+        premiumQualified: stats.premiumQualified || 0,
+        premiumDelivered: stats.premiumDelivered || 0,
+        standardDelivered: stats.standardDelivered || 0,
+        premiumGateIssues: stats.premiumGateIssues || [],
+        selectionNotes: stats.selectionNotes || [],
+        candidateOpportunityCounts: stats.candidateOpportunityCounts || {},
+        waveStats: stats.waveStats || [],
+        diagnosticsPath: stats.diagnosticsPath || '',
+        diagnostics: stats.diagnostics || {},
+        topRejectionsBySource: stats.topRejectionsBySource || [],
+        stopReason: stats.stopReason || '',
+        maxAuditAttempts: stats.maxAuditAttempts || 0,
+        maxRunMinutes: stats.maxRunMinutes || 0,
+        status: 'completed',
+        githubRunId,
+        completedAt: new Date().toISOString(),
+      });
+
+      // If this run was kicked off by the dashboard's manual dispatch, the API
+      // already inserted a pending row keyed by the GitHub run id. Reconcile
+      // by updating that row instead of leaving it orphaned.
+      if (githubRunId) {
+        const updated = await db`
+          UPDATE latchly_lead_runs
+          SET
+            run_date = COALESCE(${stats.date || null}::date, run_date),
+            target_count = ${stats.target || 0},
+            minimum_count = ${stats.minimum || 0},
+            candidate_count = ${stats.candidates || 0},
+            audited_count = ${stats.audited || 0},
+            qualified_count = ${stats.qualified || 0},
+            delivered_count = ${stats.delivered || 0},
+            local_count = ${stats.localDelivered || 0},
+            rejected_count = ${stats.rejected || 0},
+            rejection_stats = ${JSON.stringify(stats.topRejectionReasons || [])}::jsonb,
+            under_target_reason = ${stats.underTargetReason || null},
+            resend_email_id = ${email.id || null},
+            email_sent = ${Boolean(email.sent)},
+            dry_run = ${Boolean(email.dryRun)},
+            metadata = metadata || ${metadataJson}::jsonb,
+            updated_at = NOW()
+          WHERE metadata->>'githubRunId' = ${githubRunId}
+            AND COALESCE(metadata->>'status', '') IN ('pending', 'running', '')
+          RETURNING id`;
+        if (updated.length > 0) return;
+      }
+
       await db`
         INSERT INTO latchly_lead_runs (
           run_date, target_count, minimum_count, candidate_count, audited_count,
@@ -346,43 +417,7 @@ function createDbStorage(url) {
           ${stats.delivered || 0}, ${stats.localDelivered || 0}, ${stats.rejected || 0},
           ${JSON.stringify(stats.topRejectionReasons || [])}::jsonb,
           ${stats.underTargetReason || null}, ${email.id || null}, ${Boolean(email.sent)},
-          ${Boolean(email.dryRun)}, ${JSON.stringify({
-            to: email.to || null,
-            auditAttempts: stats.auditAttempts || 0,
-            noWebsiteTarget: stats.noWebsiteTarget || 0,
-            poorWebsiteTarget: stats.poorWebsiteTarget || 0,
-            noWebsiteQualified: stats.noWebsiteQualified || 0,
-            poorWebsiteQualified: stats.poorWebsiteQualified || 0,
-            noWebsiteDelivered: stats.noWebsiteDelivered || 0,
-            poorWebsiteDelivered: stats.poorWebsiteDelivered || 0,
-            noWebsiteShortage: stats.noWebsiteShortage || 0,
-            poorWebsiteShortage: stats.poorWebsiteShortage || 0,
-            localQualified: stats.localQualified || 0,
-            localTargetMin: stats.localTargetMin || 0,
-            localTargetMax: stats.localTargetMax || 0,
-            localShortage: stats.localShortage || 0,
-            siteBucketMin: stats.siteBucketMin || 0,
-            siteBucketMax: stats.siteBucketMax || 0,
-            nicheCap: stats.nicheCap || 0,
-            nicheCounts: stats.nicheCounts || {},
-            sourceCounts: stats.sourceCounts || {},
-            scoreDistribution: stats.scoreDistribution || {},
-            websiteStatusCounts: stats.websiteStatusCounts || {},
-            tierMode: stats.tierMode || 'both',
-            premiumQualified: stats.premiumQualified || 0,
-            premiumDelivered: stats.premiumDelivered || 0,
-            standardDelivered: stats.standardDelivered || 0,
-            premiumGateIssues: stats.premiumGateIssues || [],
-            selectionNotes: stats.selectionNotes || [],
-            candidateOpportunityCounts: stats.candidateOpportunityCounts || {},
-            waveStats: stats.waveStats || [],
-            diagnosticsPath: stats.diagnosticsPath || '',
-            diagnostics: stats.diagnostics || {},
-            topRejectionsBySource: stats.topRejectionsBySource || [],
-            stopReason: stats.stopReason || '',
-            maxAuditAttempts: stats.maxAuditAttempts || 0,
-            maxRunMinutes: stats.maxRunMinutes || 0,
-          })}::jsonb
+          ${Boolean(email.dryRun)}, ${metadataJson}::jsonb
         )`;
     },
   };
