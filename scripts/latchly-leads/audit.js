@@ -264,7 +264,12 @@ function evaluatePlausibleStage2(audit, signals = {}) {
   const concrete = findings.filter(finding => finding.weight >= 0.6);
   const severe = findings.filter(finding => finding.weight >= 0.9);
   const weight = concrete.reduce((sum, finding) => sum + finding.weight, 0);
-  if (concrete.length >= 4 && severe.length >= 2 && weight >= 4.2) {
+  // Loosened from concrete>=4 AND severe>=2 AND weight>=4.2 — that floor was
+  // producing zero poor-site qualifiers in real runs (id=15 audited 27 sites
+  // and qualified zero). Either path below is enough to send a candidate to
+  // Stage 2: 3 concrete + 1 severe at moderate weight, OR 2 severe issues.
+  if ((concrete.length >= 3 && severe.length >= 1 && weight >= 2.8)
+      || (severe.length >= 2 && weight >= 2.5)) {
     return { plausible: true, reason: `stage1_weight=${weight.toFixed(1)}` };
   }
   return {

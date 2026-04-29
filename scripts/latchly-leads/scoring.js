@@ -186,7 +186,12 @@ function scoreLead(lead, audit = {}) {
     } else {
       const concreteVerified = concreteFindings.filter(finding => Number(finding.confidence || 0) >= 0.7 && finding.url);
       const severeVerified = severeFindings.filter(finding => Number(finding.confidence || 0) >= 0.7 && finding.url);
-      if (evidenceWeight >= 4.2 && concreteVerified.length >= 4 && severeVerified.length >= 2) {
+      // Matches the loosened Stage 2 plausibility floor in audit.js. Either
+      // path qualifies the lead as a poor-site redesign candidate.
+      const qualifiesAsPoorSite =
+        (evidenceWeight >= 2.8 && concreteVerified.length >= 3 && severeVerified.length >= 1)
+        || (severeVerified.length >= 2 && evidenceWeight >= 2.5);
+      if (qualifiesAsPoorSite) {
         websiteStatus = 'poor_website';
         leadType = 'poor_website_redesign';
         score += Math.min(5.8, 2.4 + (evidenceWeight * 0.55) + (severeVerified.length * 0.15));
@@ -263,10 +268,16 @@ function scoreLead(lead, audit = {}) {
 }
 
 // Counts concrete, discrete facts about a lead. Premium tier requires >=3.
+// Take the max of audit-derived counts and flag-derived counts. The previous
+// implementation short-circuited on `audit.signalCount === 0`, which is the
+// value buildSignalSummary produces when an audit is skipped/unreachable —
+// the result was every lead persisting signal_count=0 even when it had a
+// phone, lat/lng, business hours, etc. that the flag fallback would have
+// counted.
 function computeSignalCount(lead, audit = {}, decisionMaker = {}) {
-  if (Number.isFinite(Number(audit.signalCount))) return Number(audit.signalCount);
+  const auditCount = Number(audit.signalCount);
   const summary = audit.verifiedSignals?.signalSummary;
-  if (Number.isFinite(Number(summary?.count))) return Number(summary.count);
+  const summaryCount = Number(summary?.count);
   const flags = [
     Boolean(lead.phone && /\d{3}/.test(String(lead.phone))),
     Boolean((lead.email || lead.rawPayload?.email || lead.rawPayload?.Email || '').includes('@')),
@@ -277,7 +288,12 @@ function computeSignalCount(lead, audit = {}, decisionMaker = {}) {
     hasBusinessHours(lead),
     hasLatLng(lead),
   ];
-  return flags.filter(Boolean).length;
+  const flagCount = flags.filter(Boolean).length;
+  return Math.max(
+    Number.isFinite(auditCount) ? auditCount : 0,
+    Number.isFinite(summaryCount) ? summaryCount : 0,
+    flagCount,
+  );
 }
 
 // pickDecisionMaker uses an integer scale (10/8/6/0). Normalize all confidence

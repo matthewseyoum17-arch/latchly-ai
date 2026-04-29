@@ -835,7 +835,7 @@ export default function LeadsCrmPage() {
       <main className="max-w-[1500px] mx-auto px-4 sm:px-6 py-5 space-y-5">
         {data && (
           <div className="grid grid-cols-2 lg:grid-cols-5 xl:grid-cols-10 gap-3">
-            <StatTile icon={<Building2 size={15} />} label="Total" value={data.stats.total} />
+            <StatTile icon={<Building2 size={15} />} label="In CRM" value={data.stats.total} />
             <StatTile icon={<Star size={15} />} label="Premium" value={data.stats.premium} />
             <StatTile icon={<Star size={15} />} label="Avg Score" value={data.stats.avgScore ?? "-"} />
             <StatTile icon={<NotebookTabs size={15} />} label="New" value={data.stats.new} />
@@ -991,7 +991,14 @@ export default function LeadsCrmPage() {
             <div className="px-4 py-3 flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 min-w-0">
                 <Building2 size={16} className="text-slate-500" />
-                <span className="text-sm font-black text-slate-950">{data?.leads.length ?? 0} leads</span>
+                <span className="text-sm font-black text-slate-950">
+                  {data?.leads.length ?? 0}
+                  {data && data.leads.length < (data.stats.total || 0) ? (
+                    <span className="font-bold text-slate-500"> of {data.stats.total} (filters active)</span>
+                  ) : (
+                    <span className="text-slate-500"> leads</span>
+                  )}
+                </span>
               </div>
               {loading && <Loader2 size={16} className="animate-spin text-slate-500" />}
             </div>
