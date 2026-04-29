@@ -47,6 +47,35 @@ test('quality gate accepts 50+ verified score 8+ leads and preserves descending 
   }
 });
 
+test('quality gate accepts poor-site evidence at the scoring threshold', () => {
+  const [lead] = makeBatch(1);
+  const result = runQualityGate([{
+    ...lead,
+    website: 'https://threshold.example',
+    websiteStatus: 'poor_website',
+    leadType: 'poor_website_redesign',
+    audit: {
+      verifiedSignals: {
+        evidenceIntegrity: { verifiable: true, issues: [] },
+        websiteTruth: {
+          status: 'real_business_website',
+          confidence: 0.9,
+          evidence: [{ source: 'test', url: 'https://threshold.example', detail: 'Business website', confidence: 0.9 }],
+        },
+        websiteQuality: {
+          negativeSignals: [
+            { reason: 'No mobile viewport detected', weight: 1.2, confidence: 0.9, source: 'test', url: 'https://threshold.example' },
+            { reason: 'Weak responsive/mobile implementation signals', weight: 0.9, confidence: 0.9, source: 'test', url: 'https://threshold.example' },
+            { reason: 'No clear quote CTA', weight: 0.8, confidence: 0.9, source: 'test', url: 'https://threshold.example' },
+          ],
+        },
+      },
+    },
+  }], { minimum: 1, localQualified: 1 });
+
+  assert.equal(result.ok, true);
+});
+
 test('premium gate accepts score 9+, 3+ signals, website issue, and confident decision maker', () => {
   const result = enforcePremiumGate([premiumLead()]);
   assert.equal(result.ok, true);

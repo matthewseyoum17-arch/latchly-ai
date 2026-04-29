@@ -82,6 +82,7 @@ function createFileStorage() {
     async recordRun(stats = {}, email = {}) {
       const file = path.join(LEADS_DIR, 'crm-runs.json');
       const existing = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : [];
+      const status = normalizeRunStatus(stats.status || email.status || 'completed');
       existing.push({
         date: stats.date,
         target: stats.target,
@@ -121,6 +122,8 @@ function createFileStorage() {
         maxAuditAttempts: stats.maxAuditAttempts || 0,
         maxRunMinutes: stats.maxRunMinutes || 0,
         underTargetReason: stats.underTargetReason || '',
+        status,
+        failureReason: stats.failureReason || email.error || '',
         email,
         createdAt: new Date().toISOString(),
       });
@@ -334,6 +337,8 @@ function createDbStorage(url) {
     async recordRun(stats = {}, email = {}) {
       const db = await sql();
       const githubRunId = process.env.GITHUB_RUN_ID ? String(process.env.GITHUB_RUN_ID) : null;
+      const status = normalizeRunStatus(stats.status || email.status || 'completed');
+      const finishedAtKey = status === 'failed' ? 'failedAt' : 'completedAt';
       const metadataJson = JSON.stringify({
         to: email.to || null,
         auditAttempts: stats.auditAttempts || 0,
@@ -370,9 +375,11 @@ function createDbStorage(url) {
         stopReason: stats.stopReason || '',
         maxAuditAttempts: stats.maxAuditAttempts || 0,
         maxRunMinutes: stats.maxRunMinutes || 0,
-        status: 'completed',
+        status,
         githubRunId,
-        completedAt: new Date().toISOString(),
+        failureReason: stats.failureReason || email.error || null,
+        failureName: stats.failureName || null,
+        [finishedAtKey]: new Date().toISOString(),
       });
 
       // If this run was kicked off by the dashboard's manual dispatch, the API
@@ -392,7 +399,7 @@ function createDbStorage(url) {
             local_count = ${stats.localDelivered || 0},
             rejected_count = ${stats.rejected || 0},
             rejection_stats = ${JSON.stringify(stats.topRejectionReasons || [])}::jsonb,
-            under_target_reason = ${stats.underTargetReason || null},
+            under_target_reason = ${stats.underTargetReason || stats.failureReason || null},
             resend_email_id = ${email.id || null},
             email_sent = ${Boolean(email.sent)},
             dry_run = ${Boolean(email.dryRun)},
@@ -416,11 +423,16 @@ function createDbStorage(url) {
           ${stats.candidates || 0}, ${stats.audited || 0}, ${stats.qualified || 0},
           ${stats.delivered || 0}, ${stats.localDelivered || 0}, ${stats.rejected || 0},
           ${JSON.stringify(stats.topRejectionReasons || [])}::jsonb,
-          ${stats.underTargetReason || null}, ${email.id || null}, ${Boolean(email.sent)},
+          ${stats.underTargetReason || stats.failureReason || null}, ${email.id || null}, ${Boolean(email.sent)},
           ${Boolean(email.dryRun)}, ${metadataJson}::jsonb
         )`;
     },
   };
+}
+
+function normalizeRunStatus(value) {
+  const status = String(value || '').toLowerCase();
+  return ['completed', 'failed', 'running', 'pending'].includes(status) ? status : 'completed';
 }
 
 function toCrmRecord(lead, meta = {}) {

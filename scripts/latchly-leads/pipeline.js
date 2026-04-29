@@ -36,113 +36,122 @@ async function main() {
   }
   ensureDir(LEADS_DIR);
 
-  if (process.env.LATCHLY_REQUIRE_8AM_ET === '1' && currentHourET() !== 8) {
-    console.log(JSON.stringify({ skipped: true, reason: 'not_8am_et', hourET: currentHourET() }));
-    return;
-  }
-
   const date = todayInET();
   const targetLeads = cli.target || TARGET_DAILY_LEADS;
   const minimumLeads = cli.target || MIN_DAILY_LEADS;
   const tierMode = cli.tier || process.env.LATCHLY_TIER || 'both';
-  const storage = createStorage();
-  await storage.init();
-  const deliveredKeys = await storage.deliveredKeys();
-  const premiumSeeking = tierMode === 'premium' || tierMode === 'both';
+  let storage = null;
+  let stats = null;
 
-  const candidateLimit = parseInt(process.env.LATCHLY_CANDIDATE_LIMIT || String(targetLeads * 8), 10);
-  const candidates = orderCandidatesForAudit(
-    await discoverCandidates({ limit: candidateLimit, deliveredKeys, preferPaid: premiumSeeking }),
-    { preferWebsiteLeads: premiumSeeking },
-  );
-  const verbose = process.env.LATCHLY_VERBOSE === '1';
-  if (verbose) console.log(`[discovery] candidates=${candidates.length}`);
-  const diagnosticsPath = diagnosticsEnabled()
-    ? path.join(LEADS_DIR, `diagnostics-${date}-${new Date().toISOString().replace(/[:.]/g, '-')}.jsonl`)
-    : '';
+  try {
+    if (process.env.LATCHLY_REQUIRE_8AM_ET === '1' && currentHourET() !== 8) {
+      console.log(JSON.stringify({ skipped: true, reason: 'not_8am_et', hourET: currentHourET() }));
+      return;
+    }
 
-  const {
-    qualified,
-    rejections,
-    auditAttempts,
-    audited,
-    stopReason,
-    waveStats,
-    diagnostics,
-  } = await auditAndScoreCandidates(candidates, deliveredKeys, {
-    verbose,
-    auditConcurrency: AUDIT_CONCURRENCY,
-    maxAuditAttempts: MAX_AUDIT_ATTEMPTS,
-    maxRunMs: MAX_RUN_MINUTES * 60 * 1000,
-    maxQualified: targetLeads * 3,
-    targetLeads,
-    requireQualifiedMix: true,
-    preferWebsiteLeads: premiumSeeking,
-    diagnosticsPath,
-    diagnosticInterval: DIAGNOSTIC_INTERVAL,
-  });
+    storage = createStorage();
+    await storage.init();
+    const deliveredKeys = await storage.deliveredKeys();
+    const premiumSeeking = tierMode === 'premium' || tierMode === 'both';
 
-  const tiered = selectTieredLeads(qualified, targetLeads, { tierMode });
-  const selected = tiered.leads;
-  const selection = summarizeSelection(qualified, selected, targetLeads);
-  const stats = {
-    date,
-    target: targetLeads,
-    minimum: minimumLeads,
-    tierMode,
-    candidates: candidates.length,
-    auditAttempts,
-    audited,
-    qualified: qualified.length,
-    delivered: selected.length,
-    rejected: rejections.length,
-    localDelivered: selected.filter(lead => lead.isLocalMarket).length,
-    maxAuditAttempts: MAX_AUDIT_ATTEMPTS,
-    maxRunMinutes: MAX_RUN_MINUTES,
-    stopReason,
-    diagnosticsPath,
-    waveStats,
-    diagnostics,
-    candidateOpportunityCounts: countBy(candidates, lead => lead.sourceOpportunity || 'unknown'),
-    ...selection,
-    premiumQualified: tiered.premiumQualified,
-    premiumDelivered: tiered.premiumDelivered,
-    standardDelivered: tiered.standardDelivered,
-    premiumGateIssues: tiered.premiumGate.issues,
-    topRejectionReasons: topReasons(rejections),
-    topRejectionsBySource: topReasonsBySource(rejections),
-  };
+    const candidateLimit = parseInt(process.env.LATCHLY_CANDIDATE_LIMIT || String(targetLeads * 8), 10);
+    const candidates = orderCandidatesForAudit(
+      await discoverCandidates({ limit: candidateLimit, deliveredKeys, preferPaid: premiumSeeking }),
+      { preferWebsiteLeads: premiumSeeking },
+    );
+    const verbose = process.env.LATCHLY_VERBOSE === '1';
+    if (verbose) console.log(`[discovery] candidates=${candidates.length}`);
+    const diagnosticsPath = diagnosticsEnabled()
+      ? path.join(LEADS_DIR, `diagnostics-${date}-${new Date().toISOString().replace(/[:.]/g, '-')}.jsonl`)
+      : '';
 
-  const qualityGate = enforceStandardGate(selected, stats, { minimum: minimumLeads, qualifiedScore: QUALIFIED_SCORE });
-  if (!qualityGate.ok) {
-    const message = qualityGate.issues
-      .filter(issue => issue.severity === 'reject')
-      .map(issue => `${issue.code}: ${issue.message}`)
-      .join('; ');
-    throw new Error(`Lead quality gate rejected batch: ${message}`);
+    const {
+      qualified,
+      rejections,
+      auditAttempts,
+      audited,
+      stopReason,
+      waveStats,
+      diagnostics,
+    } = await auditAndScoreCandidates(candidates, deliveredKeys, {
+      verbose,
+      auditConcurrency: AUDIT_CONCURRENCY,
+      maxAuditAttempts: MAX_AUDIT_ATTEMPTS,
+      maxRunMs: MAX_RUN_MINUTES * 60 * 1000,
+      maxQualified: targetLeads * 3,
+      targetLeads,
+      requireQualifiedMix: true,
+      preferWebsiteLeads: premiumSeeking,
+      diagnosticsPath,
+      diagnosticInterval: DIAGNOSTIC_INTERVAL,
+    });
+
+    const tiered = selectTieredLeads(qualified, targetLeads, { tierMode });
+    const selected = tiered.leads;
+    const selection = summarizeSelection(qualified, selected, targetLeads);
+    stats = {
+      date,
+      target: targetLeads,
+      minimum: minimumLeads,
+      tierMode,
+      candidates: candidates.length,
+      auditAttempts,
+      audited,
+      qualified: qualified.length,
+      delivered: selected.length,
+      rejected: rejections.length,
+      localDelivered: selected.filter(lead => lead.isLocalMarket).length,
+      maxAuditAttempts: MAX_AUDIT_ATTEMPTS,
+      maxRunMinutes: MAX_RUN_MINUTES,
+      stopReason,
+      diagnosticsPath,
+      waveStats,
+      diagnostics,
+      candidateOpportunityCounts: countBy(candidates, lead => lead.sourceOpportunity || 'unknown'),
+      ...selection,
+      premiumQualified: tiered.premiumQualified,
+      premiumDelivered: tiered.premiumDelivered,
+      standardDelivered: tiered.standardDelivered,
+      premiumGateIssues: tiered.premiumGate.issues,
+      topRejectionReasons: topReasons(rejections),
+      topRejectionsBySource: topReasonsBySource(rejections),
+    };
+
+    const qualityGate = enforceStandardGate(selected, stats, { minimum: minimumLeads, qualifiedScore: QUALIFIED_SCORE });
+    stats.qualityGate = qualityGate.issues;
+    if (!qualityGate.ok) {
+      const message = qualityGate.issues
+        .filter(issue => issue.severity === 'reject')
+        .map(issue => `${issue.code}: ${issue.message}`)
+        .join('; ');
+      throw new Error(`Lead quality gate rejected batch: ${message}`);
+    }
+    const qualitySelected = qualityGate.leads;
+    stats.delivered = qualitySelected.length;
+    stats.localDelivered = qualitySelected.filter(lead => lead.isLocalMarket).length;
+    if (qualityGate.underTarget || qualitySelected.length < MIN_DAILY_LEADS) {
+      stats.underTargetReason = qualityGate.issues.find(issue => issue.code === 'under_target')?.message
+        || `Only ${qualitySelected.length} score ${QUALIFIED_SCORE}+ leads met the phone, independent home-service, evidence, and dedupe gates.`;
+    }
+    stats.selectionNotes = selectionNotes(stats);
+
+    const digest = buildDigest(qualitySelected, stats);
+    const files = await writeDigestFiles(digest, qualitySelected, stats);
+    await storage.upsertLeads(qualitySelected, { date, stats });
+    const sendResult = await sendDigest(digest, { dryRun: process.env.DRY_RUN === 'true' || process.env.SKIP_EMAIL === '1' });
+
+    if (sendResult.sent) {
+      await storage.markDelivered(qualitySelected, { date, emailId: sendResult.id });
+    }
+    // dry_run on the run record = real dry run (no leads written), not just SKIP_EMAIL.
+    stats.status = 'completed';
+    await storage.recordRun(stats, { ...sendResult, dryRun: process.env.DRY_RUN === 'true' });
+
+    console.log(JSON.stringify({ ...stats, files, email: sendResult }, null, 2));
+  } catch (err) {
+    await recordFailedRun(storage, stats, err, { date, targetLeads, minimumLeads, tierMode });
+    throw err;
   }
-  const qualitySelected = qualityGate.leads;
-  stats.delivered = qualitySelected.length;
-  stats.localDelivered = qualitySelected.filter(lead => lead.isLocalMarket).length;
-  stats.qualityGate = qualityGate.issues;
-  if (qualityGate.underTarget || qualitySelected.length < MIN_DAILY_LEADS) {
-    stats.underTargetReason = qualityGate.issues.find(issue => issue.code === 'under_target')?.message
-      || `Only ${qualitySelected.length} score ${QUALIFIED_SCORE}+ leads met the phone, independent home-service, evidence, and dedupe gates.`;
-  }
-  stats.selectionNotes = selectionNotes(stats);
-
-  const digest = buildDigest(qualitySelected, stats);
-  const files = await writeDigestFiles(digest, qualitySelected, stats);
-  await storage.upsertLeads(qualitySelected, { date, stats });
-  const sendResult = await sendDigest(digest, { dryRun: process.env.DRY_RUN === 'true' || process.env.SKIP_EMAIL === '1' });
-
-  if (sendResult.sent) {
-    await storage.markDelivered(qualitySelected, { date, emailId: sendResult.id });
-  }
-  // dry_run on the run record = real dry run (no leads written), not just SKIP_EMAIL.
-  await storage.recordRun(stats, { ...sendResult, dryRun: process.env.DRY_RUN === 'true' });
-
-  console.log(JSON.stringify({ ...stats, files, email: sendResult }, null, 2));
 }
 
 function parseCliArgs(args = []) {
@@ -187,6 +196,40 @@ function normalizePositiveInt(value) {
   const parsed = parseInt(value, 10);
   if (!Number.isFinite(parsed) || parsed <= 0) throw new Error(`Invalid --target value "${value}".`);
   return parsed;
+}
+
+async function recordFailedRun(storage, stats, err, context = {}) {
+  const error = err instanceof Error ? err : new Error(String(err || 'Unknown pipeline failure'));
+  const writer = storage || createStorage();
+  const failureStats = {
+    date: stats?.date || context.date || todayInET(),
+    target: stats?.target || context.targetLeads || TARGET_DAILY_LEADS,
+    minimum: stats?.minimum || context.minimumLeads || MIN_DAILY_LEADS,
+    tierMode: stats?.tierMode || context.tierMode || process.env.LATCHLY_TIER || 'both',
+    candidates: 0,
+    auditAttempts: 0,
+    audited: 0,
+    qualified: 0,
+    delivered: 0,
+    rejected: 0,
+    localDelivered: 0,
+    ...stats,
+    status: 'failed',
+    failureReason: error.message,
+    failureName: error.name,
+    underTargetReason: stats?.underTargetReason || error.message,
+  };
+
+  try {
+    if (!storage) await writer.init();
+    await writer.recordRun(failureStats, {
+      sent: false,
+      dryRun: process.env.DRY_RUN === 'true',
+      error: error.message,
+    });
+  } catch (recordError) {
+    console.error('Failed to record Latchly lead run failure:', recordError);
+  }
 }
 
 function selectDailyLeads(leads, target) {

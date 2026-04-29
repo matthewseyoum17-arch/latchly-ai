@@ -114,15 +114,29 @@ function hasVerifiableAudit(lead) {
   }
 
   if (lead.leadType === 'poor_website_redesign' || lead.websiteStatus === 'poor_website') {
-    const negatives = verified.websiteQuality?.negativeSignals || [];
-    const ok = verified.websiteTruth?.status === 'real_business_website'
-      && negatives.filter(signal => signal.url && signal.source && signal.weight >= 0.6 && Number(signal.confidence || 0) >= 0.7).length >= 4;
+    const ok = hasVerifiedPoorSiteEvidence(verified);
     if (!ok) reasons.push('Missing verified poor-site evidence');
     return { ok: reasons.length === 0, reasons, signalCount, dmConfidence };
   }
 
   reasons.push('Lead has no verified no-website or poor-website opportunity');
   return { ok: false, reasons, signalCount, dmConfidence };
+}
+
+function hasVerifiedPoorSiteEvidence(verified = {}) {
+  if (verified.websiteTruth?.status !== 'real_business_website') return false;
+  const negatives = verified.websiteQuality?.negativeSignals || [];
+  const concreteVerified = negatives.filter(signal =>
+    signal.url
+    && signal.source
+    && Number(signal.weight || 0) >= 0.6
+    && Number(signal.confidence || 0) >= 0.7
+  );
+  const severeVerified = concreteVerified.filter(signal => Number(signal.weight || 0) >= 0.9);
+  const evidenceWeight = concreteVerified.reduce((sum, signal) => sum + Number(signal.weight || 0), 0);
+
+  return (evidenceWeight >= 2.8 && concreteVerified.length >= 3 && severeVerified.length >= 1)
+    || (severeVerified.length >= 2 && evidenceWeight >= 2.5);
 }
 
 function enforcePremiumGate(leads, stats = {}, options = {}) {
