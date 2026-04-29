@@ -61,6 +61,11 @@ jobs:
           LATCHLY_DAILY_MINIMUM: ${{ inputs.target || '50' }}
           LATCHLY_TIER: ${{ inputs.tier || 'both' }}
           LATCHLY_REQUIRE_8AM_ET: ${{ github.event_name == 'schedule' && '1' || '0' }}
+          # Yield levers — id=15 delivered 19/50 because real-site audits hit a
+          # 2-negative-signal floor that rejects nearly everything, and no-website
+          # leads cluster at 7.4-7.9 just under the 8.0 score gate.
+          LATCHLY_PROMISING_NEG_THRESHOLD: '1'
+          LATCHLY_QUALIFIED_SCORE: '7.5'
           DRY_RUN: ${{ inputs.dry_run || 'false' }}
           SKIP_EMAIL: '1'
           SERPAPI_API_KEY: ${{ secrets.SERPAPI_API_KEY }}

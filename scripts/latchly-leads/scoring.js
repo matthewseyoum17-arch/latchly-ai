@@ -2,6 +2,7 @@ const {
   CHAIN_PATTERNS,
   HOME_SERVICE_NICHES,
   LOCAL_MARKETS,
+  QUALIFIED_SCORE,
 } = require('./config');
 const { normalizePhone, normalizeWebsite, stripHtml } = require('./utils');
 
@@ -245,7 +246,7 @@ function scoreLead(lead, audit = {}) {
 
   return {
     score: rounded,
-    qualified: rounded >= 8 && blockers.length === 0 && websiteIssue,
+    qualified: rounded >= QUALIFIED_SCORE && blockers.length === 0 && websiteIssue,
     reasons: unique(reasons).slice(0, 8),
     blockers,
     decisionMaker: { ...decisionMaker, confidence: dmConfidence },

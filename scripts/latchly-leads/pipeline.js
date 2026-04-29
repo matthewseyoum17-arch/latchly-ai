@@ -461,7 +461,15 @@ async function auditAndScoreCandidates(candidates, deliveredKeys = new Set(), op
             qualified.push(lead);
             stats.qualified++;
           } else {
-            rejectionReason = scored.blockers[0] || scored.reasons[0] || `score below ${QUALIFIED_SCORE}`;
+            // Prefer explicit blockers, then a real score-below message, and only fall
+            // back to reasons[0] if neither applies. Without this guard, a positive
+            // reason like "Independent home-service niche fit" would surface as the
+            // rejection cause and bury the actual reason (sub-threshold score).
+            const scoreNum = Number(scored.score || 0);
+            rejectionReason = scored.blockers[0]
+              || (scoreNum < QUALIFIED_SCORE
+                ? `score ${scoreNum.toFixed(1)} below ${QUALIFIED_SCORE}`
+                : scored.reasons[0] || `score below ${QUALIFIED_SCORE}`);
             rejections.push(rejection(candidate, rejectionReason, {
               score: scored.score,
               wave: wave.name,
