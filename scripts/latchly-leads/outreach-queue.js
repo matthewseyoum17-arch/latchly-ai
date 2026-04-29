@@ -182,7 +182,20 @@ async function queueDayZeroForLead(lead, enrichment, opts = {}) {
   // QA gate: fail-closed. Default to 'draft' unless the caller explicitly
   // opts out with requireApproval === false. The drain cron only picks up
   // 'queued', so drafts sit until approved through the CRM's Approve button.
-  const initialStatus = opts.requireApproval === false ? 'queued' : 'draft';
+  //
+  // Hard override: when the email is a pattern guess (MX-only validation, no
+  // mailbox probe), force 'draft' regardless of requireApproval. Codex review
+  // flagged that shipping these to the autonomous drain risks hard bounces
+  // and Resend warmup damage. The operator must explicitly approve in the UI.
+  const provenance = lead.emailProvenance
+    || lead.email_provenance
+    || enrichment?.emailProvenance
+    || enrichment?.guessedEmailMethod
+    || null;
+  const isGuessedEmail = provenance === 'pattern_guess_mx_only';
+  const initialStatus = isGuessedEmail
+    ? 'draft'
+    : (opts.requireApproval === false ? 'queued' : 'draft');
 
   if (opts.storage?.queueOutreach) {
     await opts.storage.queueOutreach(businessKey, {

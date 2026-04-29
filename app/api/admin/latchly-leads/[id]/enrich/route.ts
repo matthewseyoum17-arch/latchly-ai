@@ -151,11 +151,30 @@ export async function POST(
   }
 
   // 5. Persist. NULLIF guard means we never clobber a hand-edited value
-  //    even if a rerun finds a different candidate.
+  //    even if a rerun finds a different candidate. Email status is set so
+  //    the UI can warn that pattern-guessed addresses haven't been verified
+  //    against a real mailbox (Codex review #3) and so manual clears
+  //    (email_status='rejected') aren't auto-refilled (#2).
+  const provenance = result.changes.email?.via || null;
+  const emailStatus = provenance === "pattern_guess_mx_only" ? "guessed" : provenance ? "verified" : null;
   if (bestEmail || bestOwner) {
     await sql`
       UPDATE latchly_leads SET
-        email = COALESCE(NULLIF(email, ''), ${bestEmail || null}),
+        email = CASE
+          WHEN email_status = 'rejected' THEN email
+          WHEN email IS NOT NULL AND email <> '' THEN email
+          ELSE COALESCE(${bestEmail || null}, email)
+        END,
+        email_provenance = CASE
+          WHEN email_status = 'rejected' THEN email_provenance
+          WHEN email IS NOT NULL AND email <> '' THEN email_provenance
+          ELSE COALESCE(${provenance}, email_provenance)
+        END,
+        email_status = CASE
+          WHEN email_status = 'rejected' THEN 'rejected'
+          WHEN email IS NOT NULL AND email <> '' THEN email_status
+          ELSE COALESCE(${emailStatus}, email_status)
+        END,
         decision_maker_name = COALESCE(NULLIF(decision_maker_name, ''), ${bestOwner || null}),
         decision_maker_confidence = CASE
           WHEN decision_maker_name IS NULL OR decision_maker_name = '' THEN ${bestOwner ? 0.7 : null}

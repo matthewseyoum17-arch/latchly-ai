@@ -56,6 +56,14 @@ export default function ColdEmailPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [outreachActionId, setOutreachActionId] = useState<number | null>(null);
   const [sendNowId, setSendNowId] = useState<number | null>(null);
+  // Ticking timer for queued countdowns. Re-render every 30s so "in 13h 27m"
+  // doesn't freeze on first paint. Cheap — the row component just rebuilds
+  // the timeUntil() string. Codex review #10.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const handle = window.setInterval(() => setTick((n) => (n + 1) % 1_000_000), 30_000);
+    return () => window.clearInterval(handle);
+  }, []);
 
   useEffect(() => {
     setAuthed(isClientAuthed());
@@ -103,6 +111,35 @@ export default function ColdEmailPage() {
     const t = window.setTimeout(() => setToast(""), 3500);
     return () => window.clearTimeout(t);
   }, [toast]);
+
+  // Codex review #9: when the user lands via ?leadId=N and that lead's group
+  // is collapsed, expand the group so they can actually see the row. Also
+  // route unknown statuses into the existing buckets fallback (#13).
+  useEffect(() => {
+    if (!selectedId || !data?.leads) return;
+    const lead = data.leads.find((l) => l.id === selectedId);
+    if (!lead) return;
+    const status = lead.outreachStatus || "none";
+    let groupKey: GroupKey | null = null;
+    if (status === "draft") groupKey = "draft";
+    else if (status === "queued") groupKey = "queued";
+    else if (status === "sending") groupKey = "sending";
+    else if (status === "day_zero_sent") {
+      const sentAt = lead.emailSentAt ? new Date(lead.emailSentAt) : null;
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      groupKey = sentAt && sentAt.getTime() >= today.getTime() ? "sent_today" : "day_zero_sent";
+    } else if (status === "day_zero_failed") groupKey = "day_zero_failed";
+    else if (status === "rejected") groupKey = "rejected";
+    else if (status === "unsubscribed") groupKey = "unsubscribed";
+    if (groupKey) {
+      setCollapsedGroups((prev) => {
+        if (!prev.has(groupKey!)) return prev;
+        const next = new Set(prev);
+        next.delete(groupKey!);
+        return next;
+      });
+    }
+  }, [selectedId, data?.leads]);
 
   const grouped = useMemo(() => {
     const buckets: Record<GroupKey, Lead[]> = {
@@ -255,9 +292,9 @@ export default function ColdEmailPage() {
           <StatPill icon={<X size={14} />}              label="Unsub"       value={outreachStats.unsubscribed} tone="text-zinc-600" />
         </section>
 
-        {/* Send-rate progress */}
+        {/* Send-rate progress (real warmup cap from API; was hardcoded 50). */}
         <section className="bg-white border border-slate-200 rounded-lg p-4">
-          <SendRateBar sent={outreachStats.sentToday} cap={50} />
+          <SendRateBar sent={outreachStats.sentToday} cap={outreachStats.dailyCap ?? 50} />
         </section>
 
         {/* Filter pills */}
@@ -489,8 +526,17 @@ function OutreachRow({ lead, selected, onSelect, onApprove, onReject, onSendNow,
           <div className="mt-1 text-xs text-slate-700 truncate">
             {lead.emailSubject || <span className="text-slate-400 italic">No subject yet</span>}
           </div>
-          <div className="mt-1 text-[11px] text-slate-500 truncate">
-            {lead.email || "no email"} · {lead.decisionMakerName || "no owner"}{lead.city ? ` · ${lead.city}` : ""}
+          <div className="mt-1 text-[11px] text-slate-500 truncate flex items-center gap-1.5 flex-wrap">
+            <span>{lead.email || "no email"}</span>
+            {lead.emailStatus === "guessed" && (
+              <span
+                className="inline-flex border border-amber-300 bg-amber-50 text-amber-800 px-1.5 py-0.5 rounded text-[10px] font-bold"
+                title="Pattern-guessed email · domain MX validated, mailbox unverified"
+              >
+                ⚠ guessed
+              </span>
+            )}
+            <span>· {lead.decisionMakerName || "no owner"}{lead.city ? ` · ${lead.city}` : ""}</span>
           </div>
           {lead.outreachError && (
             <div className="mt-1 text-[11px] text-rose-700 truncate">
@@ -584,6 +630,16 @@ function OutreachDetail({ lead, onApprove, onReject, onSendNow, approveInFlight,
           {lead.decisionMakerName && <> · {lead.decisionMakerName}</>}
         </div>
       </div>
+
+      {lead.emailStatus === "guessed" && (
+        <div className="mx-5 mt-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">
+          <div className="font-bold flex items-center gap-1.5">⚠ Pattern-guessed email</div>
+          <div className="mt-1 leading-relaxed">
+            We MX-validated <span className="font-mono">{lead.email}</span> but did not verify the mailbox itself.
+            Sending may bounce. Confirm the address before approving — a hard bounce damages Resend warmup.
+          </div>
+        </div>
+      )}
 
       <div className="p-5 space-y-4 overflow-y-auto">
         {lead.demoUrl && (

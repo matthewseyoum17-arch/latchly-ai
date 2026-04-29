@@ -191,12 +191,57 @@ test('stage-2 page selection extends to /about + /team when the cap allows', asy
   process.env.LATCHLY_STAGE2_MAX_PAGES = '5';
   try {
     const pages = await candidatePages('https://example.com', { links: [] });
+    // With cap=5 and reserved slots for /services + (no internal links),
+    // we expect base + /contact + /contact-us + /about (head budget=3),
+    // then /services (no internal link to add).
+    assert.equal(pages[0], 'https://example.com');
+    assert.ok(pages.includes('https://example.com/services'), 'services should be preserved');
+    assert.ok(pages.length <= 5);
+  } finally {
+    if (prior == null) delete process.env.LATCHLY_STAGE2_MAX_PAGES;
+    else process.env.LATCHLY_STAGE2_MAX_PAGES = prior;
+  }
+});
+
+test('stage-2 page selection reserves room for /services + top internal link', async () => {
+  // Codex review #8: previous order pushed /services and high-signal
+  // internal links off the cap when /contact-us / /about / /about-us
+  // / /team / /our-team / /staff existed. Verify the reservation works.
+  const prior = process.env.LATCHLY_STAGE2_MAX_PAGES;
+  process.env.LATCHLY_STAGE2_MAX_PAGES = '5';
+  try {
+    const pages = await candidatePages('https://example.com', {
+      links: [
+        { href: 'https://example.com/request-estimate', text: 'Request Estimate' },
+        { href: 'https://example.com/gallery', text: 'Gallery' },
+      ],
+    });
+    assert.equal(pages.length, 5);
+    assert.equal(pages[0], 'https://example.com');
+    assert.ok(pages.includes('https://example.com/services'), 'services reserved');
+    assert.ok(
+      pages.includes('https://example.com/request-estimate'),
+      'top internal link reserved (request-estimate)',
+    );
+  } finally {
+    if (prior == null) delete process.env.LATCHLY_STAGE2_MAX_PAGES;
+    else process.env.LATCHLY_STAGE2_MAX_PAGES = prior;
+  }
+});
+
+test('stage-2 page selection still prioritizes contact when cap is tight', async () => {
+  // At cap=3 we can't reserve /services AND /request-estimate AND /contact;
+  // contact wins. The reservation kicks in at cap >= 4.
+  const prior = process.env.LATCHLY_STAGE2_MAX_PAGES;
+  process.env.LATCHLY_STAGE2_MAX_PAGES = '3';
+  try {
+    const pages = await candidatePages('https://example.com', {
+      links: [{ href: 'https://example.com/request-estimate', text: 'Request Estimate' }],
+    });
     assert.deepEqual(pages, [
       'https://example.com',
       'https://example.com/contact',
       'https://example.com/contact-us',
-      'https://example.com/about',
-      'https://example.com/about-us',
     ]);
   } finally {
     if (prior == null) delete process.env.LATCHLY_STAGE2_MAX_PAGES;

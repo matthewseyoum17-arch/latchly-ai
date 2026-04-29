@@ -151,6 +151,16 @@ function parseEntityDetail(html) {
   return result;
 }
 
+// Words that look name-shaped on a Sunbiz row but actually denote a service,
+// department, or generic placeholder. Blocking these prevents
+// "Service Department" / "Customer Care" from leaking through into the
+// owner-name + email pattern-guess pipeline (Codex review #7).
+const SUNBIZ_NON_PERSON_TOKENS = new Set([
+  'service', 'services', 'department', 'departments', 'team', 'unit', 'group',
+  'office', 'reception', 'desk', 'admin', 'administration', 'customer', 'care',
+  'support', 'help', 'general', 'corporate', 'agent', 'unknown', 'tbd', 'na',
+]);
+
 function pickPersonName(rawName) {
   if (!rawName) return '';
   const cleaned = String(rawName)
@@ -159,13 +169,24 @@ function pickPersonName(rawName) {
     .trim();
   if (!cleaned) return '';
   // Skip non-person rows (entities can name themselves as registered agent).
-  if (/\b(LLC|INC|CORP|LLP|COMPANY|TRUST|LP|HOLDINGS)\b/i.test(cleaned)) return '';
+  if (/\b(LLC|INC|CORP|LLP|COMPANY|TRUST|LP|HOLDINGS|PA|PLLC|PLC|GROUP|ENTERPRISES?|PARTNERS?|ASSOCIATES?)\b/i.test(cleaned)) return '';
+  // Reject placeholder-shaped strings that would otherwise pass.
+  const lowered = cleaned.toLowerCase();
+  for (const token of SUNBIZ_NON_PERSON_TOKENS) {
+    if (lowered === token) return '';
+    if (lowered.startsWith(`${token} `) || lowered.endsWith(` ${token}`)) return '';
+  }
+  let normalized = cleaned;
   // "Last, First Middle" → "First Last"
   if (cleaned.includes(',')) {
     const [last, first] = cleaned.split(',').map(s => s.trim());
-    if (first && last) return titleCase(`${first.split(/\s+/)[0]} ${last}`);
+    if (first && last) normalized = `${first.split(/\s+/)[0]} ${last}`;
   }
-  return titleCase(cleaned);
+  // Require at least two alpha tokens of length >= 2 (catches single-name and
+  // single-letter-initial rows that would otherwise produce junk guesses).
+  const parts = normalized.split(/\s+/).filter(part => /^[A-Za-z][A-Za-z'\-\.]+$/.test(part));
+  if (parts.length < 2) return '';
+  return titleCase(parts.join(' '));
 }
 
 function titleCase(value) {
@@ -202,6 +223,12 @@ async function searchOwner(businessName, opts = {}) {
     return { ok: false, reason: `detail_failed:${err.message || err}` };
   }
   const detail = parseEntityDetail(detailHtml);
+
+  // Codex review #7: reject inactive entities so we don't surface owners of
+  // dissolved companies as live contacts.
+  if (detail.status && /INACTIVE|DISSOLVED|REVOKED|WITHDRAWN/.test(detail.status)) {
+    return { ok: false, reason: `entity_${detail.status.toLowerCase()}`, detail };
+  }
 
   const exactMatch = exact != null;
   const officerName = detail.officers

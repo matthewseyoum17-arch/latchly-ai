@@ -138,8 +138,23 @@ export async function GET(request: NextRequest) {
       where.push(`concat_ws(' ', business_name, decision_maker_name, decision_maker_title, phone, email, city, niche) ILIKE $${params.length}`);
     }
 
-    const limit = Math.min(Math.max(Number(searchParams.get("limit") || "100"), 1), 200);
+    const limit = Math.min(Math.max(Number(searchParams.get("limit") || "100"), 1), 500);
     params.push(limit);
+
+    // Cold Email inbox completeness — Codex review #15. When the caller is
+    // explicitly viewing an outreach slice, sort outreach-active rows first
+    // so a queued/draft row can't get pushed off the end by high-score
+    // archived rows. Default ordering (score DESC) stays for the CRM.
+    const outreachActive = outreachStatus !== "all";
+    const orderBy = outreachActive
+      ? `ORDER BY
+          CASE WHEN outreach_status IN ('draft', 'queued', 'sending', 'day_zero_failed') THEN 0
+               WHEN outreach_status = 'day_zero_sent' THEN 1
+               ELSE 2 END,
+          COALESCE(outreach_scheduled_for, email_sent_at, outreach_queued_at) DESC NULLS LAST,
+          score DESC,
+          business_name ASC`
+      : `ORDER BY score DESC, delivered_at DESC, business_name ASC`;
 
     const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
     const leads = await sql.query(
@@ -155,10 +170,11 @@ export async function GET(request: NextRequest) {
         outreach_status, outreach_step, email_subject, email_body_preview,
         outreach_queued_at, outreach_scheduled_for, email_sent_at,
         last_resend_email_id, outreach_error, enrichment_data,
+        email_provenance, email_status,
         first_seen_at, last_seen_at, delivered_at, created_at, updated_at
        FROM latchly_leads
        ${whereSql}
-       ORDER BY score DESC, delivered_at DESC, business_name ASC
+       ${orderBy}
        LIMIT $${params.length}`,
       params,
     );
@@ -303,6 +319,10 @@ export async function GET(request: NextRequest) {
           failed: Number(summary?.outreach_failed || 0),
           rejected: Number(summary?.outreach_rejected || 0),
           unsubscribed: Number(summary?.outreach_unsubscribed || 0),
+          // Codex review #16: surface the actual warmup cap (was hardcoded 50
+          // on the client). Mirrors the math in the cron drain so the UI bar
+          // shows real capacity, not a fiction.
+          dailyCap: getOutreachDailyCap(),
         },
       },
       statusCounts: statusCounts.map((row: any) => ({ status: row.status, count: Number(row.count || 0) })),
@@ -353,6 +373,25 @@ function isTruthy(value: string | null) {
   return value === "1" || value === "true" || value === "yes";
 }
 
+// Mirrors the warmup math in app/api/cron/latchly-outreach/route.ts so the
+// UI shows the real daily cap, not the hardcoded 50 the cold-email page
+// previously rendered.
+function getOutreachDailyCap(): number {
+  const hardMax = parseInt(
+    process.env.LATCHLY_OUTREACH_DAILY_MAX || process.env.MAX_EMAILS || "50",
+    10,
+  );
+  const warmupStart = process.env.WARMUP_START;
+  if (!warmupStart) return hardMax;
+  const start = new Date(warmupStart);
+  const daysSince = Math.floor((Date.now() - start.getTime()) / (1000 * 60 * 60 * 24));
+  if (!Number.isFinite(daysSince) || daysSince < 0) return 0;
+  if (daysSince < 7) return 5;
+  if (daysSince < 14) return 10;
+  if (daysSince < 21) return 20;
+  return hardMax;
+}
+
 function mapLead(row: any) {
   return {
     id: Number(row.id),
@@ -399,6 +438,8 @@ function mapLead(row: any) {
     emailSentAt: row.email_sent_at || null,
     lastResendEmailId: row.last_resend_email_id || null,
     outreachError: row.outreach_error || null,
+    emailProvenance: row.email_provenance || null,
+    emailStatus: row.email_status || "unknown",
     enrichmentSummary: summarizeEnrichment(row.enrichment_data),
     firstSeenAt: row.first_seen_at,
     lastSeenAt: row.last_seen_at,

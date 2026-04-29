@@ -254,10 +254,13 @@ function createDbStorage(url) {
       await db`ALTER TABLE latchly_leads ADD COLUMN IF NOT EXISTS email_sent_at TIMESTAMP`;
       await db`ALTER TABLE latchly_leads ADD COLUMN IF NOT EXISTS last_resend_email_id TEXT`;
       await db`ALTER TABLE latchly_leads ADD COLUMN IF NOT EXISTS outreach_error TEXT`;
+      await db`ALTER TABLE latchly_leads ADD COLUMN IF NOT EXISTS email_provenance TEXT`;
+      await db`ALTER TABLE latchly_leads ADD COLUMN IF NOT EXISTS email_status TEXT NOT NULL DEFAULT 'unknown'`;
       await db`CREATE INDEX IF NOT EXISTS idx_latchly_leads_demo_slug ON latchly_leads (demo_slug)`;
       await db`CREATE INDEX IF NOT EXISTS idx_latchly_leads_outreach_status ON latchly_leads (outreach_status)`;
       await db`CREATE INDEX IF NOT EXISTS idx_latchly_leads_place_id ON latchly_leads (place_id)`;
       await db`CREATE INDEX IF NOT EXISTS idx_latchly_leads_outreach_due ON latchly_leads (outreach_status, outreach_scheduled_for)`;
+      await db`CREATE INDEX IF NOT EXISTS idx_latchly_leads_email_status ON latchly_leads (email_status)`;
 
       await db`
         CREATE TABLE IF NOT EXISTS latchly_lead_runs (
@@ -463,31 +466,90 @@ function createDbStorage(url) {
     async attachEnrichment(businessKeyValue, { placeId, enrichmentData, existingSiteClone } = {}) {
       const db = await sql();
       // Backflow owner + email from the enrichment object into the top-level
-      // CRM columns. Without this, enrichment.ownerName lives only in the
-      // enrichment_data JSONB and the dashboard's decision_maker_name column
-      // stays NULL even though we found the owner. NULLIF guards keep
-      // higher-confidence values from earlier discovery from being clobbered
-      // by a later enrichment pass that returned blanks.
+      // CRM columns with three guards Codex flagged in the adversarial review:
+      //
+      //   #1 confidence-aware: never overwrite a higher-confidence
+      //      decision_maker_name with a lower-confidence one. The COALESCE-only
+      //      pattern previously locked in the first writer permanently.
+      //   #2 email tombstone: when email_status='rejected' (operator
+      //      explicitly cleared the email), do NOT auto-refill. A blank string
+      //      alone is no longer a fillable signal.
+      //   #3 provenance: tag whether the email came from a verified scrape
+      //      vs a pattern guess so the queue + UI can warn / gate.
       const ownerName = enrichmentData?.ownerName ? String(enrichmentData.ownerName).trim() : null;
       const ownerTitle = enrichmentData?.ownerTitle ? String(enrichmentData.ownerTitle).trim() : null;
       const ownerConfidenceRaw = enrichmentData?.ownerConfidence ?? enrichmentData?.decisionMakerConfidence ?? null;
       const ownerConfidence = ownerConfidenceRaw == null ? null : Number(ownerConfidenceRaw);
-      const enrichedEmail = pickBestEmail(
-        [
-          ...(Array.isArray(enrichmentData?.verifiedEmails) ? enrichmentData.verifiedEmails : []),
-          enrichmentData?.email,
-        ],
-        { businessDomain: deriveBusinessDomain(enrichmentData?.website || '') },
-      ) || null;
+
+      const verifiedEmails = Array.isArray(enrichmentData?.verifiedEmails) ? enrichmentData.verifiedEmails : [];
+      const verifiedEmail = pickBestEmail(verifiedEmails, {
+        businessDomain: deriveBusinessDomain(enrichmentData?.website || ''),
+      }) || null;
+      const enrichmentEmailRaw = enrichmentData?.email ? String(enrichmentData.email).trim().toLowerCase() : null;
+      const guessedEmail = enrichmentData?.guessedEmailMethod === 'pattern_guess_mx_only'
+        ? (enrichmentData.guessedEmail || enrichmentEmailRaw)
+        : null;
+
+      // Candidate + provenance: prefer verified > raw enrichment > pattern guess.
+      let candidateEmail = null;
+      let candidateProvenance = null;
+      let candidateStatus = null;
+      if (verifiedEmail) {
+        candidateEmail = verifiedEmail;
+        candidateProvenance = 'verified_scrape';
+        candidateStatus = 'verified';
+      } else if (enrichmentEmailRaw && !guessedEmail) {
+        candidateEmail = enrichmentEmailRaw;
+        candidateProvenance = enrichmentData?.emailProvenance || 'enrichment';
+        candidateStatus = 'verified';
+      } else if (guessedEmail) {
+        candidateEmail = guessedEmail;
+        candidateProvenance = 'pattern_guess_mx_only';
+        candidateStatus = 'guessed';
+      }
+
       await db`
         UPDATE latchly_leads SET
           place_id = COALESCE(${placeId || null}, place_id),
           enrichment_data = COALESCE(${enrichmentData ? JSON.stringify(enrichmentData) : null}::jsonb, enrichment_data),
           existing_site_clone = COALESCE(${existingSiteClone ? JSON.stringify(existingSiteClone) : null}::jsonb, existing_site_clone),
-          decision_maker_name = COALESCE(NULLIF(decision_maker_name, ''), ${ownerName}),
-          decision_maker_title = COALESCE(NULLIF(decision_maker_title, ''), ${ownerTitle}),
-          decision_maker_confidence = COALESCE(decision_maker_confidence, ${ownerConfidence}),
-          email = COALESCE(NULLIF(email, ''), ${enrichedEmail}),
+          decision_maker_name = CASE
+            WHEN ${ownerName}::text IS NULL THEN decision_maker_name
+            WHEN decision_maker_name IS NULL OR decision_maker_name = '' THEN ${ownerName}
+            WHEN ${ownerConfidence}::numeric IS NOT NULL
+              AND ${ownerConfidence}::numeric > COALESCE(decision_maker_confidence, 0)
+              THEN ${ownerName}
+            ELSE decision_maker_name
+          END,
+          decision_maker_title = CASE
+            WHEN ${ownerTitle}::text IS NULL THEN decision_maker_title
+            WHEN decision_maker_title IS NULL OR decision_maker_title = '' THEN ${ownerTitle}
+            WHEN ${ownerConfidence}::numeric IS NOT NULL
+              AND ${ownerConfidence}::numeric > COALESCE(decision_maker_confidence, 0)
+              THEN ${ownerTitle}
+            ELSE decision_maker_title
+          END,
+          decision_maker_confidence = CASE
+            WHEN ${ownerConfidence}::numeric IS NULL THEN decision_maker_confidence
+            WHEN decision_maker_confidence IS NULL THEN ${ownerConfidence}
+            WHEN ${ownerConfidence}::numeric > decision_maker_confidence THEN ${ownerConfidence}
+            ELSE decision_maker_confidence
+          END,
+          email = CASE
+            WHEN email_status = 'rejected' THEN email
+            WHEN email IS NOT NULL AND email <> '' THEN email
+            ELSE COALESCE(${candidateEmail}, email)
+          END,
+          email_provenance = CASE
+            WHEN email_status = 'rejected' THEN email_provenance
+            WHEN email IS NOT NULL AND email <> '' THEN email_provenance
+            ELSE COALESCE(${candidateProvenance}, email_provenance)
+          END,
+          email_status = CASE
+            WHEN email_status = 'rejected' THEN 'rejected'
+            WHEN email IS NOT NULL AND email <> '' THEN email_status
+            ELSE COALESCE(${candidateStatus}, email_status)
+          END,
           updated_at = NOW()
         WHERE business_key = ${businessKeyValue}`;
     },

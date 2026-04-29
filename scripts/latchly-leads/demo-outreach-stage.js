@@ -94,20 +94,41 @@ async function runDemoOutreachStage(leads, opts = {}) {
       // has a domain but no real email. MX-validated against the domain to
       // avoid shipping addresses to dead servers. Marked `pattern_guess_mx_only`
       // so QA stays aware the mailbox wasn't directly verified.
+      //
+      // Gate hard on ownerConfidence and isPersonName: business-name heuristics
+      // can produce candidates like "Service Department" with confidence 0.5,
+      // and pattern-guessing those would ship junk emails that hard-bounce
+      // and damage Resend warmup. The guess is opt-in by quality, not by
+      // existence of any string in ownerName.
       const hasRealEmail =
         Boolean(lead.email)
         || Boolean(enrichment?.email)
         || (Array.isArray(enrichment?.verifiedEmails) && enrichment.verifiedEmails.length > 0);
       const ownerForGuess = enrichment?.ownerName || lead.decisionMakerName || lead.ownerName || '';
+      const ownerConfidenceForGuess = Number(
+        enrichment?.ownerConfidence
+        ?? enrichment?.decisionMakerConfidence
+        ?? lead.decisionMakerConfidence
+        ?? 0,
+      );
       const domainForGuess = deriveBusinessDomain(lead.website || enrichment?.website || '');
       if (!hasRealEmail && ownerForGuess && domainForGuess) {
         try {
-          const guess = await findEmail({ ownerName: ownerForGuess, domain: domainForGuess });
+          const guess = await findEmail({
+            ownerName: ownerForGuess,
+            domain: domainForGuess,
+            ownerConfidence: Number.isFinite(ownerConfidenceForGuess) ? ownerConfidenceForGuess : null,
+          });
           if (guess?.ok && guess.email) {
             enrichment.guessedEmail = guess.email;
             enrichment.guessedEmailMethod = guess.method;
             enrichment.email = enrichment.email || guess.email;
+            enrichment.emailProvenance = enrichment.emailProvenance || guess.method;
             stats.outreachSkipped.no_email_recovered = (stats.outreachSkipped.no_email_recovered || 0) + 1;
+          } else if (guess?.reason) {
+            // Surface the gate reason for observability without blocking
+            // the lead from the rest of the demo+outreach flow.
+            stats.errors.push({ stage: 'email_guess_skipped', businessKey: key, reason: guess.reason });
           }
         } catch (err) {
           // Pattern guess is best-effort; never block the lead on it.
@@ -188,8 +209,26 @@ async function runDemoOutreachStage(leads, opts = {}) {
 
       // 4) Queue cold email (no send — cron drains)
       ctx.stage = 'queue';
+      // Pull the freshest email + owner from the enrichment object before
+      // queueing. queueDayZeroForLead bails on lead.email being empty, so a
+      // pattern-guess we just resolved would otherwise be dropped on the
+      // floor (the original lead row has the stale empty value).
+      const resolvedEmail =
+        lead.email
+        || enrichment?.email
+        || (Array.isArray(enrichment?.verifiedEmails) ? enrichment.verifiedEmails[0] : null)
+        || '';
+      const resolvedOwner = lead.decisionMakerName || enrichment?.ownerName || lead.ownerName || '';
       const queued = await queueDayZeroForLead(
-        { ...lead, demoUrl, businessKey: key, outreachStatus: 'none' },
+        {
+          ...lead,
+          demoUrl,
+          businessKey: key,
+          outreachStatus: 'none',
+          email: resolvedEmail,
+          decisionMakerName: resolvedOwner,
+          ownerName: resolvedOwner,
+        },
         enrichment,
         {
           anthropic,

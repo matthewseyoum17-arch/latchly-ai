@@ -362,17 +362,18 @@ async function auditByFetch(website, lead = {}) {
 async function candidatePages(website, options = {}) {
   const base = normalizeWebsite(website);
   // Default cap raised from 3 to 5 so we can fit the landing page plus the
-  // four pages where home-service businesses actually publish their owner
-  // contact info: /contact, /about, /team, and (whichever of /services or a
-  // top internal link is most relevant). Bumping to 5 only adds 2 cheap
-  // fetches per audited site.
+  // pages where home-service businesses actually publish their owner contact
+  // info AND the demo-build pipeline's high-signal /services page.
   const maxPages = Math.max(1, parseInt(process.env.LATCHLY_STAGE2_MAX_PAGES || '5', 10));
-  // Order matters: cap drops the tail, so the explicit-contact URLs come
-  // BEFORE internal-link picks. Previously, a homepage with 3 unrelated
-  // internal links matching the relevance regex could push /contact and
-  // /about off the list entirely.
-  return uniqueUrls([
-    base,
+
+  // Codex review #8: contact pages own owner-email discovery, but /services
+  // and the top homepage-linked internal page (estimate / quote / portfolio)
+  // feed the demo-build copy. At small caps (<4) we keep the strict contact
+  // ordering — owner emails matter more than service pages. At cap≥4 we
+  // reserve room for /services + the single highest-priority internal link
+  // so they can't get crowded out by the long contact list.
+  const internalLinks = relevantInternalLinks(base, options.links || []);
+  const contactPages = [
     absoluteUrl(base, '/contact'),
     absoluteUrl(base, '/contact-us'),
     absoluteUrl(base, '/about'),
@@ -380,9 +381,29 @@ async function candidatePages(website, options = {}) {
     absoluteUrl(base, '/team'),
     absoluteUrl(base, '/our-team'),
     absoluteUrl(base, '/staff'),
+  ];
+
+  if (maxPages < 4) {
+    // Tight cap → strict contact-first ordering (matches the audit-test
+    // expectations: cap=3 puts base + /contact + /contact-us first).
+    return uniqueUrls([
+      base,
+      ...contactPages,
+      absoluteUrl(base, '/services'),
+      ...internalLinks,
+    ]).slice(0, maxPages);
+  }
+
+  const reservedTrailing = uniqueUrls([
     absoluteUrl(base, '/services'),
-    ...relevantInternalLinks(base, options.links || []),
-  ]).slice(0, maxPages);
+    internalLinks[0] || null,
+  ]).filter(Boolean);
+  const reserveCount = Math.min(reservedTrailing.length, Math.max(0, maxPages - 2));
+  const contactBudget = Math.max(1, maxPages - reserveCount);
+  const head = uniqueUrls([base, ...contactPages]).slice(0, contactBudget);
+  const tail = uniqueUrls(reservedTrailing).filter((url) => !head.includes(url)).slice(0, reserveCount);
+  const merged = uniqueUrls([...head, ...tail, ...internalLinks.slice(1)]);
+  return merged.slice(0, maxPages);
 }
 
 function relevantInternalLinks(base, links = []) {

@@ -73,6 +73,15 @@ export interface Lead {
   emailSentAt?: string | null;
   lastResendEmailId?: string | null;
   outreachError?: string | null;
+  emailProvenance?:
+    | "verified_scrape"
+    | "operator_set"
+    | "operator_cleared"
+    | "enrichment"
+    | "pattern_guess_mx_only"
+    | string
+    | null;
+  emailStatus?: "unknown" | "verified" | "guessed" | "rejected";
   enrichmentSummary?: {
     ownerFirstName?: string | null;
     ownerName?: string | null;
@@ -94,6 +103,28 @@ export interface OutreachStats {
   failed: number;
   rejected: number;
   unsubscribed: number;
+  /** Real daily warmup cap exposed by the API; replaces the hardcoded 50 the
+   *  Cold Email page used to render. May be 0 during pre-warmup. */
+  dailyCap?: number;
+}
+
+const KNOWN_OUTREACH_STATUSES: OutreachStatus[] = [
+  "none",
+  "draft",
+  "queued",
+  "sending",
+  "day_zero_sent",
+  "day_zero_failed",
+  "rejected",
+  "unsubscribed",
+  "no_email",
+  "no_demo",
+];
+
+/** Type guard so consumers (Cold Email grouping) can route unknown server
+ *  values into an explicit bucket instead of silently dropping them. */
+export function isOutreachStatus(value: unknown): value is OutreachStatus {
+  return typeof value === "string" && (KNOWN_OUTREACH_STATUSES as string[]).includes(value);
 }
 
 export interface CrmStats {

@@ -59,9 +59,12 @@ const STATEMENTS = [
   `ALTER TABLE latchly_leads ADD COLUMN IF NOT EXISTS email_sent_at TIMESTAMP`,
   `ALTER TABLE latchly_leads ADD COLUMN IF NOT EXISTS last_resend_email_id TEXT`,
   `ALTER TABLE latchly_leads ADD COLUMN IF NOT EXISTS outreach_error TEXT`,
+  `ALTER TABLE latchly_leads ADD COLUMN IF NOT EXISTS email_provenance TEXT`,
+  `ALTER TABLE latchly_leads ADD COLUMN IF NOT EXISTS email_status TEXT NOT NULL DEFAULT 'unknown'`,
   `CREATE INDEX IF NOT EXISTS idx_latchly_leads_outreach_status ON latchly_leads (outreach_status)`,
   `CREATE INDEX IF NOT EXISTS idx_latchly_leads_outreach_due ON latchly_leads (outreach_status, outreach_scheduled_for)`,
   `CREATE INDEX IF NOT EXISTS idx_latchly_leads_place_id ON latchly_leads (place_id) WHERE place_id IS NOT NULL`,
+  `CREATE INDEX IF NOT EXISTS idx_latchly_leads_email_status ON latchly_leads (email_status)`,
 ];
 
 (async () => {

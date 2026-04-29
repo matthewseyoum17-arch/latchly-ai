@@ -96,6 +96,22 @@ export async function PATCH(
       values.push(value);
       updates.push(`${column} = $${values.length}`);
       changedFields[apiField] = value;
+
+      // Email tombstone — Codex review #2: when the operator clears the
+      // email, store an explicit rejected status so a later enrichment pass
+      // can't auto-refill the field. When they set one explicitly, treat it
+      // as verified so we never demote it back.
+      if (apiField === "email") {
+        if (!value) {
+          updates.push(`email_status = 'rejected'`);
+          updates.push(`email_provenance = 'operator_cleared'`);
+          changedFields.emailStatus = "rejected";
+        } else {
+          updates.push(`email_status = 'verified'`);
+          updates.push(`email_provenance = 'operator_set'`);
+          changedFields.emailStatus = "verified";
+        }
+      }
     }
 
     if (body.status === "contacted" && existing.status !== "contacted" && !("lastContactedAt" in body)) {

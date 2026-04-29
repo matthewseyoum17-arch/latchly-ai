@@ -42,6 +42,44 @@ function splitName(name) {
   return { first, last };
 }
 
+// Words that look name-shaped but actually denote a department/role/place.
+// Pattern-guessing on these produces junk like service.department@domain
+// that would torch the warmup. Match against either name part.
+const NON_PERSON_TOKENS = new Set([
+  'service', 'services', 'department', 'departments', 'team', 'teams',
+  'office', 'reception', 'front', 'desk', 'main', 'general', 'admin',
+  'administration', 'customer', 'care', 'support', 'help', 'inquiry',
+  'inquiries', 'sales', 'billing', 'accounts', 'accounting', 'hr',
+  'careers', 'jobs', 'info', 'information', 'contact', 'corporate',
+  'group', 'company', 'co', 'inc', 'llc', 'corp', 'enterprises',
+  'holdings', 'partners', 'associates', 'unknown', 'tbd', 'na',
+]);
+
+const NAME_PARTICLES = new Set([
+  'jr', 'sr', 'ii', 'iii', 'iv', 'v',
+]);
+
+// Returns true if the name looks like a real human first+last (not a role,
+// not a department, not a single token). Pattern-guess gates on this — the
+// cost of a wrong guess is a hard bounce + warmup damage.
+function isPersonName(name) {
+  const trimmed = String(name || '').replace(/\s+/g, ' ').trim();
+  if (!trimmed) return false;
+  // Strip particles (Jr, Sr, II, III, ...) and middle initials (single
+  // letters) — those don't disqualify the rest of the name. The remaining
+  // tokens must form a credible first + last.
+  const parts = trimmed.split(/\s+/)
+    .map(part => ({ raw: part, word: part.replace(/[^A-Za-z]/g, '').toLowerCase() }))
+    .filter(({ word }) => word.length > 0)
+    .filter(({ word }) => !NAME_PARTICLES.has(word))
+    .filter(({ word }) => word.length >= 2);
+  if (parts.length < 2) return false;
+  for (const { word } of parts) {
+    if (NON_PERSON_TOKENS.has(word)) return false;
+  }
+  return true;
+}
+
 // Generate the dozen most-likely permutations for a person at a given domain.
 // Order matters — the first survivor is what we ship, so list highest-prior
 // formats first. Numbers reflect industry-published pattern frequencies for
@@ -78,12 +116,28 @@ function permute(name, domain) {
   });
 }
 
-// Find the best valid permutation for a person+domain. Skips the lookup
-// entirely if the domain doesn't have MX records (catches typo'd or parked
-// domains before issuing N candidate validations).
-async function findEmail({ ownerName, website, domain } = {}) {
+// Default minimum confidence required for the input owner name. Audit-derived
+// names land at 0.6+; BBB / JSON-LD at 0.85-0.9; LLM-only at 0.7. Heuristic
+// fallbacks (business name → "John") sit at 0.5. We refuse anything below
+// 0.6 by default so weak candidates don't ship guessed emails.
+const DEFAULT_MIN_CONFIDENCE = Number(process.env.LATCHLY_EMAIL_GUESS_MIN_CONF || 0.6);
+
+// Find the best valid permutation for a person+domain. Refuses to guess
+// when the input ownerName fails the personhood check (department / role /
+// single token) or sits below the confidence floor — both produce junk
+// emails that hard-bounce and damage warmup. Caller can override via
+// `minConfidence` for paths that already validated upstream.
+async function findEmail({ ownerName, website, domain, ownerConfidence, minConfidence } = {}) {
+  const floor = typeof minConfidence === 'number' ? minConfidence : DEFAULT_MIN_CONFIDENCE;
+  const conf = typeof ownerConfidence === 'number' ? ownerConfidence : null;
+  if (conf != null && conf < floor) {
+    return { ok: false, reason: `owner_confidence_below_floor:${conf.toFixed(2)}<${floor}`, ownerName, ownerConfidence: conf };
+  }
+  if (!isPersonName(ownerName)) {
+    return { ok: false, reason: 'owner_name_not_person_shaped', ownerName };
+  }
   const resolvedDomain = (domain || deriveBusinessDomain(website || '') || '').toLowerCase();
-  if (!resolvedDomain) return null;
+  if (!resolvedDomain) return { ok: false, reason: 'no_domain' };
   if (!(await hasMxRecord(resolvedDomain))) {
     return { ok: false, reason: 'no_mx', domain: resolvedDomain };
   }
@@ -100,6 +154,7 @@ async function findEmail({ ownerName, website, domain } = {}) {
     candidates: ranked,
     domain: resolvedDomain,
     method: 'pattern_guess_mx_only',
+    ownerConfidence: conf,
   };
 }
 
@@ -118,4 +173,6 @@ module.exports = {
   findEmail,
   hasMxRecord,
   verifyDeliverable,
+  isPersonName,
+  splitName,
 };

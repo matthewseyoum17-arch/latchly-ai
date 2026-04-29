@@ -89,7 +89,12 @@ function AuthGate({ onAuth }: { onAuth: () => void }) {
         body: JSON.stringify({ password }),
       });
       if (!res.ok) { setError("Invalid password"); return; }
-      sessionStorage.setItem("latchly-pipeline-auth", "1");
+      // Unified admin auth (Codex review #11): single session key shared by
+      // CRM, Cold Email, and Pipeline so the operator signs in once.
+      sessionStorage.setItem("latchly-admin-auth", "1");
+      // Drop the legacy per-page key if present; clearClientAuth in the
+      // shared layout already handles it on logout.
+      sessionStorage.removeItem("latchly-pipeline-auth");
       onAuth();
     } catch {
       setError("Connection error");
@@ -452,7 +457,14 @@ export default function PipelineDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    if (typeof window !== "undefined" && sessionStorage.getItem("latchly-pipeline-auth")) setAuthed(true);
+    if (typeof window === "undefined") return;
+    // Codex review #11: unified admin auth. Accept either the new shared key
+    // or the legacy per-page key so an operator who'd already signed in to
+    // Pipeline doesn't get bumped on first deploy. The shared layout's
+    // logout (clearClientAuth) wipes both keys when called.
+    if (sessionStorage.getItem("latchly-admin-auth") || sessionStorage.getItem("latchly-pipeline-auth")) {
+      setAuthed(true);
+    }
   }, []);
 
   const fetchData = useCallback(async () => {
@@ -492,7 +504,12 @@ export default function PipelineDashboard() {
             className="p-2 rounded-lg text-slate-400 hover:bg-slate-700 transition-colors disabled:opacity-50">
             <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
           </button>
-          <button onClick={() => { sessionStorage.removeItem("latchly-pipeline-auth"); setAuthed(false); }}
+          <button onClick={() => {
+            sessionStorage.removeItem("latchly-admin-auth");
+            sessionStorage.removeItem("latchly-pipeline-auth");
+            sessionStorage.removeItem("latchly-leads-crm-auth");
+            setAuthed(false);
+          }}
             className="text-xs font-semibold text-slate-500 hover:text-red-400 transition-colors px-3 py-2">
             Logout
           </button>

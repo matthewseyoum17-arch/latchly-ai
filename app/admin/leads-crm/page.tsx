@@ -544,6 +544,7 @@ function LeadRow({ lead, selected, onSelect, onMarkContacted, markingContacted }
             {contactSummary(lead)}
             {!lead.email && <span className="ml-1.5 inline-flex border border-amber-100 bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded text-[10px] font-bold align-middle">no email</span>}
             {!lead.decisionMakerName && <span className="ml-1.5 inline-flex border border-amber-100 bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded text-[10px] font-bold align-middle">no owner</span>}
+            {lead.emailStatus === "guessed" && <span className="ml-1.5 inline-flex border border-amber-300 bg-amber-50 text-amber-800 px-1.5 py-0.5 rounded text-[10px] font-bold align-middle" title="Pattern-guessed · MX validated, mailbox unverified">⚠ guessed</span>}
           </div>
         </div>
         <div className="text-xs text-slate-600 min-w-0">
