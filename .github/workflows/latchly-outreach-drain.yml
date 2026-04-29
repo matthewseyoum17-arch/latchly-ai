@@ -39,7 +39,7 @@ jobs:
       - name: Drain outreach queue
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
-          BASE_URL: ${{ secrets.PROD_BASE_URL || 'https://latchlyai.com' }}
+          BASE_URL: ${{ secrets.PROD_BASE_URL || 'https://www.latchlyai.com' }}
         run: |
           if [ -z "$CRON_SECRET" ]; then
             echo "::error::CRON_SECRET secret is not set in this repository."
@@ -47,7 +47,7 @@ jobs:
             exit 1
           fi
           echo "Hitting $BASE_URL/api/cron/latchly-outreach"
-          response=$(curl -sS -w '\n%{http_code}' \
+          response=$(curl -sSL -w '\n%{http_code}' \
             -H "Authorization: Bearer $CRON_SECRET" \
             "$BASE_URL/api/cron/latchly-outreach")
           body=$(echo "$response" | head -n -1)
