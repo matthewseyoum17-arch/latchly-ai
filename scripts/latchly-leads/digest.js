@@ -17,6 +17,7 @@ const CSV_HEADERS = [
   'City',
   'State',
   'Phone',
+  'Email',
   'Opportunity',
   'Decision Maker',
   'Title',
@@ -108,6 +109,7 @@ function toCsvRows(leads) {
     City: lead.city,
     State: lead.state,
     Phone: lead.phone,
+    Email: lead.email || '',
     Opportunity: opportunityLabel(lead),
     'Decision Maker': lead.decisionMaker?.name || lead.ownerName || '',
     Title: lead.decisionMaker?.title || lead.ownerTitle || '',
@@ -133,7 +135,7 @@ function renderHtml({ date, leads, localLeads, otherLeads, stats, underTarget })
     </div>
     ${underTarget ? `<div style="background:#fef3c7;border-left:4px solid #d97706;padding:14px 20px;color:#7c2d12"><strong>Under target:</strong> fewer than ${MIN_DAILY_LEADS} qualified leads. ${escapeHtml(stats.underTargetReason || 'Source volume or quality gates limited output.')}</div>` : ''}
     <div style="background:#fff;padding:22px;border:1px solid #e5e7eb;border-top:0">
-      <p style="margin:0 0 18px;color:#374151;line-height:1.5">New score 8+ home-service leads have been saved to the CRM with decision-maker details, score reasons, and pitch recommendations.</p>
+      <p style="margin:0 0 18px;color:#374151;line-height:1.5">New score 8+ home-service leads have been saved to the CRM with contact details, available decision-maker info, score reasons, and pitch recommendations.</p>
       <a href="${escapeHtml(url)}" style="display:inline-block;background:#0f766e;color:#fff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 18px;border-radius:7px">Open Leads CRM</a>
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:22px">
         <div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:7px;padding:12px">
@@ -171,7 +173,7 @@ function renderSection(title, leads) {
       <td style="padding:10px"><strong>${escapeHtml(lead.businessName)}</strong><br><span style="color:#6b7280">${escapeHtml(lead.niche || '')}</span></td>
       <td style="padding:10px">${escapeHtml(lead.city || '')}, ${escapeHtml(lead.state || '')}</td>
       <td style="padding:10px">${escapeHtml(opportunityLabel(lead))}</td>
-      <td style="padding:10px"><a href="tel:${escapeHtml(lead.phone || '')}">${escapeHtml(lead.phone || '')}</a><br>${escapeHtml(lead.decisionMaker?.name || '')}${lead.decisionMaker?.title ? `<br><span style="color:#6b7280">${escapeHtml(lead.decisionMaker.title)}</span>` : ''}</td>
+      <td style="padding:10px"><a href="tel:${escapeHtml(lead.phone || '')}">${escapeHtml(lead.phone || '')}</a>${lead.email ? `<br><a href="mailto:${escapeHtml(lead.email)}">${escapeHtml(lead.email)}</a>` : ''}<br>${escapeHtml(lead.decisionMaker?.name || '')}${lead.decisionMaker?.title ? `<br><span style="color:#6b7280">${escapeHtml(lead.decisionMaker.title)}</span>` : ''}</td>
       <td style="padding:10px">${lead.website ? `<a href="${escapeHtml(lead.website)}">${escapeHtml(lead.website)}</a>` : '<strong>No website found</strong>'}</td>
       <td style="padding:10px;font-weight:700;color:#047857">${escapeHtml(String(lead.score))}/10</td>
       <td style="padding:10px">${escapeHtml((lead.reasons || []).join('; '))}</td>

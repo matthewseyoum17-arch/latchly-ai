@@ -210,6 +210,12 @@ test('decision-maker extraction uses possessive business-name heuristic', async 
   assert.equal(result.confidence, 0.5);
 });
 
+test('decision-maker extraction uses first-last business-name heuristic', async () => {
+  const result = await extractDecisionMaker(baseLead({ businessName: 'Chris Taylor Custom Concrete Construction' }), '', [], null, { fetcher: missingFetcher });
+  assert.equal(result.name, 'Chris Taylor');
+  assert.equal(result.confidence, 0.58);
+});
+
 test('decision-maker extraction raises confidence on multi-source agreement', async () => {
   const html = `
     <meta name="author" content="Alicia Brown">

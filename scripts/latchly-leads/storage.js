@@ -426,6 +426,7 @@ function createDbStorage(url) {
 function toCrmRecord(lead, meta = {}) {
   const decisionMaker = normalizeDecisionMaker(lead);
   const rawPayload = lead.rawPayload || lead.sourcePayload || {};
+  const auditPayload = lead.audit || {};
   const dmConfidence = decisionMaker.confidence;
   const dmConfidenceColumn = dmConfidence == null
     ? null
@@ -438,7 +439,7 @@ function toCrmRecord(lead, meta = {}) {
     city: lead.city || '',
     state: lead.state || '',
     phone: lead.phone || '',
-    email: lead.email || rawPayload.Email || rawPayload.email || '',
+    email: firstContactEmail(lead, rawPayload, auditPayload),
     website: lead.website || '',
     websiteStatus: lead.websiteStatus || (lead.website ? 'poor_website' : 'no_website'),
     sourceName: lead.sourceName || '',
@@ -463,8 +464,21 @@ function toCrmRecord(lead, meta = {}) {
       leadType: lead.leadType || '',
       rawPayload,
     },
-    auditPayload: lead.audit || {},
+    auditPayload,
   };
+}
+
+function firstContactEmail(lead = {}, rawPayload = {}, auditPayload = {}) {
+  return [
+    lead.email,
+    rawPayload.Email,
+    rawPayload.email,
+    auditPayload.email,
+    ...(Array.isArray(auditPayload.emails) ? auditPayload.emails : []),
+    ...(auditPayload.verifiedSignals?.contactTruth?.emails || []).map(item => item?.value),
+  ]
+    .map(value => String(value || '').trim().toLowerCase())
+    .find(value => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value)) || '';
 }
 
 function normalizeDecisionMaker(lead = {}) {

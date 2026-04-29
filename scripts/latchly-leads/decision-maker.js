@@ -4,6 +4,13 @@ const FETCH_TIMEOUT_MS = Math.max(2500, parseInt(process.env.LATCHLY_DM_FETCH_TI
 const PAGE_TEXT_LIMIT = Math.max(1000, parseInt(process.env.LATCHLY_DM_PAGE_TEXT_LIMIT || '3200', 10));
 const HTML_LIMIT = Math.max(4000, parseInt(process.env.LATCHLY_DM_HTML_LIMIT || '10000', 10));
 const CLAUDE_MODEL = process.env.LATCHLY_DM_CLAUDE_MODEL || 'claude-haiku-4-5-20251001';
+const COMMON_FIRST_NAMES = new Set([
+  'aaron', 'adam', 'alex', 'alicia', 'andrew', 'anthony', 'antonio', 'ben', 'belynda', 'brian', 'brandon',
+  'carlos', 'charles', 'chris', 'christopher', 'dale', 'daniel', 'david', 'edward', 'eric', 'frank',
+  'gabriel', 'george', 'hector', 'jackelin', 'james', 'jason', 'jesus', 'john', 'jon', 'jordan', 'jose',
+  'juan', 'kevin', 'luis', 'mark', 'matthew', 'michael', 'miguel', 'paul', 'robert', 'ron', 'samuel',
+  'steven', 'timothy', 'william',
+]);
 
 async function extractDecisionMaker(lead = {}, htmlInput = '', urls = [], claudeClient = null, options = {}) {
   const fetcher = options.fetcher || fetchText;
@@ -253,11 +260,24 @@ function extractRegexCandidates(page) {
 
 function extractBusinessNameHeuristic(name) {
   const value = String(name || '').trim();
+  const personNamedBusiness = value.match(/\b([A-Z][a-z]{2,})\s+([A-Z][a-z]{2,})(?:\s+[A-Z][a-z]{2,}){0,3}\s+(?:Plumbing|Roofing|HVAC|Electric|Electrical|Painting|Landscaping|Tree|Pest|Pool|Fence|Concrete|Masonry|Construction|Remodel|Gutter|Handyman|Property|Air|Heating|Cooling)\b/);
+  if (personNamedBusiness && isLikelyFirstName(personNamedBusiness[1]) && !isLikelyBrandPhrase(personNamedBusiness[1], personNamedBusiness[2])) {
+    return candidate(`${personNamedBusiness[1]} ${personNamedBusiness[2]}`, '', 0.58, 'business_name_person_named', '');
+  }
   const possessive = value.match(/\b([A-Z][a-z]{2,})['’]s\s+(?:Plumbing|Roofing|HVAC|Electric|Electrical|Painting|Landscaping|Tree|Pest|Pool|Fence|Concrete|Remodel|Gutter|Handyman)\b/);
   if (possessive) return candidate(possessive[1], '', 0.5, 'business_name_possessive', '');
   const sons = value.match(/\b([A-Z][a-z]{2,})\s+(?:&|and)\s+Sons\b/);
   if (sons) return candidate(sons[1], '', 0.5, 'business_name_sons', '');
   return null;
+}
+
+function isLikelyBrandPhrase(first, second) {
+  const phrase = `${first} ${second}`.toLowerCase();
+  return /^(texas|florida|georgia|dallas|houston|austin|tampa|orlando|miami|total|best|good|great|right|quality|premier|prime|superior|advanced|american|southern|central|national|local|team|the)\b/.test(phrase);
+}
+
+function isLikelyFirstName(value) {
+  return COMMON_FIRST_NAMES.has(String(value || '').toLowerCase());
 }
 
 async function extractGooglePlaceCandidate(lead, fetcher) {

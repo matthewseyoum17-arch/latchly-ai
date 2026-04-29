@@ -437,11 +437,13 @@ async function auditAndScoreCandidates(candidates, deliveredKeys = new Set(), op
             contactName: candidate.contactName || audit.contactName || '',
             contactTitle: candidate.contactTitle || audit.contactTitle || '',
             phone: candidate.phone || audit.phone || '',
+            email: firstContactEmail(candidate, audit),
           };
           scored = scoreFn(enrichedCandidate, audit);
           const lead = {
             ...enrichedCandidate,
             phone: scored.phone,
+            email: enrichedCandidate.email,
             website: scored.website,
             score: scored.score,
             reasons: scored.reasons,
@@ -713,6 +715,19 @@ function progressEvent({ candidate, wave, index, total, latencyMs, audit, reject
   };
 }
 
+function firstContactEmail(lead = {}, audit = {}) {
+  return [
+    lead.email,
+    lead.rawPayload?.email,
+    lead.rawPayload?.Email,
+    audit.email,
+    ...(Array.isArray(audit.emails) ? audit.emails : []),
+    ...(audit.verifiedSignals?.contactTruth?.emails || []).map(item => item?.value),
+  ]
+    .map(value => String(value || '').trim().toLowerCase())
+    .find(value => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value)) || '';
+}
+
 function bump(object, key) {
   object[key] = (object[key] || 0) + 1;
 }
@@ -893,6 +908,8 @@ function summarizeAudit(audit) {
     finalUrl: audit.finalUrl,
     auditor: audit.auditor,
     pagesChecked: audit.pagesChecked,
+    phone: audit.phone,
+    emails: audit.emails,
     signals: audit.signals,
     verifiedSignals: audit.verifiedSignals,
     decisionMaker: audit.decisionMaker,
@@ -923,4 +940,5 @@ module.exports = {
   summarizeSelection,
   leadBucket,
   selectionLimits,
+  firstContactEmail,
 };

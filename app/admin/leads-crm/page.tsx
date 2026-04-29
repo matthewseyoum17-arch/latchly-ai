@@ -268,6 +268,15 @@ function opportunityTone(lead: Pick<Lead, "website" | "websiteStatus">) {
   return "border-slate-200 bg-slate-50 text-slate-700";
 }
 
+function contactSummary(lead: Pick<Lead, "decisionMakerName" | "decisionMakerTitle" | "phone" | "email">) {
+  if (lead.decisionMakerName) {
+    return `${lead.decisionMakerName}${lead.decisionMakerTitle ? `, ${lead.decisionMakerTitle}` : ""}`;
+  }
+  if (lead.email) return lead.email;
+  if (lead.phone) return `Phone: ${lead.phone}`;
+  return "No contact";
+}
+
 function LeadRow({ lead, selected, onSelect, onMarkContacted, markingContacted }: {
   lead: Lead;
   selected: boolean;
@@ -291,7 +300,7 @@ function LeadRow({ lead, selected, onSelect, onMarkContacted, markingContacted }
         <div className="min-w-0">
           <div className="font-bold text-sm text-slate-950 truncate">{lead.businessName}</div>
           <div className="text-xs text-slate-500 truncate">
-            {lead.decisionMakerName || "No contact"}{lead.decisionMakerTitle ? `, ${lead.decisionMakerTitle}` : ""}
+            {contactSummary(lead)}
           </div>
         </div>
         <div className="text-xs text-slate-600 min-w-0">

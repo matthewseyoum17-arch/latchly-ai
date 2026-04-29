@@ -72,6 +72,27 @@ test('audit waves group strongest opportunity buckets before website-rich low pr
   ]);
 });
 
+test('audit contact email is carried onto qualified lead records', async () => {
+  const [candidate] = [fakeCandidate('Email Plumbing', { website: 'https://email.example' })];
+  const result = await auditAndScoreCandidates([candidate], new Set(), {
+    auditConcurrency: 1,
+    maxQualified: 1,
+    auditLead: async () => ({
+      ...fakeAudit(),
+      emails: ['owner@email.example'],
+      verifiedSignals: {
+        ...fakeAudit().verifiedSignals,
+        contactTruth: {
+          emails: [{ value: 'owner@email.example', confidence: 0.85, source: 'website', url: 'https://email.example' }],
+        },
+      },
+    }),
+    scoreLead: candidate => fakeScore(candidate),
+  });
+
+  assert.equal(result.qualified[0].email, 'owner@email.example');
+});
+
 test('low-yield possible-poor-site wave stops before grinding through all candidates', async () => {
   const candidates = Array.from({ length: 30 }, (_, index) => fakeCandidate(`Weak ${index}`, {
     website: `https://weak-${index}.example`,

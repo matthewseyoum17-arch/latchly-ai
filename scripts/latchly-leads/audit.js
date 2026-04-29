@@ -29,7 +29,11 @@ const AUDIT_JS = `
     href: a.href,
     text: (a.innerText || '').replace(/\\s+/g, ' ').trim().slice(0, 80)
   })).slice(0, 200);
-  const emails = Array.from(new Set((text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/ig) || []).map(e => e.toLowerCase())));
+  const mailtoEmails = links
+    .map(link => (link.href || '').match(/^mailto:([^?]+)/i)?.[1] || '')
+    .filter(Boolean);
+  const emailSource = [text, html, ...mailtoEmails].join(' ');
+  const emails = Array.from(new Set((emailSource.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/ig) || []).map(e => e.toLowerCase())));
   return JSON.stringify({ html, text: text.slice(0, 4000), title: document.title || '', url: location.href, phone, links, emails });
 })()
 `;
