@@ -49,26 +49,40 @@ export async function POST(
   const fromEmail = process.env.OUTREACH_FROM || 'Matthew @ Latchly <matt@latchlyai.com>';
   const replyTo = process.env.OUTREACH_REPLY_TO || 'matt@latchlyai.com';
 
+  // Atomic claim: flip eligible row to 'sending' in one UPDATE...RETURNING.
+  // The CAS WHERE clause excludes already-sent/sending/unsubscribed rows so
+  // a stuck-in-sending row, a concurrent cron tick, or a double-clicked Send
+  // Now button cannot all send the same email.
   const rows = (await sql`
-    SELECT id, business_key, business_name, email,
-           email_subject, email_body, demo_url, outreach_status
-    FROM latchly_leads
+    UPDATE latchly_leads SET
+      outreach_status = 'sending',
+      updated_at = NOW()
     WHERE id = ${leadId}
-    LIMIT 1
+      AND outreach_status NOT IN ('day_zero_sent', 'sending', 'unsubscribed')
+      AND email IS NOT NULL AND email <> ''
+      AND email_subject IS NOT NULL AND email_subject <> ''
+      AND email_body IS NOT NULL AND email_body <> ''
+      AND demo_url IS NOT NULL AND demo_url <> ''
+    RETURNING id, business_key, business_name, email,
+              email_subject, email_body, demo_url, outreach_status
   `) as QueuedRow[];
   const row = rows[0];
 
-  if (!row) return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  if (!row.email) return NextResponse.json({ error: 'no_email' }, { status: 400 });
-  if (!row.email_subject || !row.email_body) {
-    return NextResponse.json({ error: 'no_composed_email' }, { status: 400 });
-  }
-  if (!row.demo_url) return NextResponse.json({ error: 'no_demo' }, { status: 400 });
-  if (row.outreach_status === 'day_zero_sent') {
-    return NextResponse.json({ error: 'already_sent' }, { status: 409 });
-  }
-  if (row.outreach_status === 'unsubscribed') {
-    return NextResponse.json({ error: 'unsubscribed' }, { status: 409 });
+  if (!row) {
+    // Determine why the claim failed for a useful response.
+    const probe = (await sql`
+      SELECT outreach_status, email, email_subject, email_body, demo_url
+      FROM latchly_leads WHERE id = ${leadId} LIMIT 1
+    `) as QueuedRow[];
+    const r = probe[0];
+    if (!r) return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    if (r.outreach_status === 'day_zero_sent') return NextResponse.json({ error: 'already_sent' }, { status: 409 });
+    if (r.outreach_status === 'sending') return NextResponse.json({ error: 'sending_in_flight' }, { status: 409 });
+    if (r.outreach_status === 'unsubscribed') return NextResponse.json({ error: 'unsubscribed' }, { status: 409 });
+    if (!r.email) return NextResponse.json({ error: 'no_email' }, { status: 400 });
+    if (!r.email_subject || !r.email_body) return NextResponse.json({ error: 'no_composed_email' }, { status: 400 });
+    if (!r.demo_url) return NextResponse.json({ error: 'no_demo' }, { status: 400 });
+    return NextResponse.json({ error: 'claim_failed' }, { status: 409 });
   }
 
   try {
@@ -96,6 +110,7 @@ export async function POST(
         outreach_error = NULL,
         updated_at = NOW()
       WHERE id = ${leadId}
+        AND outreach_status = 'sending'
     `;
 
     return NextResponse.json({ ok: true, emailId, businessKey: row.business_key });
@@ -107,6 +122,7 @@ export async function POST(
         outreach_error = ${message},
         updated_at = NOW()
       WHERE id = ${leadId}
+        AND outreach_status = 'sending'
     `;
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }

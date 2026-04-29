@@ -302,6 +302,7 @@ function qualityChipTone(score: number) {
 function outreachStatusTone(status: string) {
   switch (status) {
     case "queued":         return "border-blue-100 bg-blue-50 text-blue-700";
+    case "sending":        return "border-amber-100 bg-amber-50 text-amber-700";
     case "day_zero_sent":  return "border-emerald-100 bg-emerald-50 text-emerald-700";
     case "day_zero_failed":return "border-rose-100 bg-rose-50 text-rose-700";
     case "no_email":
@@ -321,6 +322,7 @@ function outreachStatusLabel(lead: Lead) {
       const local = d.toLocaleString(undefined, { hour: "numeric", minute: "2-digit", month: "short", day: "numeric" });
       return `Queued · ${local}`;
     }
+    case "sending": return "Sending…";
     case "day_zero_sent": {
       const t = lead.emailSentAt;
       if (!t) return "Sent";

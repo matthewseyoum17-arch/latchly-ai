@@ -18,6 +18,15 @@ export async function GET(request) {
   try {
     const sql = neon(process.env.DATABASE_URL);
     await sql`UPDATE prospects SET unsubscribed = TRUE, updated_at = NOW() WHERE email = ${email}`;
+    // Also flip Latchly leads. Any queued row matching this email becomes
+    // unsubscribed so the drain cron + send-now never picks it up again.
+    await sql`
+      UPDATE latchly_leads SET
+        outreach_status = 'unsubscribed',
+        outreach_error = NULL,
+        updated_at = NOW()
+      WHERE LOWER(email) = LOWER(${email})
+    `;
 
     const html = `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">

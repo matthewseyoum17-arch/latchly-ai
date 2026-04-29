@@ -277,8 +277,12 @@ function parseStrictJson(text) {
 
 function buildUnsubLink(lead, siteBase) {
   const base = (siteBase || process.env.SITE_BASE || 'https://latchlyai.com').replace(/\/+$/, '');
-  const key = encodeURIComponent(lead?.businessKey || lead?.email || '');
-  return `${base}/api/unsubscribe?k=${key}`;
+  // Match the existing /api/unsubscribe contract: email + token=base64url(email).
+  // The route updates both `prospects` and `latchly_leads` rows by email.
+  const email = String(lead?.email || '').toLowerCase().trim();
+  if (!email) return `${base}/api/unsubscribe`;
+  const token = Buffer.from(email).toString('base64url');
+  return `${base}/api/unsubscribe?email=${encodeURIComponent(email)}&token=${token}`;
 }
 
 function hashEmail(subject, body) {

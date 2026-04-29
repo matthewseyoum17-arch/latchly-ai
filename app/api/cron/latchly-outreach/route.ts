@@ -60,6 +60,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ ticked: 0, reason: 'warmup_not_started' });
   }
 
+  // Recover any rows stuck in 'sending' from a crashed prior tick. A healthy
+  // Resend call completes in seconds; >5 min in 'sending' means the previous
+  // invocation died after claiming but before the success/failure update.
+  await sql`
+    UPDATE latchly_leads SET
+      outreach_status = 'queued',
+      outreach_error = COALESCE(outreach_error, '') || ' [recovered from stale sending]',
+      updated_at = NOW()
+    WHERE outreach_status = 'sending'
+      AND updated_at < NOW() - INTERVAL '5 minutes'
+  `;
+
   const sentTodayResult = await sql`
     SELECT COUNT(*)::int AS n FROM latchly_leads
     WHERE outreach_status = 'day_zero_sent'
@@ -72,17 +84,26 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ ticked: 0, reason: 'warmup_cap_reached', sentToday, dailyCap });
   }
 
+  // Atomic claim: flip queued → sending in a single UPDATE...RETURNING.
+  // Postgres takes row-exclusive locks during the UPDATE; two concurrent
+  // invocations cannot both observe the same row as 'queued'. The second
+  // sees it already 'sending' after the first commits and returns nothing.
   const due = (await sql`
-    SELECT id, business_key, business_name, city, state, email,
-           email_subject, email_body, demo_url, outreach_scheduled_for
-    FROM latchly_leads
-    WHERE outreach_status = 'queued'
-      AND outreach_scheduled_for IS NOT NULL
-      AND outreach_scheduled_for <= NOW()
-      AND email IS NOT NULL AND email <> ''
-      AND demo_url IS NOT NULL AND demo_url <> ''
-    ORDER BY outreach_scheduled_for ASC
-    LIMIT ${tickCap}
+    UPDATE latchly_leads SET
+      outreach_status = 'sending',
+      updated_at = NOW()
+    WHERE id IN (
+      SELECT id FROM latchly_leads
+      WHERE outreach_status = 'queued'
+        AND outreach_scheduled_for IS NOT NULL
+        AND outreach_scheduled_for <= NOW()
+        AND email IS NOT NULL AND email <> ''
+        AND demo_url IS NOT NULL AND demo_url <> ''
+      ORDER BY outreach_scheduled_for ASC
+      LIMIT ${tickCap}
+    )
+    RETURNING id, business_key, business_name, city, state, email,
+              email_subject, email_body, demo_url, outreach_scheduled_for
   `) as QueuedRow[];
 
   if (!due.length) {
@@ -119,6 +140,7 @@ export async function GET(request: NextRequest) {
             throw new Error((retry.error as { message?: string })?.message || 'resend_retry_error');
           }
           const retryId = retry?.data?.id || null;
+          // CAS: only flip if still 'sending'. Guards against double-marks.
           await sql`
             UPDATE latchly_leads SET
               outreach_status = 'day_zero_sent',
@@ -128,6 +150,7 @@ export async function GET(request: NextRequest) {
               outreach_error = NULL,
               updated_at = NOW()
             WHERE business_key = ${row.business_key}
+              AND outreach_status = 'sending'
           `;
           sent.push({ businessKey: row.business_key, emailId: retryId });
           continue;
@@ -145,6 +168,7 @@ export async function GET(request: NextRequest) {
           outreach_error = NULL,
           updated_at = NOW()
         WHERE business_key = ${row.business_key}
+          AND outreach_status = 'sending'
       `;
       sent.push({ businessKey: row.business_key, emailId });
 
@@ -159,6 +183,7 @@ export async function GET(request: NextRequest) {
             outreach_error = ${message},
             updated_at = NOW()
           WHERE business_key = ${row.business_key}
+            AND outreach_status = 'sending'
         `;
       } catch {
         // swallow secondary failure

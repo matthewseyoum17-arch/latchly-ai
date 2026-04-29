@@ -93,21 +93,37 @@ function advanceLocalDay(parts) {
 
 function localDateAtHour({ year, month, day }, hour, tz) {
   // Find the UTC instant whose local-time-in-tz equals { year, month, day, hour:00:00 }.
-  // We binary-search by adjusting from a UTC guess. Simpler approach: iterate.
-  const guess = new Date(Date.UTC(year, month - 1, day, hour, 0, 0));
-  // Compute the delta between what `tz` shows for `guess` and what we want.
-  const local = getLocalDateParts(guess, tz);
-  const wantedMin = hour * 60;
-  const haveMin = local.hour * 60 + local.minute;
-  // Adjust: shift guess by (wantedMin - haveMin) minutes, then check once more.
-  let adjusted = new Date(guess.getTime() + (wantedMin - haveMin) * 60 * 1000);
-  const local2 = getLocalDateParts(adjusted, tz);
-  const want2 = hour * 60;
-  const have2 = local2.hour * 60 + local2.minute;
-  if (have2 !== want2) {
-    adjusted = new Date(adjusted.getTime() + (want2 - have2) * 60 * 1000);
+  // We use the offset that `tz` uses on the target local day, then construct
+  // UTC = local - offset. Adjusting only minute-of-day (the previous approach)
+  // breaks when the UTC guess lands on the previous local day in standard-time
+  // western zones, where the correction silently moves to yesterday's 7am.
+  const offsetMinutes = tzOffsetMinutes(tz, year, month, day, hour);
+  return new Date(Date.UTC(year, month - 1, day, hour, 0, 0) - offsetMinutes * 60 * 1000);
+}
+
+function tzOffsetMinutes(tz, year, month, day, hour) {
+  // Use a reference UTC noon on the target local day so we read the offset
+  // that's in effect for that day (DST-aware). We must verify the formatted
+  // local date matches; if it doesn't, retry from the offset of the noon
+  // formatted in the target zone.
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const refUtc = new Date(Date.UTC(year, month - 1, day, 12 + attempt * 6, 0, 0));
+    const parts = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'longOffset' })
+      .formatToParts(refUtc);
+    const offsetPart = parts.find(p => p.type === 'timeZoneName')?.value || 'GMT+00:00';
+    const m = offsetPart.match(/GMT([+-])(\d{1,2})(?::(\d{2}))?/);
+    if (!m) continue;
+    const sign = m[1] === '-' ? -1 : 1;
+    const offsetMinutes = sign * (Number(m[2]) * 60 + Number(m[3] || 0));
+    // Verify: build candidate UTC and confirm tz formats it back to (year, month, day, hour).
+    const candidate = new Date(Date.UTC(year, month - 1, day, hour, 0, 0) - offsetMinutes * 60 * 1000);
+    const local = getLocalDateParts(candidate, tz);
+    if (local.year === year && local.month === month && local.day === day && local.hour === hour) {
+      return offsetMinutes;
+    }
   }
-  return adjusted;
+  // Fallback: assume UTC if Intl misbehaves
+  return 0;
 }
 
 async function queueDayZeroForLead(lead, enrichment, opts = {}) {

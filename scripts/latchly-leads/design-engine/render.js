@@ -20,11 +20,23 @@ function loadTemplate(direction) {
   throw new Error(`no template found (looked for ${candidates.join(', ')})`);
 }
 
+// Keys whose VALUES are intentionally pre-rendered HTML, built by composeRenderData
+// from already-escaped fields. Every other placeholder is treated as untrusted text
+// (lead/enrichment/AI-generated copy) and HTML-escaped before substitution.
+const HTML_SAFE_KEYS = new Set([
+  'serviceCards',
+  'reviewsSection',
+  'heroAsideItems',
+  'heroAsideReviews',
+  'aboutCardItems',
+]);
+
 function renderTemplate({ template, lead, enrichment, content, direction }) {
   const data = composeRenderData({ lead, enrichment, content, direction });
   return Object.entries(data).reduce((html, [key, value]) => {
     const re = new RegExp(`{{\\s*${key}\\s*}}`, 'g');
-    return html.replace(re, escapeForTemplate(value));
+    const replacement = HTML_SAFE_KEYS.has(key) ? String(value || '') : escapeHtml(value);
+    return html.replace(re, replacement);
   }, template);
 }
 
@@ -176,20 +188,9 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
-function escapeForTemplate(value) {
-  // For HTML attributes/content, the values we feed in are already HTML or plain text.
-  // Rendered HTML strings (serviceCards, reviewsSection, heroAsideItems, aboutCardItems,
-  // heroAsideReviews) are passed through untouched. Plain strings (businessName, phone,
-  // cityState, etc.) get HTML-escaped.
-  if (value == null) return '';
-  const str = String(value);
-  // Heuristic: if the value already looks like rendered HTML markup, pass it through.
-  if (/<[a-z][\s\S]*>/i.test(str)) return str;
-  return escapeHtml(str);
-}
-
 module.exports = {
   loadTemplate,
   renderTemplate,
   composeRenderData,
+  HTML_SAFE_KEYS,
 };
