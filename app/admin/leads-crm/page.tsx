@@ -589,7 +589,7 @@ export default function LeadsCrmPage() {
   const [tier, setTier] = useState("all");
   const [city, setCity] = useState("all");
   const [niche, setNiche] = useState("all");
-  const [minScore, setMinScore] = useState("8");
+  const [minScore, setMinScore] = useState("0");
   const [localOnly, setLocalOnly] = useState(false);
   const [noWebsite, setNoWebsite] = useState(false);
   const [poorWebsite, setPoorWebsite] = useState(false);
