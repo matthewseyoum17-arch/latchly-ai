@@ -2,392 +2,506 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  AlertTriangle,
   Building2,
   CalendarClock,
   Check,
   ChevronRight,
-  Clock,
   ExternalLink,
-  Eye,
-  EyeOff,
   Filter,
   Globe,
-  Inbox,
   Loader2,
-  Lock,
-  LogOut,
   Mail,
   MapPin,
   NotebookTabs,
   Phone,
   Play,
   RefreshCw,
-  Rocket,
   Save,
   Search,
   Send,
-  ShieldCheck,
   Star,
   UserRound,
-  X,
 } from "lucide-react";
+import { AuthGate, isClientAuthed } from "@/components/admin/auth-gate";
+import { StatTile } from "@/components/admin/stat-tile";
+import {
+  contactSummary,
+  formatDate,
+  opportunityLabel,
+  opportunityTone,
+  outreachStatusLabel,
+  outreachStatusTone,
+  qualityChipTone,
+  statusLabel,
+  statusTone,
+  tierLabel,
+  tierTone,
+  toDateInput,
+  websiteHref,
+} from "@/components/admin/lead-helpers";
+import {
+  STATUS_OPTIONS,
+  type CrmData,
+  type CrmStatus,
+  type Lead,
+} from "@/components/admin/types";
 
-type CrmStatus = "new" | "reviewed" | "contacted" | "interested" | "follow_up" | "not_fit" | "won" | "lost";
-
-interface Lead {
-  id: number;
-  businessKey: string;
-  businessName: string;
-  niche: string;
-  city: string;
-  state: string;
-  phone: string;
-  email: string;
-  website: string;
-  websiteStatus: string;
-  tier: "premium" | "standard";
-  signalCount: number;
-  sourceName: string;
-  decisionMakerName: string;
-  decisionMakerTitle: string;
-  decisionMakerConfidence: number | null;
-  score: number | null;
-  scoreReasons: string[];
-  scoreBlockers: string[];
-  pitch: {
-    opener?: string;
-    angle?: string;
-    why?: string;
-    nextAction?: string;
-    caution?: string;
-  };
-  isLocalMarket: boolean;
-  status: CrmStatus;
-  notes: string;
-  lastContactedAt: string | null;
-  nextFollowUpDate: string | null;
-  deliveredAt: string;
-  updatedAt: string;
-  placeId?: string | null;
-  demoSlug?: string | null;
-  demoUrl?: string | null;
-  demoDirection?: string | null;
-  demoQualityScore?: number | null;
-  demoBuiltAt?: string | null;
-  outreachStatus?: string;
-  outreachStep?: number;
-  emailSubject?: string | null;
-  emailBodyPreview?: string | null;
-  outreachQueuedAt?: string | null;
-  outreachScheduledFor?: string | null;
-  emailSentAt?: string | null;
-  lastResendEmailId?: string | null;
-  outreachError?: string | null;
-  enrichmentSummary?: {
-    ownerFirstName?: string | null;
-    ownerName?: string | null;
-    yearsInBusiness?: number | null;
-    averageRating?: number | null;
-    reviewCount?: number | null;
-    topReview?: { author?: string; text?: string; rating?: number } | null;
-    bbbRating?: string | null;
-    servicesVerified?: string[];
-  } | null;
-}
-
-interface OutreachStats {
-  draft: number;
-  queued: number;
-  sending: number;
-  sent: number;
-  sentToday: number;
-  failed: number;
-  rejected: number;
-  unsubscribed: number;
-}
-
-interface CrmData {
-  leads: Lead[];
-  stats: {
-    total: number;
-    new: number;
-    contacted: number;
-    active: number;
-    won: number;
-    lost: number;
-    premium: number;
-    standard: number;
-    highScore: number;
-    local: number;
-    noWebsite: number;
-    poorWebsite: number;
-    dueFollowUp: number;
-    avgScore: number | null;
-    outreach?: OutreachStats;
-  };
-  statusCounts: { status: CrmStatus; count: number }[];
-  filters: {
-    cities: { city: string; count: number }[];
-    niches: { niche: string; count: number }[];
-  };
-  latestRun: {
-    runDate: string;
-    target: number;
-    minimum: number;
-    candidates: number;
-    audited: number;
-    qualified: number;
-    delivered: number;
-    local: number;
-    rejected: number;
-    rejectionStats: string[];
-    underTargetReason: string;
-    emailSent: boolean;
-    dryRun: boolean;
-    status: string;
-    metadata?: Record<string, any>;
-    premiumDelivered?: number;
-    standardDelivered?: number;
-    createdAt: string;
-  } | null;
-}
-
-const STATUS_OPTIONS: { value: CrmStatus; label: string; tone: string }[] = [
-  { value: "new", label: "New", tone: "bg-sky-50 text-sky-700 border-sky-100" },
-  { value: "reviewed", label: "Reviewed", tone: "bg-slate-100 text-slate-700 border-slate-200" },
-  { value: "contacted", label: "Contacted", tone: "bg-blue-50 text-blue-700 border-blue-100" },
-  { value: "interested", label: "Interested", tone: "bg-emerald-50 text-emerald-700 border-emerald-100" },
-  { value: "follow_up", label: "Follow Up", tone: "bg-amber-50 text-amber-800 border-amber-100" },
-  { value: "not_fit", label: "Not Fit", tone: "bg-zinc-100 text-zinc-700 border-zinc-200" },
-  { value: "won", label: "Won", tone: "bg-teal-50 text-teal-800 border-teal-100" },
-  { value: "lost", label: "Lost", tone: "bg-rose-50 text-rose-700 border-rose-100" },
-];
-
-function AuthGate({ onAuth }: { onAuth: () => void }) {
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+export default function LeadsCrmPage() {
+  const [authed, setAuthed] = useState(false);
+  const [data, setData] = useState<CrmData | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
-  const [showPw, setShowPw] = useState(false);
+  const [error, setError] = useState("");
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState("all");
+  const [tier, setTier] = useState("all");
+  const [city, setCity] = useState("all");
+  const [niche, setNiche] = useState("all");
+  const [minScore, setMinScore] = useState("0");
+  const [localOnly, setLocalOnly] = useState(false);
+  const [noWebsite, setNoWebsite] = useState(false);
+  const [poorWebsite, setPoorWebsite] = useState(false);
+  const [toast, setToast] = useState("");
+  const [scrapeDispatching, setScrapeDispatching] = useState(false);
+  const [scrapePending, setScrapePending] = useState(false);
+  const [markingContactedId, setMarkingContactedId] = useState<number | null>(null);
 
-  const submit = async (event: React.FormEvent) => {
-    event.preventDefault();
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const initialStatus = params.get("status");
+    const initialTier = params.get("tier");
+    const initialLeadId = Number(params.get("leadId") || "");
+    if (initialStatus && (initialStatus === "all" || STATUS_OPTIONS.some((o) => o.value === initialStatus))) {
+      setStatus(initialStatus);
+    }
+    if (initialTier === "premium" || initialTier === "standard") setTier(initialTier);
+    if (Number.isFinite(initialLeadId) && initialLeadId > 0) setSelectedId(initialLeadId);
+    setAuthed(isClientAuthed());
+  }, []);
+
+  useEffect(() => {
+    if (tier === "premium") {
+      setMinScore("9");
+      setNoWebsite(false);
+      setPoorWebsite(false);
+    }
+  }, [tier]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (status === "all") params.delete("status"); else params.set("status", status);
+    if (tier === "all") params.delete("tier"); else params.set("tier", tier);
+    const next = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
+    window.history.replaceState(null, "", next);
+  }, [status, tier]);
+
+  const fetchData = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/dashboard/auth", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
+      const params = new URLSearchParams({
+        q: query,
+        status,
+        tier,
+        city,
+        niche,
+        minScore: tier === "premium" ? "9" : minScore,
+        limit: "150",
       });
-      if (!res.ok) {
-        setError("Invalid password");
+      if (localOnly) params.set("local", "1");
+      if (tier === "premium") params.set("websiteIssue", "1");
+      if (noWebsite) params.set("noWebsite", "1");
+      if (poorWebsite) params.set("poorWebsite", "1");
+
+      const res = await fetch(`/api/admin/latchly-leads?${params.toString()}`);
+      const json = await res.json();
+      if (res.status === 401) {
+        setAuthed(false);
         return;
       }
-      sessionStorage.setItem("latchly-leads-crm-auth", "1");
-      onAuth();
-    } catch {
-      setError("Connection error");
+      if (!res.ok) throw new Error(json.error || "Failed to load leads");
+      setData(json);
+      setSelectedId((current) => {
+        if (current && json.leads.some((lead: Lead) => lead.id === current)) return current;
+        return json.leads[0]?.id ?? null;
+      });
+    } catch (err: any) {
+      setError(err.message || "Failed to load leads");
     } finally {
       setLoading(false);
     }
+  }, [city, localOnly, minScore, niche, noWebsite, poorWebsite, query, status, tier]);
+
+  useEffect(() => {
+    if (authed) fetchData();
+  }, [authed, fetchData]);
+
+  const selectedLead = useMemo(() => {
+    return data?.leads.find((lead) => lead.id === selectedId) || null;
+  }, [data?.leads, selectedId]);
+
+  const handleSaved = (updated: Lead) => {
+    setData((current) => {
+      if (!current) return current;
+      const keep = status === "all" || updated.status === status;
+      return {
+        ...current,
+        leads: keep
+          ? current.leads.map((lead) => lead.id === updated.id ? updated : lead)
+          : current.leads.filter((lead) => lead.id !== updated.id),
+      };
+    });
   };
 
+  const markContacted = async (lead: Lead) => {
+    if (lead.status === "contacted") return;
+    const optimistic = { ...lead, status: "contacted" as CrmStatus, lastContactedAt: new Date().toISOString() };
+    setMarkingContactedId(lead.id);
+    handleSaved(optimistic);
+    setToast("Marked contacted");
+    try {
+      const res = await fetch(`/api/admin/latchly-leads/${lead.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "contacted" }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Update failed");
+      handleSaved(json.lead);
+      await fetchData();
+    } catch (err: any) {
+      setError(err.message || "Failed to mark contacted");
+      await fetchData();
+    } finally {
+      setMarkingContactedId(null);
+    }
+  };
+
+  const pollRuns = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/latchly-leads/runs");
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to load runs");
+      const latest = json.runs?.[0];
+      if (!latest || !["pending", "running"].includes(latest.status)) {
+        setScrapePending(false);
+      }
+      await fetchData();
+    } catch {
+      await fetchData();
+    }
+  }, [fetchData]);
+
+  const runScrapeNow = async () => {
+    setScrapeDispatching(true);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/latchly-leads/scrape", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tier: tier === "all" ? "both" : tier,
+          target: 50,
+          dry_run: false,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Dispatch failed");
+      setScrapePending(true);
+      setToast("Scrape dispatched · workflow takes ~30-60 minutes");
+      await pollRuns();
+    } catch (err: any) {
+      setError(err.message || "Failed to dispatch scrape");
+    } finally {
+      setScrapeDispatching(false);
+    }
+  };
+
+  useEffect(() => {
+    const status = data?.latestRun?.status;
+    if (status === "pending" || status === "running") {
+      setScrapePending(true);
+    }
+  }, [data?.latestRun?.status]);
+
+  useEffect(() => {
+    if (!authed || !scrapePending) return;
+    const timer = window.setInterval(() => { pollRuns(); }, 30000);
+    return () => window.clearInterval(timer);
+  }, [authed, pollRuns, scrapePending]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = window.setTimeout(() => setToast(""), 3500);
+    return () => window.clearTimeout(t);
+  }, [toast]);
+
+  const statusCountMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const item of data?.statusCounts || []) map.set(item.status, item.count);
+    return map;
+  }, [data?.statusCounts]);
+
+  const statusTabs = [
+    { value: "all",       label: "All",       count: data?.stats.total || 0 },
+    { value: "new",       label: "New",       count: statusCountMap.get("new") || 0 },
+    { value: "contacted", label: "Contacted", count: statusCountMap.get("contacted") || 0 },
+    { value: "won",       label: "Won",       count: statusCountMap.get("won") || 0 },
+    { value: "lost",      label: "Lost",      count: statusCountMap.get("lost") || 0 },
+  ];
+
+  const latestRunStatus = data?.latestRun?.status || "";
+  const runInProgress = scrapeDispatching || scrapePending || latestRunStatus === "pending" || latestRunStatus === "running";
+
+  if (!authed) return <AuthGate onAuth={() => setAuthed(true)} title="Leads CRM" />;
+
   return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-5">
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 w-full max-w-sm">
-        <div className="w-11 h-11 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center mx-auto mb-5">
-          <Lock size={20} />
-        </div>
-        <h1 className="text-xl font-bold text-center text-slate-950">Leads CRM</h1>
-        <p className="text-sm text-slate-500 text-center mt-1 mb-6">Enter your dashboard password</p>
-        <form onSubmit={submit}>
-          <div className="relative mb-4">
-            <input
-              type={showPw ? "text" : "password"}
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="Password"
-              className="w-full px-4 py-3 pr-10 rounded-lg border border-slate-200 text-sm outline-none focus:border-teal-500"
-              autoFocus
-            />
+    <div className="min-h-screen">
+      <header className="sticky top-0 lg:top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-200">
+        <div className="max-w-[1500px] mx-auto px-4 sm:px-6 py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-lg bg-teal-100 text-teal-700 flex items-center justify-center">
+              <Building2 size={18} />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-lg font-black text-slate-950 leading-tight">Leads CRM</h1>
+              <p className="text-xs text-slate-500 leading-tight truncate">
+                Scored home-service opportunities · status workflow
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
             <button
-              type="button"
-              onClick={() => setShowPw(!showPw)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
-              aria-label={showPw ? "Hide password" : "Show password"}
-              title={showPw ? "Hide password" : "Show password"}
+              onClick={fetchData}
+              disabled={loading}
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
             >
-              {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+              <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
+              Refresh
+            </button>
+            <button
+              onClick={runScrapeNow}
+              disabled={runInProgress}
+              className="inline-flex items-center gap-2 rounded-lg bg-slate-950 px-3 py-2 text-sm font-bold text-white hover:bg-slate-800 disabled:opacity-50"
+            >
+              {runInProgress ? <Loader2 size={15} className="animate-spin" /> : <Play size={15} />}
+              Run scrape
             </button>
           </div>
-          {error && <p className="text-xs text-rose-600 mb-3">{error}</p>}
-          <button
-            type="submit"
-            disabled={loading || !password}
-            className="w-full py-3 rounded-lg bg-teal-700 text-white font-bold text-sm disabled:opacity-50 hover:bg-teal-600 transition-colors"
-          >
-            {loading ? "Checking..." : "Sign In"}
-          </button>
-        </form>
-      </div>
+        </div>
+      </header>
+
+      <main className="max-w-[1500px] mx-auto px-4 sm:px-6 py-5 space-y-5">
+        {data && (
+          <div className="grid grid-cols-2 lg:grid-cols-5 xl:grid-cols-10 gap-3">
+            <StatTile icon={<Building2 size={15} />} label="In CRM" value={data.stats.total} />
+            <StatTile icon={<Star size={15} />} label="Premium" value={data.stats.premium} />
+            <StatTile icon={<Star size={15} />} label="Avg Score" value={data.stats.avgScore ?? "-"} />
+            <StatTile icon={<NotebookTabs size={15} />} label="New" value={data.stats.new} />
+            <StatTile icon={<Phone size={15} />} label="Active" value={data.stats.active} />
+            <StatTile icon={<MapPin size={15} />} label="Local" value={data.stats.local} />
+            <StatTile icon={<Globe size={15} />} label="No Website" value={data.stats.noWebsite} />
+            <StatTile icon={<Globe size={15} />} label="Poor Site" value={data.stats.poorWebsite} />
+            <StatTile icon={<CalendarClock size={15} />} label="Due" value={data.stats.dueFollowUp} />
+            <StatTile icon={<Check size={15} />} label="Won" value={data.stats.won} />
+          </div>
+        )}
+
+        {data && (
+          <section className="bg-white border border-slate-200 rounded-lg p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+              {data.latestRun ? (
+                <>
+                  <span className="font-black text-slate-950">Run {formatDate(data.latestRun.runDate)}</span>
+                  <span className="text-slate-600">{data.latestRun.delivered}/{data.latestRun.target} delivered</span>
+                  <span className="text-slate-600">{data.latestRun.premiumDelivered || 0} premium</span>
+                  <span className="text-slate-600">{data.latestRun.local} local</span>
+                  <span className="text-slate-600">{data.latestRun.rejected} rejected</span>
+                </>
+              ) : (
+                <span className="font-black text-slate-950">No lead run recorded</span>
+              )}
+              <span className="text-emerald-700 font-semibold">{data.stats.total} in CRM</span>
+              {data.stats.outreach && (
+                <a
+                  href="/admin/cold-email"
+                  className="inline-flex items-center gap-1.5 rounded-md border border-violet-100 bg-violet-50 px-2.5 py-1 text-xs font-bold text-violet-700 hover:bg-violet-100"
+                >
+                  <Send size={12} /> {data.stats.outreach.queued + data.stats.outreach.draft} in outreach
+                </a>
+              )}
+            </div>
+            {data.latestRun?.underTargetReason && (
+              <div className="text-sm text-amber-800 bg-amber-50 border border-amber-100 rounded-md px-3 py-2">
+                {data.latestRun.underTargetReason}
+              </div>
+            )}
+          </section>
+        )}
+
+        {toast && (
+          <div className="rounded-lg border border-teal-100 bg-teal-50 px-4 py-3 text-sm font-semibold text-teal-800">
+            {toast}
+          </div>
+        )}
+
+        <section className="bg-white border border-slate-200 rounded-lg p-2 overflow-x-auto">
+          <div className="flex min-w-max gap-1">
+            {statusTabs.map((tab) => {
+              const active = status === tab.value;
+              return (
+                <button
+                  key={tab.value}
+                  onClick={() => setStatus(tab.value)}
+                  className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-bold transition-colors ${
+                    active ? "bg-slate-950 text-white" : "text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  {tab.label}
+                  <span className={`rounded-full px-2 py-0.5 text-[11px] ${active ? "bg-white/15 text-white" : "bg-slate-100 text-slate-600"}`}>
+                    {tab.count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="bg-white border border-slate-200 rounded-lg p-4">
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(220px,1fr)_140px_160px_180px_120px_auto_auto_auto_auto] gap-3 items-center">
+            <div className="relative">
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search business, contact, phone"
+                className="w-full rounded-lg border border-slate-200 pl-9 pr-3 py-2.5 text-sm outline-none focus:border-teal-500"
+              />
+            </div>
+            <select value={tier} onChange={(event) => setTier(event.target.value)} className="rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-teal-500 bg-white">
+              <option value="all">All tiers</option>
+              <option value="premium">Premium</option>
+              <option value="standard">Standard</option>
+            </select>
+            <select value={city} onChange={(event) => setCity(event.target.value)} className="rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-teal-500 bg-white">
+              <option value="all">All cities</option>
+              {data?.filters.cities.map((option) => (
+                <option key={option.city} value={option.city}>{option.city} ({option.count})</option>
+              ))}
+            </select>
+            <select value={niche} onChange={(event) => setNiche(event.target.value)} className="rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-teal-500 bg-white">
+              <option value="all">All niches</option>
+              {data?.filters.niches.map((option) => (
+                <option key={option.niche} value={option.niche}>{option.niche} ({option.count})</option>
+              ))}
+            </select>
+            <select value={tier === "premium" ? "9" : minScore} disabled={tier === "premium"} onChange={(event) => setMinScore(event.target.value)} className="rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-teal-500 bg-white disabled:bg-slate-50 disabled:text-slate-400">
+              <option value="0">Any score</option>
+              <option value="8">8+</option>
+              <option value="9">9+</option>
+              <option value="9.5">9.5+</option>
+            </select>
+            <label className={`inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-bold cursor-pointer ${localOnly ? "border-teal-200 bg-teal-50 text-teal-800" : "border-slate-200 bg-white text-slate-700"}`}>
+              <input type="checkbox" checked={localOnly} onChange={(event) => setLocalOnly(event.target.checked)} className="sr-only" />
+              <MapPin size={15} /> Local
+            </label>
+            <label className={`inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-bold cursor-pointer ${noWebsite ? "border-amber-200 bg-amber-50 text-amber-800" : "border-slate-200 bg-white text-slate-700"}`}>
+              <input type="checkbox" checked={noWebsite} disabled={tier === "premium"} onChange={(event) => setNoWebsite(event.target.checked)} className="sr-only" />
+              <Globe size={15} /> No site
+            </label>
+            <label className={`inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-bold cursor-pointer ${tier === "premium" || poorWebsite ? "border-rose-200 bg-rose-50 text-rose-800" : "border-slate-200 bg-white text-slate-700"}`}>
+              <input type="checkbox" checked={tier === "premium" || poorWebsite} disabled={tier === "premium"} onChange={(event) => setPoorWebsite(event.target.checked)} className="sr-only" />
+              <Globe size={15} /> Poor site
+            </label>
+            <button
+              onClick={() => {
+                setQuery(""); setStatus("all"); setTier("all"); setCity("all"); setNiche("all");
+                setMinScore("0"); setLocalOnly(false); setNoWebsite(false); setPoorWebsite(false);
+              }}
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50"
+            >
+              <Filter size={15} /> Reset
+            </button>
+          </div>
+        </section>
+
+        {error && (
+          <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+            {error}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_430px] gap-5 items-start">
+          <section className="bg-white border border-slate-200 rounded-lg overflow-hidden min-w-0">
+            <div className="px-4 py-3 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <Building2 size={16} className="text-slate-500" />
+                <span className="text-sm font-black text-slate-950">
+                  {data?.leads.length ?? 0}
+                  {data && data.leads.length < (data.stats.total || 0) ? (
+                    <span className="font-bold text-slate-500"> of {data.stats.total} (filters active)</span>
+                  ) : (
+                    <span className="text-slate-500"> leads</span>
+                  )}
+                </span>
+              </div>
+              {loading && <Loader2 size={16} className="animate-spin text-slate-500" />}
+            </div>
+            <div className="hidden md:grid grid-cols-[minmax(220px,1.6fr)_130px_120px_100px_150px_130px] gap-3 px-4 py-2 bg-slate-50 border-t border-slate-100 text-[11px] font-bold uppercase tracking-wide text-slate-500">
+              <div>Business</div>
+              <div>Market</div>
+              <div>Status</div>
+              <div>Score</div>
+              <div>Tier / Flags</div>
+              <div className="text-right">Action</div>
+            </div>
+            {!data || data.leads.length === 0 ? (
+              <div className="py-16 text-center text-sm text-slate-500">
+                {loading ? "Loading leads..." : "No leads match"}
+              </div>
+            ) : (
+              data.leads.map((lead) => (
+                <LeadRow
+                  key={lead.id}
+                  lead={lead}
+                  selected={lead.id === selectedId}
+                  onSelect={() => setSelectedId(lead.id)}
+                  onMarkContacted={markContacted}
+                  markingContacted={markingContactedId === lead.id}
+                />
+              ))
+            )}
+          </section>
+
+          <LeadDetail
+            lead={selectedLead}
+            onSaved={handleSaved}
+            onMarkContacted={markContacted}
+            markingContacted={Boolean(selectedLead && markingContactedId === selectedLead.id)}
+          />
+        </div>
+      </main>
     </div>
   );
 }
 
-function StatTile({ icon, label, value, sub }: {
-  icon: React.ReactNode;
-  label: string;
-  value: string | number;
-  sub?: string;
-}) {
-  return (
-    <div className="bg-white border border-slate-200 rounded-lg p-4 min-w-0">
-      <div className="flex items-center gap-2 text-slate-500 mb-2">
-        {icon}
-        <span className="text-[11px] font-bold uppercase tracking-wide truncate">{label}</span>
-      </div>
-      <div className="text-2xl font-black text-slate-950">{value}</div>
-      {sub && <div className="text-xs text-slate-500 mt-1 truncate">{sub}</div>}
-    </div>
-  );
-}
-
-function statusTone(status: string) {
-  return STATUS_OPTIONS.find((option) => option.value === status)?.tone || "bg-slate-100 text-slate-700 border-slate-200";
-}
-
-function statusLabel(status: string) {
-  return STATUS_OPTIONS.find((option) => option.value === status)?.label || status;
-}
-
-function tierTone(tier: string) {
-  return tier === "premium"
-    ? "border-red-200 bg-red-50 text-red-800"
-    : "border-slate-200 bg-white text-slate-600";
-}
-
-function tierLabel(tier: string) {
-  return tier === "premium" ? "Premium" : "Standard";
-}
-
-function formatDate(value?: string | null) {
-  if (!value) return "-";
-  // Bare YYYY-MM-DD parses as UTC midnight, which renders one day earlier
-  // in user-local timezones. Treat date-only strings as local-noon to dodge
-  // the offset entirely. Full ISO datetimes (with T) keep their UTC instant.
-  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.exec(value);
-  let date: Date;
-  if (dateOnly) {
-    const [, y, m, d] = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value) || [];
-    date = new Date(Number(y), Number(m) - 1, Number(d), 12, 0, 0);
-  } else {
-    date = new Date(value);
-  }
-  if (Number.isNaN(date.getTime())) return "-";
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-}
-
-function toDateInput(value?: string | null) {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toISOString().slice(0, 10);
-}
-
-function websiteHref(website: string) {
-  if (!website) return "";
-  return /^https?:\/\//i.test(website) ? website : `https://${website}`;
-}
-
-function opportunityLabel(lead: Pick<Lead, "website" | "websiteStatus">) {
-  if (lead.websiteStatus === "no_website" || !lead.website) return "No Website";
-  if (lead.websiteStatus === "poor_website") return "Poor Website";
-  return "Website";
-}
-
-function opportunityTone(lead: Pick<Lead, "website" | "websiteStatus">) {
-  if (lead.websiteStatus === "no_website" || !lead.website) return "border-amber-100 bg-amber-50 text-amber-700";
-  if (lead.websiteStatus === "poor_website") return "border-rose-100 bg-rose-50 text-rose-700";
-  return "border-slate-200 bg-slate-50 text-slate-700";
-}
-
-function qualityChipTone(score: number) {
-  if (score >= 90) return "border-emerald-200 bg-emerald-50 text-emerald-700";
-  if (score >= 80) return "border-amber-200 bg-amber-50 text-amber-700";
-  return "border-rose-200 bg-rose-50 text-rose-700";
-}
-
-function outreachStatusTone(status: string) {
-  switch (status) {
-    case "draft":          return "border-violet-100 bg-violet-50 text-violet-700";
-    case "queued":         return "border-blue-100 bg-blue-50 text-blue-700";
-    case "sending":        return "border-amber-100 bg-amber-50 text-amber-700";
-    case "day_zero_sent":  return "border-emerald-100 bg-emerald-50 text-emerald-700";
-    case "day_zero_failed":return "border-rose-100 bg-rose-50 text-rose-700";
-    case "rejected":       return "border-zinc-200 bg-zinc-50 text-zinc-700";
-    case "no_email":
-    case "no_demo":        return "border-slate-100 bg-slate-50 text-slate-600";
-    case "unsubscribed":   return "border-zinc-200 bg-zinc-50 text-zinc-700";
-    default:               return "border-slate-100 bg-slate-50 text-slate-600";
-  }
-}
-
-function outreachStatusLabel(lead: Lead) {
-  switch (lead.outreachStatus) {
-    case "queued": {
-      const t = lead.outreachScheduledFor;
-      if (!t) return "Queued";
-      const d = new Date(t);
-      if (Number.isNaN(d.getTime())) return "Queued";
-      const local = d.toLocaleString(undefined, { hour: "numeric", minute: "2-digit", month: "short", day: "numeric" });
-      return `Queued · ${local}`;
-    }
-    case "draft": return "Draft — awaiting approval";
-    case "rejected": return "Rejected";
-    case "sending": return "Sending…";
-    case "day_zero_sent": {
-      const t = lead.emailSentAt;
-      if (!t) return "Sent";
-      const d = new Date(t);
-      if (Number.isNaN(d.getTime())) return "Sent";
-      return `Sent ${d.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`;
-    }
-    case "day_zero_failed": return "Send failed";
-    case "no_email":        return "No email";
-    case "no_demo":         return "No demo";
-    case "unsubscribed":    return "Unsubscribed";
-    default:                return lead.outreachStatus || "";
-  }
-}
-
-function contactSummary(lead: Pick<Lead, "decisionMakerName" | "decisionMakerTitle" | "phone" | "email">) {
-  if (lead.decisionMakerName) {
-    return `${lead.decisionMakerName}${lead.decisionMakerTitle ? `, ${lead.decisionMakerTitle}` : ""}`;
-  }
-  if (lead.email) return lead.email;
-  if (lead.phone) return `Phone: ${lead.phone}`;
-  return "No contact";
-}
-
-function LeadRow({ lead, selected, onSelect, onMarkContacted, markingContacted, onApproveOutreach, onRejectOutreach, outreachActionInFlight }: {
+interface LeadRowProps {
   lead: Lead;
   selected: boolean;
   onSelect: () => void;
   onMarkContacted: (lead: Lead) => void;
   markingContacted: boolean;
-  onApproveOutreach: (lead: Lead) => void;
-  onRejectOutreach: (lead: Lead) => void;
-  outreachActionInFlight: boolean;
-}) {
+}
+
+function LeadRow({ lead, selected, onSelect, onMarkContacted, markingContacted }: LeadRowProps) {
   return (
     <div
       role="button"
       tabIndex={0}
       onClick={onSelect}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") onSelect();
-      }}
+      onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") onSelect(); }}
       className={`w-full text-left px-4 py-3 border-t border-slate-100 hover:bg-slate-50 transition-colors ${
         selected ? "bg-teal-50/70" : "bg-white"
       }`}
@@ -397,6 +511,8 @@ function LeadRow({ lead, selected, onSelect, onMarkContacted, markingContacted, 
           <div className="font-bold text-sm text-slate-950 truncate">{lead.businessName}</div>
           <div className="text-xs text-slate-500 truncate">
             {contactSummary(lead)}
+            {!lead.email && <span className="ml-1.5 inline-flex border border-amber-100 bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded text-[10px] font-bold align-middle">no email</span>}
+            {!lead.decisionMakerName && <span className="ml-1.5 inline-flex border border-amber-100 bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded text-[10px] font-bold align-middle">no owner</span>}
           </div>
         </div>
         <div className="text-xs text-slate-600 min-w-0">
@@ -422,34 +538,10 @@ function LeadRow({ lead, selected, onSelect, onMarkContacted, markingContacted, 
           </div>
         </div>
         <div className="flex items-center justify-end gap-2">
-          {lead.outreachStatus === "draft" && (
-            <>
-              <button
-                type="button"
-                onClick={(event) => { event.stopPropagation(); onApproveOutreach(lead); }}
-                disabled={outreachActionInFlight}
-                className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
-              >
-                {outreachActionInFlight ? <Loader2 size={13} className="animate-spin" /> : null}
-                Approve
-              </button>
-              <button
-                type="button"
-                onClick={(event) => { event.stopPropagation(); onRejectOutreach(lead); }}
-                disabled={outreachActionInFlight}
-                className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100 disabled:opacity-50"
-              >
-                Reject
-              </button>
-            </>
-          )}
           {lead.status !== "contacted" && (
             <button
               type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                onMarkContacted(lead);
-              }}
+              onClick={(event) => { event.stopPropagation(); onMarkContacted(lead); }}
               disabled={markingContacted}
               className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-blue-100 bg-blue-50 px-2.5 py-2 text-xs font-bold text-blue-700 hover:bg-blue-100 disabled:opacity-50"
             >
@@ -487,45 +579,13 @@ function LeadRow({ lead, selected, onSelect, onMarkContacted, markingContacted, 
               Demo
             </a>
           )}
-          {typeof lead.demoQualityScore === "number" && (
-            <span className={`inline-flex border px-2 py-1 rounded-md text-[11px] font-bold ${qualityChipTone(lead.demoQualityScore)}`}>
-              {lead.demoQualityScore.toFixed(0)}/100
-            </span>
-          )}
-          {lead.outreachStatus && lead.outreachStatus !== "none" && (
-            <span className={`inline-flex border px-2 py-1 rounded-md text-[11px] font-bold ${outreachStatusTone(lead.outreachStatus)}`}>
-              {outreachStatusLabel(lead)}
-            </span>
-          )}
+          {!lead.email && <span className="inline-flex border border-amber-100 bg-amber-50 text-amber-700 px-2 py-1 rounded-md text-[11px] font-bold">no email</span>}
+          {!lead.decisionMakerName && <span className="inline-flex border border-amber-100 bg-amber-50 text-amber-700 px-2 py-1 rounded-md text-[11px] font-bold">no owner</span>}
         </div>
-        {lead.outreachStatus === "draft" && (
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={(event) => { event.stopPropagation(); onApproveOutreach(lead); }}
-              disabled={outreachActionInFlight}
-              className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 disabled:opacity-50"
-            >
-              {outreachActionInFlight ? <Loader2 size={14} className="animate-spin" /> : null}
-              Approve outreach
-            </button>
-            <button
-              type="button"
-              onClick={(event) => { event.stopPropagation(); onRejectOutreach(lead); }}
-              disabled={outreachActionInFlight}
-              className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 disabled:opacity-50"
-            >
-              Reject
-            </button>
-          </div>
-        )}
         {lead.status !== "contacted" && (
           <button
             type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onMarkContacted(lead);
-            }}
+            onClick={(event) => { event.stopPropagation(); onMarkContacted(lead); }}
             disabled={markingContacted}
             className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700 disabled:opacity-50"
           >
@@ -538,17 +598,14 @@ function LeadRow({ lead, selected, onSelect, onMarkContacted, markingContacted, 
   );
 }
 
-function LeadDetail({ lead, onSaved, onMarkContacted, markingContacted, onApproveOutreach, onRejectOutreach, onSendNow, outreachActionInFlight, sendNowInFlight }: {
+interface LeadDetailProps {
   lead: Lead | null;
   onSaved: (lead: Lead) => void;
   onMarkContacted: (lead: Lead) => void;
   markingContacted: boolean;
-  onApproveOutreach: (lead: Lead) => void;
-  onRejectOutreach: (lead: Lead) => void;
-  onSendNow: (lead: Lead) => void;
-  outreachActionInFlight: boolean;
-  sendNowInFlight: boolean;
-}) {
+}
+
+function LeadDetail({ lead, onSaved, onMarkContacted, markingContacted }: LeadDetailProps) {
   const [draft, setDraft] = useState({
     status: "new" as CrmStatus,
     notes: "",
@@ -657,6 +714,16 @@ function LeadDetail({ lead, onSaved, onMarkContacted, markingContacted, onApprov
             </div>
             <div className="font-semibold text-slate-900 truncate">{lead.signalCount || 0}</div>
           </div>
+          <div className="rounded-lg bg-slate-50 border border-slate-100 p-3 min-w-0">
+            <div className="flex items-center gap-2 text-[11px] font-bold uppercase text-slate-500 mb-1">
+              <Star size={13} /> Demo
+            </div>
+            <div className="font-semibold text-slate-900 truncate">
+              {typeof lead.demoQualityScore === "number"
+                ? <span className={`inline-flex border px-2 py-0.5 rounded-md text-[11px] font-bold ${qualityChipTone(lead.demoQualityScore)}`}>{lead.demoQualityScore.toFixed(0)}/100</span>
+                : "-"}
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
@@ -675,7 +742,32 @@ function LeadDetail({ lead, onSaved, onMarkContacted, markingContacted, onApprov
               <Globe size={15} /> Website <ExternalLink size={13} />
             </a>
           )}
+          {lead.demoUrl && (
+            <a href={lead.demoUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 text-slate-800 px-3 py-2.5 text-sm font-bold hover:bg-slate-50">
+              <ExternalLink size={15} /> Demo
+            </a>
+          )}
         </div>
+
+        {/* One-line outreach summary; full controls live in /admin/cold-email */}
+        {lead.outreachStatus && lead.outreachStatus !== "none" && (
+          <a
+            href={`/admin/cold-email?leadId=${lead.id}`}
+            className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5 hover:bg-slate-50"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <span className={`inline-flex border px-2 py-0.5 rounded-md text-[11px] font-bold ${outreachStatusTone(lead.outreachStatus)}`}>
+                {outreachStatusLabel(lead)}
+              </span>
+              {lead.emailSubject && (
+                <span className="text-xs text-slate-600 truncate">{lead.emailSubject}</span>
+              )}
+            </div>
+            <span className="inline-flex items-center gap-1 text-xs font-bold text-violet-700 shrink-0">
+              View in Cold Email <ChevronRight size={12} />
+            </span>
+          </a>
+        )}
 
         <div>
           <div className="flex items-center gap-2 text-[11px] font-bold uppercase text-slate-500 mb-2">
@@ -736,106 +828,6 @@ function LeadDetail({ lead, onSaved, onMarkContacted, markingContacted, onApprov
           </div>
         </div>
 
-        {lead.outreachStatus && lead.outreachStatus !== "none" && (
-          <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-[11px] font-bold uppercase text-slate-500">
-                <Rocket size={14} /> Autonomous Email
-              </div>
-              <span className={`inline-flex border px-2 py-0.5 rounded-md text-[11px] font-bold ${outreachStatusTone(lead.outreachStatus)}`}>
-                {outreachStatusLabel(lead)}
-              </span>
-            </div>
-
-            {lead.demoUrl && (
-              <a
-                href={lead.demoUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-teal-700"
-              >
-                <ExternalLink size={12} /> Preview demo site
-              </a>
-            )}
-
-            {lead.emailSubject && (
-              <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
-                <div className="text-[10px] font-bold uppercase text-slate-500 mb-1">Subject</div>
-                <div className="text-sm font-semibold text-slate-900 break-words">{lead.emailSubject}</div>
-              </div>
-            )}
-
-            {lead.emailBodyPreview && (
-              <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
-                <div className="text-[10px] font-bold uppercase text-slate-500 mb-1">Body preview</div>
-                <pre className="whitespace-pre-wrap text-xs text-slate-800 leading-5 font-sans">{lead.emailBodyPreview}</pre>
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              {lead.outreachScheduledFor && (
-                <div className="rounded-md bg-slate-50 border border-slate-100 px-3 py-2">
-                  <div className="text-[10px] font-bold uppercase text-slate-500">Scheduled</div>
-                  <div className="font-semibold text-slate-900">{new Date(lead.outreachScheduledFor).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</div>
-                </div>
-              )}
-              {lead.emailSentAt && (
-                <div className="rounded-md bg-emerald-50 border border-emerald-100 px-3 py-2">
-                  <div className="text-[10px] font-bold uppercase text-emerald-700">Sent</div>
-                  <div className="font-semibold text-emerald-900">{new Date(lead.emailSentAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</div>
-                </div>
-              )}
-              {lead.lastResendEmailId && (
-                <div className="rounded-md bg-slate-50 border border-slate-100 px-3 py-2 col-span-2 truncate">
-                  <div className="text-[10px] font-bold uppercase text-slate-500">Resend ID</div>
-                  <div className="font-mono text-[11px] text-slate-700 truncate">{lead.lastResendEmailId}</div>
-                </div>
-              )}
-              {lead.outreachError && (
-                <div className="rounded-md bg-rose-50 border border-rose-100 px-3 py-2 col-span-2">
-                  <div className="text-[10px] font-bold uppercase text-rose-700">Error</div>
-                  <div className="text-[11px] text-rose-900 break-words">{lead.outreachError}</div>
-                </div>
-              )}
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              {lead.outreachStatus === "draft" && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => onApproveOutreach(lead)}
-                    disabled={outreachActionInFlight}
-                    className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
-                  >
-                    {outreachActionInFlight ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                    Approve
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onRejectOutreach(lead)}
-                    disabled={outreachActionInFlight}
-                    className="inline-flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100 disabled:opacity-50"
-                  >
-                    <X size={14} /> Reject
-                  </button>
-                </>
-              )}
-              {(lead.outreachStatus === "queued" || lead.outreachStatus === "day_zero_failed") && (
-                <button
-                  type="button"
-                  onClick={() => onSendNow(lead)}
-                  disabled={sendNowInFlight}
-                  className="inline-flex items-center gap-2 rounded-lg bg-slate-950 px-3 py-2 text-xs font-bold text-white hover:bg-slate-800 disabled:opacity-50"
-                >
-                  {sendNowInFlight ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-                  Send now
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
         <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-3">
           <div className="text-[11px] font-bold uppercase text-slate-500">Pitch</div>
           <p className="text-sm text-slate-900 leading-6">{lead.pitch.opener || "-"}</p>
@@ -848,664 +840,5 @@ function LeadDetail({ lead, onSaved, onMarkContacted, markingContacted, onApprov
         </div>
       </div>
     </aside>
-  );
-}
-
-interface OutreachFilterOption {
-  value: string;
-  label: string;
-  count: number;
-  tone: string;
-}
-
-function OutreachPanel({ stats, activeFilter, onFilterChange }: {
-  stats?: OutreachStats;
-  activeFilter: string;
-  onFilterChange: (value: string) => void;
-}) {
-  const o = stats || { draft: 0, queued: 0, sending: 0, sent: 0, sentToday: 0, failed: 0, rejected: 0, unsubscribed: 0 };
-  const totalAttention = o.draft + o.failed;
-  const filters: OutreachFilterOption[] = [
-    { value: "all",            label: "All",        count: 0,             tone: "border-slate-200 bg-white text-slate-700" },
-    { value: "draft",          label: "Drafts (QA)", count: o.draft,       tone: "border-violet-200 bg-violet-50 text-violet-800" },
-    { value: "queued",         label: "Queued",     count: o.queued,      tone: "border-blue-200 bg-blue-50 text-blue-800" },
-    { value: "sending",        label: "Sending",    count: o.sending,     tone: "border-amber-200 bg-amber-50 text-amber-800" },
-    { value: "sent_today",     label: "Sent today", count: o.sentToday,   tone: "border-emerald-200 bg-emerald-50 text-emerald-800" },
-    { value: "day_zero_sent",  label: "Sent",       count: o.sent,        tone: "border-emerald-200 bg-emerald-50 text-emerald-800" },
-    { value: "day_zero_failed",label: "Failed",     count: o.failed,      tone: "border-rose-200 bg-rose-50 text-rose-800" },
-    { value: "rejected",       label: "Rejected",   count: o.rejected,    tone: "border-zinc-200 bg-zinc-50 text-zinc-700" },
-    { value: "unsubscribed",   label: "Unsub",      count: o.unsubscribed,tone: "border-zinc-200 bg-zinc-50 text-zinc-700" },
-  ];
-
-  return (
-    <section className="bg-white border border-slate-200 rounded-lg overflow-hidden">
-      <div className="px-4 sm:px-5 py-4 border-b border-slate-100 flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-violet-100 text-violet-700 flex items-center justify-center">
-              <Rocket size={16} />
-            </div>
-            <div>
-              <h2 className="text-sm font-black text-slate-950 leading-tight">Autonomous Cold Email</h2>
-              <p className="text-xs text-slate-500 leading-tight">
-                Drafts → QA approval → 7-9am local · drains every 15min Mon-Fri 10:00-17:00 UTC
-              </p>
-            </div>
-          </div>
-        </div>
-        {totalAttention > 0 && (
-          <div className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">
-            <AlertTriangle size={14} />
-            {o.draft > 0 && <span>{o.draft} awaiting QA</span>}
-            {o.draft > 0 && o.failed > 0 && <span>·</span>}
-            {o.failed > 0 && <span>{o.failed} failed</span>}
-          </div>
-        )}
-      </div>
-
-      <div className="px-4 sm:px-5 py-4 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-        <OutreachStat icon={<ShieldCheck size={14} />} label="Drafts" value={o.draft} tone="text-violet-700" />
-        <OutreachStat icon={<Inbox size={14} />} label="Queued" value={o.queued} tone="text-blue-700" />
-        <OutreachStat icon={<Send size={14} />} label="Sending" value={o.sending} tone="text-amber-700" />
-        <OutreachStat icon={<Clock size={14} />} label="Sent today" value={o.sentToday} tone="text-emerald-700" />
-        <OutreachStat icon={<Check size={14} />} label="Sent total" value={o.sent} tone="text-emerald-700" />
-        <OutreachStat icon={<AlertTriangle size={14} />} label="Failed" value={o.failed} tone="text-rose-700" />
-        <OutreachStat icon={<X size={14} />} label="Rejected" value={o.rejected} tone="text-zinc-600" />
-        <OutreachStat icon={<X size={14} />} label="Unsub" value={o.unsubscribed} tone="text-zinc-600" />
-      </div>
-
-      <div className="px-4 sm:px-5 pb-4 flex flex-wrap gap-2">
-        {filters.map((option) => {
-          const active = activeFilter === option.value;
-          return (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => onFilterChange(option.value)}
-              className={`inline-flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs font-bold transition-colors ${
-                active
-                  ? "border-slate-950 bg-slate-950 text-white"
-                  : option.tone + " hover:opacity-80"
-              }`}
-            >
-              {option.label}
-              {option.value !== "all" && (
-                <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${active ? "bg-white/15 text-white" : "bg-white/60"}`}>
-                  {option.count}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-function OutreachStat({ icon, label, value, tone }: {
-  icon: React.ReactNode;
-  label: string;
-  value: number;
-  tone: string;
-}) {
-  return (
-    <div className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2.5">
-      <div className={`flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide ${tone}`}>
-        {icon}
-        <span className="truncate">{label}</span>
-      </div>
-      <div className="text-xl font-black text-slate-950 mt-0.5">{value}</div>
-    </div>
-  );
-}
-
-export default function LeadsCrmPage() {
-  const [authed, setAuthed] = useState(false);
-  const [data, setData] = useState<CrmData | null>(null);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [query, setQuery] = useState("");
-  const [status, setStatus] = useState("all");
-  const [tier, setTier] = useState("all");
-  const [city, setCity] = useState("all");
-  const [niche, setNiche] = useState("all");
-  const [minScore, setMinScore] = useState("0");
-  const [localOnly, setLocalOnly] = useState(false);
-  const [noWebsite, setNoWebsite] = useState(false);
-  const [poorWebsite, setPoorWebsite] = useState(false);
-  const [toast, setToast] = useState("");
-  const [scrapeDispatching, setScrapeDispatching] = useState(false);
-  const [scrapePending, setScrapePending] = useState(false);
-  const [markingContactedId, setMarkingContactedId] = useState<number | null>(null);
-  const [outreachActionId, setOutreachActionId] = useState<number | null>(null);
-  const [outreachFilter, setOutreachFilter] = useState<string>("all");
-  const [sendNowId, setSendNowId] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const initialStatus = params.get("status");
-      const initialTier = params.get("tier");
-      if (initialStatus && (initialStatus === "all" || STATUS_OPTIONS.some((option) => option.value === initialStatus))) setStatus(initialStatus);
-      if (initialTier === "premium" || initialTier === "standard") setTier(initialTier);
-    }
-    if (typeof window !== "undefined" && sessionStorage.getItem("latchly-leads-crm-auth")) {
-      setAuthed(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (tier === "premium") {
-      setMinScore("9");
-      setNoWebsite(false);
-      setPoorWebsite(false);
-    }
-  }, [tier]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    if (status === "all") params.delete("status");
-    else params.set("status", status);
-    if (tier === "all") params.delete("tier");
-    else params.set("tier", tier);
-    const next = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
-    window.history.replaceState(null, "", next);
-  }, [status, tier]);
-
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const params = new URLSearchParams({
-        q: query,
-        status,
-        tier,
-        city,
-        niche,
-        minScore: tier === "premium" ? "9" : minScore,
-        limit: "150",
-      });
-      if (localOnly) params.set("local", "1");
-      if (tier === "premium") params.set("websiteIssue", "1");
-      if (noWebsite) params.set("noWebsite", "1");
-      if (poorWebsite) params.set("poorWebsite", "1");
-      if (outreachFilter && outreachFilter !== "all") params.set("outreachStatus", outreachFilter);
-
-      const res = await fetch(`/api/admin/latchly-leads?${params.toString()}`);
-      const json = await res.json();
-      if (res.status === 401) {
-        sessionStorage.removeItem("latchly-leads-crm-auth");
-        setAuthed(false);
-        return;
-      }
-      if (!res.ok) throw new Error(json.error || "Failed to load leads");
-      setData(json);
-      setSelectedId((current) => {
-        if (current && json.leads.some((lead: Lead) => lead.id === current)) return current;
-        return json.leads[0]?.id ?? null;
-      });
-    } catch (err: any) {
-      setError(err.message || "Failed to load leads");
-    } finally {
-      setLoading(false);
-    }
-  }, [city, localOnly, minScore, niche, noWebsite, poorWebsite, outreachFilter, query, status, tier]);
-
-  useEffect(() => {
-    if (authed) fetchData();
-  }, [authed, fetchData]);
-
-  const selectedLead = useMemo(() => {
-    return data?.leads.find((lead) => lead.id === selectedId) || null;
-  }, [data?.leads, selectedId]);
-
-  const handleSaved = (updated: Lead) => {
-    setData((current) => {
-      if (!current) return current;
-      const keep = status === "all" || updated.status === status;
-      return {
-        ...current,
-        leads: keep
-          ? current.leads.map((lead) => lead.id === updated.id ? updated : lead)
-          : current.leads.filter((lead) => lead.id !== updated.id),
-      };
-    });
-  };
-
-  const approveOutreach = async (lead: Lead) => {
-    if (lead.outreachStatus !== "draft") return;
-    setOutreachActionId(lead.id);
-    try {
-      const res = await fetch(`/api/admin/latchly-leads/${lead.id}/approve-outreach`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Approve failed");
-      setToast(`Queued — sends ${json.scheduledFor ? new Date(json.scheduledFor).toLocaleString(undefined, { hour: "numeric", minute: "2-digit", month: "short", day: "numeric" }) : "next send window"}`);
-      await fetchData();
-    } catch (err: any) {
-      setError(err.message || "Approve failed");
-    } finally {
-      setOutreachActionId(null);
-    }
-  };
-
-  const sendOutreachNow = async (lead: Lead) => {
-    if (!lead.emailSubject || !lead.emailBodyPreview) {
-      setError("This lead has no composed email yet");
-      return;
-    }
-    if (lead.outreachStatus === "day_zero_sent") {
-      setError("Already sent to this lead");
-      return;
-    }
-    const ok = window.confirm(
-      `Send this email to ${lead.email} right now? (Bypasses the 7-9am-local schedule.)`,
-    );
-    if (!ok) return;
-    setSendNowId(lead.id);
-    try {
-      const res = await fetch(`/api/admin/latchly-leads/${lead.id}/send-now`, {
-        method: "POST",
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Send failed");
-      setToast(`Sent to ${lead.email}`);
-      await fetchData();
-    } catch (err: any) {
-      setError(err.message || "Send failed");
-    } finally {
-      setSendNowId(null);
-    }
-  };
-
-  const rejectOutreach = async (lead: Lead) => {
-    if (lead.outreachStatus !== "draft") return;
-    const reason = window.prompt("Reason for rejecting this outreach (optional):", "rejected_in_qa");
-    if (reason === null) return;
-    setOutreachActionId(lead.id);
-    try {
-      const res = await fetch(`/api/admin/latchly-leads/${lead.id}/reject-outreach`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Reject failed");
-      setToast("Outreach rejected");
-      await fetchData();
-    } catch (err: any) {
-      setError(err.message || "Reject failed");
-    } finally {
-      setOutreachActionId(null);
-    }
-  };
-
-  const markContacted = async (lead: Lead) => {
-    if (lead.status === "contacted") return;
-    const optimistic = { ...lead, status: "contacted" as CrmStatus, lastContactedAt: new Date().toISOString() };
-    setMarkingContactedId(lead.id);
-    handleSaved(optimistic);
-    setToast("Marked contacted");
-    try {
-      const res = await fetch(`/api/admin/latchly-leads/${lead.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "contacted" }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Update failed");
-      handleSaved(json.lead);
-      await fetchData();
-    } catch (err: any) {
-      setError(err.message || "Failed to mark contacted");
-      await fetchData();
-    } finally {
-      setMarkingContactedId(null);
-    }
-  };
-
-  const pollRuns = useCallback(async () => {
-    try {
-      const res = await fetch("/api/admin/latchly-leads/runs");
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed to load runs");
-      const latest = json.runs?.[0];
-      // No runs at all, or latest has finished -> stop pending UI.
-      if (!latest || !["pending", "running"].includes(latest.status)) {
-        setScrapePending(false);
-      }
-      await fetchData();
-    } catch {
-      await fetchData();
-    }
-  }, [fetchData]);
-
-  const runScrapeNow = async () => {
-    setScrapeDispatching(true);
-    setError("");
-    try {
-      const res = await fetch("/api/admin/latchly-leads/scrape", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tier: tier === "all" ? "both" : tier,
-          target: 50,
-          dry_run: false,
-        }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Dispatch failed");
-      setScrapePending(true);
-      setToast("Scrape dispatched · workflow takes ~30-60 minutes");
-      await pollRuns();
-    } catch (err: any) {
-      setError(err.message || "Failed to dispatch scrape");
-    } finally {
-      setScrapeDispatching(false);
-    }
-  };
-
-  // Auto-resume polling on mount/refresh if a scrape is already in flight
-  // (e.g. user reloaded mid-run). Stale pending rows are auto-expired
-  // server-side after 2h, so this only fires for genuinely-active runs.
-  useEffect(() => {
-    const status = data?.latestRun?.status;
-    if (status === "pending" || status === "running") {
-      setScrapePending(true);
-    }
-  }, [data?.latestRun?.status]);
-
-  useEffect(() => {
-    if (!authed || !scrapePending) return;
-    const timer = window.setInterval(() => {
-      pollRuns();
-    }, 30000);
-    return () => window.clearInterval(timer);
-  }, [authed, pollRuns, scrapePending]);
-
-  useEffect(() => {
-    if (!toast) return;
-    const timer = window.setTimeout(() => setToast(""), 3500);
-    return () => window.clearTimeout(timer);
-  }, [toast]);
-
-  const logout = async () => {
-    await fetch("/api/dashboard/auth", { method: "DELETE" }).catch(() => null);
-    sessionStorage.removeItem("latchly-leads-crm-auth");
-    setAuthed(false);
-  };
-
-  const statusCountMap = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const item of data?.statusCounts || []) map.set(item.status, item.count);
-    return map;
-  }, [data?.statusCounts]);
-  const statusTabs = [
-    { value: "all", label: "All", count: data?.stats.total || 0 },
-    { value: "new", label: "New", count: statusCountMap.get("new") || 0 },
-    { value: "contacted", label: "Contacted", count: statusCountMap.get("contacted") || 0 },
-    { value: "won", label: "Won", count: statusCountMap.get("won") || 0 },
-    { value: "lost", label: "Lost", count: statusCountMap.get("lost") || 0 },
-  ];
-  const latestRunStatus = data?.latestRun?.status || "";
-  const runInProgress = scrapeDispatching || scrapePending || latestRunStatus === "pending" || latestRunStatus === "running";
-
-  if (!authed) return <AuthGate onAuth={() => setAuthed(true)} />;
-
-  return (
-    <div className="min-h-screen bg-slate-100 text-slate-950">
-      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
-        <div className="max-w-[1500px] mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-lg bg-slate-950 text-white flex items-center justify-center font-black shrink-0">L</div>
-            <div className="min-w-0">
-              <h1 className="text-lg font-black truncate">Leads CRM</h1>
-              <p className="text-xs text-slate-500 truncate">Scored home-service opportunities</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={fetchData}
-              disabled={loading}
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-            >
-              <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
-              Refresh
-            </button>
-            <button
-              onClick={logout}
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"
-            >
-              <LogOut size={15} />
-              Logout
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-[1500px] mx-auto px-4 sm:px-6 py-5 space-y-5">
-        {data && (
-          <div className="grid grid-cols-2 lg:grid-cols-5 xl:grid-cols-10 gap-3">
-            <StatTile icon={<Building2 size={15} />} label="In CRM" value={data.stats.total} />
-            <StatTile icon={<Star size={15} />} label="Premium" value={data.stats.premium} />
-            <StatTile icon={<Star size={15} />} label="Avg Score" value={data.stats.avgScore ?? "-"} />
-            <StatTile icon={<NotebookTabs size={15} />} label="New" value={data.stats.new} />
-            <StatTile icon={<Phone size={15} />} label="Active" value={data.stats.active} />
-            <StatTile icon={<MapPin size={15} />} label="Local" value={data.stats.local} />
-            <StatTile icon={<Globe size={15} />} label="No Website" value={data.stats.noWebsite} />
-            <StatTile icon={<Globe size={15} />} label="Poor Site" value={data.stats.poorWebsite} />
-            <StatTile icon={<CalendarClock size={15} />} label="Due" value={data.stats.dueFollowUp} />
-            <StatTile icon={<Check size={15} />} label="Won" value={data.stats.won} />
-          </div>
-        )}
-
-        {data && (
-          <section className="bg-white border border-slate-200 rounded-lg p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
-              {data.latestRun ? (
-                <>
-                  <span className="font-black text-slate-950">Run {formatDate(data.latestRun.runDate)}</span>
-                  <span className="text-slate-600">{data.latestRun.delivered}/{data.latestRun.target} delivered</span>
-                  <span className="text-slate-600">{data.latestRun.premiumDelivered || 0} premium</span>
-                  <span className="text-slate-600">{data.latestRun.local} local</span>
-                  <span className="text-slate-600">{data.latestRun.rejected} rejected</span>
-                </>
-              ) : (
-                <span className="font-black text-slate-950">No lead run recorded</span>
-              )}
-              <span className="text-emerald-700 font-semibold">{data.stats.total} in CRM</span>
-              {data.latestRun && (
-                <span className={data.latestRun.status === "pending" ? "text-blue-700 font-semibold" : data.latestRun.emailSent ? "text-teal-700 font-semibold" : data.latestRun.dryRun ? "text-amber-700 font-semibold" : "text-slate-500 font-medium"}>
-                  {data.latestRun.status === "pending" ? "Pending" : data.latestRun.emailSent ? "Email sent" : data.latestRun.dryRun ? "Dry run" : "Email skipped"}
-                </span>
-              )}
-            </div>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-              {data.latestRun?.underTargetReason && (
-                <div className="text-sm text-amber-800 bg-amber-50 border border-amber-100 rounded-md px-3 py-2">
-                  {data.latestRun.underTargetReason}
-                </div>
-              )}
-              <button
-                onClick={runScrapeNow}
-                disabled={runInProgress}
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 py-2.5 text-sm font-bold text-white hover:bg-slate-800 disabled:opacity-50"
-              >
-                {scrapeDispatching || scrapePending ? <Loader2 size={15} className="animate-spin" /> : <Play size={15} />}
-                Run scrape now
-              </button>
-            </div>
-          </section>
-        )}
-
-        {data && <OutreachPanel
-          stats={data.stats.outreach}
-          activeFilter={outreachFilter}
-          onFilterChange={(value) => setOutreachFilter(value)}
-        />}
-
-        {toast && (
-          <div className="rounded-lg border border-teal-100 bg-teal-50 px-4 py-3 text-sm font-semibold text-teal-800">
-            {toast}
-          </div>
-        )}
-
-        <section className="bg-white border border-slate-200 rounded-lg p-2 overflow-x-auto">
-          <div className="flex min-w-max gap-1">
-            {statusTabs.map((tab) => {
-              const active = status === tab.value;
-              return (
-                <button
-                  key={tab.value}
-                  onClick={() => setStatus(tab.value)}
-                  className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-bold transition-colors ${
-                    active ? "bg-slate-950 text-white" : "text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  {tab.label}
-                  <span className={`rounded-full px-2 py-0.5 text-[11px] ${active ? "bg-white/15 text-white" : "bg-slate-100 text-slate-600"}`}>
-                    {tab.count}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
-        <section className="bg-white border border-slate-200 rounded-lg p-4">
-          <div className="grid grid-cols-1 lg:grid-cols-[minmax(220px,1fr)_140px_160px_180px_120px_auto_auto_auto_auto] gap-3 items-center">
-            <div className="relative">
-              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search business, contact, phone"
-                className="w-full rounded-lg border border-slate-200 pl-9 pr-3 py-2.5 text-sm outline-none focus:border-teal-500"
-              />
-            </div>
-            <select value={tier} onChange={(event) => setTier(event.target.value)} className="rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-teal-500 bg-white">
-              <option value="all">All tiers</option>
-              <option value="premium">Premium</option>
-              <option value="standard">Standard</option>
-            </select>
-            <select value={city} onChange={(event) => setCity(event.target.value)} className="rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-teal-500 bg-white">
-              <option value="all">All cities</option>
-              {data?.filters.cities.map((option) => (
-                <option key={option.city} value={option.city}>{option.city} ({option.count})</option>
-              ))}
-            </select>
-            <select value={niche} onChange={(event) => setNiche(event.target.value)} className="rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-teal-500 bg-white">
-              <option value="all">All niches</option>
-              {data?.filters.niches.map((option) => (
-                <option key={option.niche} value={option.niche}>{option.niche} ({option.count})</option>
-              ))}
-            </select>
-            <select value={tier === "premium" ? "9" : minScore} disabled={tier === "premium"} onChange={(event) => setMinScore(event.target.value)} className="rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-teal-500 bg-white disabled:bg-slate-50 disabled:text-slate-400">
-              <option value="0">Any score</option>
-              <option value="8">8+</option>
-              <option value="9">9+</option>
-              <option value="9.5">9.5+</option>
-            </select>
-            <label className={`inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-bold cursor-pointer ${localOnly ? "border-teal-200 bg-teal-50 text-teal-800" : "border-slate-200 bg-white text-slate-700"}`}>
-              <input type="checkbox" checked={localOnly} onChange={(event) => setLocalOnly(event.target.checked)} className="sr-only" />
-              <MapPin size={15} /> Local
-            </label>
-            <label className={`inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-bold cursor-pointer ${noWebsite ? "border-amber-200 bg-amber-50 text-amber-800" : "border-slate-200 bg-white text-slate-700"}`}>
-              <input type="checkbox" checked={noWebsite} disabled={tier === "premium"} onChange={(event) => setNoWebsite(event.target.checked)} className="sr-only" />
-              <Globe size={15} /> No site
-            </label>
-            <label className={`inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-bold cursor-pointer ${tier === "premium" || poorWebsite ? "border-rose-200 bg-rose-50 text-rose-800" : "border-slate-200 bg-white text-slate-700"}`}>
-              <input type="checkbox" checked={tier === "premium" || poorWebsite} disabled={tier === "premium"} onChange={(event) => setPoorWebsite(event.target.checked)} className="sr-only" />
-              <Globe size={15} /> Poor site
-            </label>
-            <button
-              onClick={() => {
-                setQuery("");
-                setStatus("all");
-                setTier("all");
-                setCity("all");
-                setNiche("all");
-                setMinScore("8");
-                setLocalOnly(false);
-                setNoWebsite(false);
-                setPoorWebsite(false);
-              }}
-              className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50"
-            >
-              <Filter size={15} /> Reset
-            </button>
-          </div>
-        </section>
-
-        {error && (
-          <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
-            {error}
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_430px] gap-5 items-start">
-          <section className="bg-white border border-slate-200 rounded-lg overflow-hidden min-w-0">
-            <div className="px-4 py-3 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2 min-w-0">
-                <Building2 size={16} className="text-slate-500" />
-                <span className="text-sm font-black text-slate-950">
-                  {data?.leads.length ?? 0}
-                  {data && data.leads.length < (data.stats.total || 0) ? (
-                    <span className="font-bold text-slate-500"> of {data.stats.total} (filters active)</span>
-                  ) : (
-                    <span className="text-slate-500"> leads</span>
-                  )}
-                </span>
-              </div>
-              {loading && <Loader2 size={16} className="animate-spin text-slate-500" />}
-            </div>
-            <div className="hidden md:grid grid-cols-[minmax(220px,1.6fr)_130px_120px_100px_150px_130px] gap-3 px-4 py-2 bg-slate-50 border-t border-slate-100 text-[11px] font-bold uppercase tracking-wide text-slate-500">
-              <div>Business</div>
-              <div>Market</div>
-              <div>Status</div>
-              <div>Score</div>
-              <div>Tier / Flags</div>
-              <div className="text-right">Action</div>
-            </div>
-            {!data || data.leads.length === 0 ? (
-              <div className="py-16 text-center text-sm text-slate-500">
-                {loading ? "Loading leads..." : "No leads match"}
-              </div>
-            ) : (
-              data.leads.map((lead) => (
-                <LeadRow
-                  onApproveOutreach={approveOutreach}
-                  onRejectOutreach={rejectOutreach}
-                  outreachActionInFlight={outreachActionId === lead.id}
-                  key={lead.id}
-                  lead={lead}
-                  selected={lead.id === selectedId}
-                  onSelect={() => setSelectedId(lead.id)}
-                  onMarkContacted={markContacted}
-                  markingContacted={markingContactedId === lead.id}
-                />
-              ))
-            )}
-          </section>
-
-          <LeadDetail
-            lead={selectedLead}
-            onSaved={handleSaved}
-            onMarkContacted={markContacted}
-            markingContacted={Boolean(selectedLead && markingContactedId === selectedLead.id)}
-            onApproveOutreach={approveOutreach}
-            onRejectOutreach={rejectOutreach}
-            onSendNow={sendOutreachNow}
-            outreachActionInFlight={Boolean(selectedLead && outreachActionId === selectedLead.id)}
-            sendNowInFlight={Boolean(selectedLead && sendNowId === selectedLead.id)}
-          />
-        </div>
-      </main>
-    </div>
   );
 }
