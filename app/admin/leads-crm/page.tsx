@@ -65,6 +65,7 @@ export default function LeadsCrmPage() {
   const [scrapeDispatching, setScrapeDispatching] = useState(false);
   const [scrapePending, setScrapePending] = useState(false);
   const [markingContactedId, setMarkingContactedId] = useState<number | null>(null);
+  const [enrichingId, setEnrichingId] = useState<number | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -176,6 +177,34 @@ export default function LeadsCrmPage() {
       await fetchData();
     } finally {
       setMarkingContactedId(null);
+    }
+  };
+
+  const enrichLead = async (lead: Lead, target: "email" | "owner" | "all" = "all") => {
+    setEnrichingId(lead.id);
+    setError("");
+    try {
+      const res = await fetch(`/api/admin/latchly-leads/${lead.id}/enrich`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targets: target === "all" ? ["email", "owner"] : [target] }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Enrichment failed");
+      const found: string[] = [];
+      if (json.changes?.email) found.push(`email via ${json.changes.email.via}`);
+      if (json.changes?.decisionMakerName) found.push(`owner via ${json.changes.decisionMakerName.via}`);
+      if (found.length) {
+        setToast(`Enriched: ${found.join(", ")}`);
+      } else {
+        const note = (json.notes || []).join(" · ");
+        setToast(`No new info found${note ? ` · ${note}` : ""}`);
+      }
+      await fetchData();
+    } catch (err: any) {
+      setError(err.message || "Enrichment failed");
+    } finally {
+      setEnrichingId(null);
     }
   };
 
@@ -480,6 +509,8 @@ export default function LeadsCrmPage() {
             onSaved={handleSaved}
             onMarkContacted={markContacted}
             markingContacted={Boolean(selectedLead && markingContactedId === selectedLead.id)}
+            onEnrich={enrichLead}
+            enriching={Boolean(selectedLead && enrichingId === selectedLead.id)}
           />
         </div>
       </main>
@@ -603,9 +634,11 @@ interface LeadDetailProps {
   onSaved: (lead: Lead) => void;
   onMarkContacted: (lead: Lead) => void;
   markingContacted: boolean;
+  onEnrich: (lead: Lead, target?: "email" | "owner" | "all") => void;
+  enriching: boolean;
 }
 
-function LeadDetail({ lead, onSaved, onMarkContacted, markingContacted }: LeadDetailProps) {
+function LeadDetail({ lead, onSaved, onMarkContacted, markingContacted, onEnrich, enriching }: LeadDetailProps) {
   const [draft, setDraft] = useState({
     status: "new" as CrmStatus,
     notes: "",
@@ -770,8 +803,45 @@ function LeadDetail({ lead, onSaved, onMarkContacted, markingContacted }: LeadDe
         )}
 
         <div>
-          <div className="flex items-center gap-2 text-[11px] font-bold uppercase text-slate-500 mb-2">
-            <UserRound size={14} /> Contact
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="flex items-center gap-2 text-[11px] font-bold uppercase text-slate-500">
+              <UserRound size={14} /> Contact
+            </div>
+            <div className="flex items-center gap-1.5">
+              {!lead.email && (
+                <button
+                  type="button"
+                  onClick={() => onEnrich(lead, "email")}
+                  disabled={enriching}
+                  className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-bold text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+                  title="Scrape contact pages and pattern-guess the owner email"
+                >
+                  {enriching ? <Loader2 size={11} className="animate-spin" /> : <Mail size={11} />} Find email
+                </button>
+              )}
+              {!lead.decisionMakerName && (
+                <button
+                  type="button"
+                  onClick={() => onEnrich(lead, "owner")}
+                  disabled={enriching}
+                  className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-bold text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+                  title="Scrape about/team pages for the owner name"
+                >
+                  {enriching ? <Loader2 size={11} className="animate-spin" /> : <UserRound size={11} />} Find owner
+                </button>
+              )}
+              {lead.email && lead.decisionMakerName && (
+                <button
+                  type="button"
+                  onClick={() => onEnrich(lead, "all")}
+                  disabled={enriching}
+                  className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                  title="Re-run enrichment to refresh email + owner"
+                >
+                  {enriching ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />} Re-enrich
+                </button>
+              )}
+            </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <input value={draft.decisionMakerName} onChange={(event) => setDraft({ ...draft, decisionMakerName: event.target.value })} className="rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-teal-500" placeholder="Name" />
