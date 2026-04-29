@@ -8,6 +8,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { buildSeo } = require('./seo');
 
 const TEMPLATE_DIR = path.join(__dirname, 'templates');
 
@@ -29,10 +30,13 @@ const HTML_SAFE_KEYS = new Set([
   'heroAsideItems',
   'heroAsideReviews',
   'aboutCardItems',
+  'seoHead',
+  'seoJsonLd',
+  'faqSection',
 ]);
 
-function renderTemplate({ template, lead, enrichment, content, direction }) {
-  const data = composeRenderData({ lead, enrichment, content, direction });
+function renderTemplate({ template, lead, enrichment, content, direction, slug, siteBase }) {
+  const data = composeRenderData({ lead, enrichment, content, direction, slug, siteBase });
   return Object.entries(data).reduce((html, [key, value]) => {
     const re = new RegExp(`{{\\s*${key}\\s*}}`, 'g');
     const replacement = HTML_SAFE_KEYS.has(key) ? String(value || '') : escapeHtml(value);
@@ -40,7 +44,10 @@ function renderTemplate({ template, lead, enrichment, content, direction }) {
   }, template);
 }
 
-function composeRenderData({ lead = {}, enrichment = {}, content = {}, direction }) {
+function composeRenderData({ lead = {}, enrichment = {}, content = {}, direction, slug, siteBase }) {
+  const resolvedSlug = slug || makeSlug(lead);
+  const resolvedSiteBase = siteBase || process.env.SITE_BASE || 'https://latchlyai.com';
+  const seo = buildSeo({ lead, enrichment, content, slug: resolvedSlug, siteBase: resolvedSiteBase });
   const businessName = lead.businessName || 'Your Business';
   const city = lead.city || '';
   const state = lead.state || '';
@@ -125,7 +132,19 @@ function composeRenderData({ lead = {}, enrichment = {}, content = {}, direction
     hoursSummary,
     accentColor: accent || '#9a4d2b',
     year: String(new Date().getFullYear()),
+    seoHead: seo.seoHead,
+    seoJsonLd: seo.seoJsonLd,
+    faqSection: seo.faqSection,
   };
+}
+
+function makeSlug(lead) {
+  const raw = `${lead.businessName || 'business'}-${lead.city || ''}-${lead.state || ''}`;
+  return raw
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80);
 }
 
 function buildHeroAsideItems(enrichment, content) {

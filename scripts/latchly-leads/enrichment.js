@@ -70,6 +70,9 @@ async function enrichLead(lead, opts = {}) {
     result.averageRating = places.averageRating;
     result.photos = places.photos || [];
     result.hours = places.hours || null;
+    result.formattedAddress = places.formattedAddress || null;
+    result.coordinates = places.coordinates || null;
+    result.googleMapsUrl = places.googleMapsUrl || null;
     result.servicesVerified.push(...(places.servicesVerified || []));
   }
 
@@ -175,6 +178,11 @@ async function fetchPlaces(lead, opts = {}) {
     reviews,
     photos,
     hours,
+    formattedAddress: data.formatted_address || null,
+    coordinates: data.geometry?.location?.lat != null && data.geometry?.location?.lng != null
+      ? { lat: Number(data.geometry.location.lat), lng: Number(data.geometry.location.lng) }
+      : null,
+    googleMapsUrl: data.url || null,
     servicesVerified: Array.isArray(data.types)
       ? data.types
           .filter(t => !['point_of_interest', 'establishment'].includes(t))

@@ -102,14 +102,20 @@ async function runDemoOutreachStage(leads, opts = {}) {
 
       // 3) Demo build
       ctx.stage = 'demo_build';
-      const demo = await buildDemoForLead(lead, { enrichment, content: content || {} });
+      const slugForLead = makeSlug(lead);
+      const demo = await buildDemoForLead(lead, {
+        enrichment,
+        content: content || {},
+        slug: slugForLead,
+        siteBase: SITE_BASE,
+      });
       if (!demo.ok) {
         stats.demosFailed += 1;
         stats.errors.push({ businessKey: key, stage: 'demo_build', reason: demo.reason, lint: demo.lint });
         continue;
       }
 
-      const slug = makeSlug(lead);
+      const slug = slugForLead;
       const demoUrl = `${SITE_BASE}/demo/${slug}`;
       const demoPath = path.join(DEMOS_DIR, `${slug}.html`);
 

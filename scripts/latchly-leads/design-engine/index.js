@@ -11,12 +11,15 @@ const { pickDirection } = require('./directions');
 const { loadTemplate, renderTemplate } = require('./render');
 const { lintDemoHtml } = require('./lint');
 
-async function buildDemoForLead(lead, { enrichment, content, qualityFloor } = {}) {
+async function buildDemoForLead(lead, { enrichment, content, qualityFloor, slug, siteBase } = {}) {
   if (!lead) throw new Error('lead required');
 
   const direction = pickDirection(lead, enrichment || {});
   const template = loadTemplate(direction);
-  const html = renderTemplate({ template, lead, enrichment, content: content || {}, direction });
+  const html = renderTemplate({
+    template, lead, enrichment, content: content || {}, direction,
+    slug, siteBase,
+  });
 
   const lint = await lintDemoHtml(html, { lead, enrichment });
   const floor = Number(qualityFloor || process.env.LATCHLY_DEMO_QUALITY_FLOOR || 80);

@@ -49,11 +49,12 @@ function nextLocalSendWindow(stateAbbr, now = new Date(), opts = {}) {
   const minuteOfDay = localHour * 60 + localMinute;
 
   // Build a target Date that resolves to exactly local 07:00 in `tz`,
-  // either today (if we're before 09:00 local) or tomorrow.
-  const baseTodayLocal7 = localDateAtHour(localParts, 7, tz);
-  let targetUtc = baseTodayLocal7;
-  if (minuteOfDay >= 9 * 60) {
-    // Already past 9am local — target tomorrow
+  // either today (if we're still before 07:00 local) or tomorrow.
+  // We can't target today's 7-9am window once local time is already in or
+  // past 7:00 — the random jitter could land before now and the row would
+  // be marked due immediately, breaking the "fresh in the morning" promise.
+  let targetUtc = localDateAtHour(localParts, 7, tz);
+  if (minuteOfDay >= 7 * 60) {
     const tomorrow = { ...localParts };
     advanceLocalDay(tomorrow);
     targetUtc = localDateAtHour(tomorrow, 7, tz);
