@@ -496,6 +496,10 @@ function parseDbprResults(html, niche, licenseType, market) {
       state: 'FL',
       phone: '',
       website: '',
+      address,
+      licenseNumber,
+      licenseRelation: relation,
+      licenseStatus: status,
     });
   }
   return leads;
@@ -503,7 +507,23 @@ function parseDbprResults(html, niche, licenseType, market) {
 
 function enrichDbprCandidate(dbprLead, directoryResults = []) {
   const yp = findDirectoryBusinessMatch(dbprLead.businessName, directoryResults);
-  if (!yp || !yp.phone) return null;
+  // Previously we returned null when YP didn't match or had no phone, which
+  // silently discarded every DBPR lead missing a directory hit — even though
+  // the DBPR row itself carries a verified business name + license + address.
+  // Keep the lead and let downstream enrichment (Sunbiz, website audit, etc.)
+  // fill the contact gaps.
+  if (!yp) {
+    return {
+      ...dbprLead,
+      sourceName: 'florida-dbpr',
+      sourceRecordId: dbprLead.sourceRecordId,
+      rawPayload: { ...dbprLead.rawPayload },
+      phone: dbprLead.phone || '',
+      website: dbprLead.website || '',
+      ownerName: dbprLead.ownerName || '',
+      ownerTitle: dbprLead.ownerTitle || '',
+    };
+  }
   return {
     ...dbprLead,
     sourceName: 'florida-dbpr',
@@ -514,10 +534,10 @@ function enrichDbprCandidate(dbprLead, directoryResults = []) {
       enrichmentRecordId: yp.sourceRecordId,
       enrichmentPayload: yp.rawPayload,
     },
-    phone: yp.phone,
+    phone: yp.phone || dbprLead.phone || '',
     website: yp.website || dbprLead.website,
-    ownerName: yp.ownerName || '',
-    ownerTitle: yp.ownerTitle || '',
+    ownerName: yp.ownerName || dbprLead.ownerName || '',
+    ownerTitle: yp.ownerTitle || dbprLead.ownerTitle || '',
   };
 }
 

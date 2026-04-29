@@ -26,6 +26,7 @@ const { businessKey, currentHourET, ensureDir, loadEnv, todayInET } = require('.
 const { scoreLead } = require('./scoring');
 const { enforcePremiumGate, enforceStandardGate } = require('./quality-gate');
 const { runDemoOutreachStage } = require('./demo-outreach-stage');
+const { pickBestEmail, deriveBusinessDomain } = require('./email-utils');
 
 async function main() {
   loadEnv();
@@ -778,16 +779,17 @@ function progressEvent({ candidate, wave, index, total, latencyMs, audit, reject
 }
 
 function firstContactEmail(lead = {}, audit = {}) {
-  return [
+  const candidates = [
     lead.email,
     lead.rawPayload?.email,
     lead.rawPayload?.Email,
     audit.email,
     ...(Array.isArray(audit.emails) ? audit.emails : []),
     ...(audit.verifiedSignals?.contactTruth?.emails || []).map(item => item?.value),
-  ]
-    .map(value => String(value || '').trim().toLowerCase())
-    .find(value => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value)) || '';
+  ];
+  return pickBestEmail(candidates, {
+    businessDomain: deriveBusinessDomain(lead.website || ''),
+  });
 }
 
 function bump(object, key) {

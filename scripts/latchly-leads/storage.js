@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { LEADS_DIR } = require('./config');
 const { businessKey, ensureDir } = require('./utils');
+const { pickBestEmail, deriveBusinessDomain } = require('./email-utils');
 
 function createStorage() {
   const url = databaseUrl();
@@ -461,11 +462,32 @@ function createDbStorage(url) {
     },
     async attachEnrichment(businessKeyValue, { placeId, enrichmentData, existingSiteClone } = {}) {
       const db = await sql();
+      // Backflow owner + email from the enrichment object into the top-level
+      // CRM columns. Without this, enrichment.ownerName lives only in the
+      // enrichment_data JSONB and the dashboard's decision_maker_name column
+      // stays NULL even though we found the owner. NULLIF guards keep
+      // higher-confidence values from earlier discovery from being clobbered
+      // by a later enrichment pass that returned blanks.
+      const ownerName = enrichmentData?.ownerName ? String(enrichmentData.ownerName).trim() : null;
+      const ownerTitle = enrichmentData?.ownerTitle ? String(enrichmentData.ownerTitle).trim() : null;
+      const ownerConfidenceRaw = enrichmentData?.ownerConfidence ?? enrichmentData?.decisionMakerConfidence ?? null;
+      const ownerConfidence = ownerConfidenceRaw == null ? null : Number(ownerConfidenceRaw);
+      const enrichedEmail = pickBestEmail(
+        [
+          ...(Array.isArray(enrichmentData?.verifiedEmails) ? enrichmentData.verifiedEmails : []),
+          enrichmentData?.email,
+        ],
+        { businessDomain: deriveBusinessDomain(enrichmentData?.website || '') },
+      ) || null;
       await db`
         UPDATE latchly_leads SET
           place_id = COALESCE(${placeId || null}, place_id),
           enrichment_data = COALESCE(${enrichmentData ? JSON.stringify(enrichmentData) : null}::jsonb, enrichment_data),
           existing_site_clone = COALESCE(${existingSiteClone ? JSON.stringify(existingSiteClone) : null}::jsonb, existing_site_clone),
+          decision_maker_name = COALESCE(NULLIF(decision_maker_name, ''), ${ownerName}),
+          decision_maker_title = COALESCE(NULLIF(decision_maker_title, ''), ${ownerTitle}),
+          decision_maker_confidence = COALESCE(decision_maker_confidence, ${ownerConfidence}),
+          email = COALESCE(NULLIF(email, ''), ${enrichedEmail}),
           updated_at = NOW()
         WHERE business_key = ${businessKeyValue}`;
     },
@@ -606,16 +628,17 @@ function toCrmRecord(lead, meta = {}) {
 }
 
 function firstContactEmail(lead = {}, rawPayload = {}, auditPayload = {}) {
-  return [
+  const candidates = [
     lead.email,
     rawPayload.Email,
     rawPayload.email,
     auditPayload.email,
     ...(Array.isArray(auditPayload.emails) ? auditPayload.emails : []),
     ...(auditPayload.verifiedSignals?.contactTruth?.emails || []).map(item => item?.value),
-  ]
-    .map(value => String(value || '').trim().toLowerCase())
-    .find(value => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value)) || '';
+  ];
+  return pickBestEmail(candidates, {
+    businessDomain: deriveBusinessDomain(lead.website || ''),
+  });
 }
 
 function normalizeDecisionMaker(lead = {}) {

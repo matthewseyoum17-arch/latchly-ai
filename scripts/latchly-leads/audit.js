@@ -9,6 +9,7 @@ const {
   siteIssueFindings,
 } = require('./scoring');
 const { extractDecisionMaker } = require('./decision-maker');
+const { rankEmails } = require('./email-utils');
 
 const NAV_TIMEOUT_MS = Math.max(3000, parseInt(process.env.LATCHLY_AUDIT_NAV_TIMEOUT_MS || '12000', 10));
 const FETCH_TIMEOUT_MS = Math.max(3000, parseInt(process.env.LATCHLY_AUDIT_FETCH_TIMEOUT_MS || '8000', 10));
@@ -785,8 +786,12 @@ function stripTags(html) {
 }
 
 function extractEmails(text) {
-  return [...new Set((String(text || '').match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/ig) || [])
-    .map(email => email.toLowerCase()))];
+  // Sort best-first so downstream consumers that take emails[0] grab the
+  // strongest candidate (person-shaped local part, business domain) instead
+  // of whichever address appeared earliest in the page text.
+  const raw = (String(text || '').match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/ig) || [])
+    .map(email => email.toLowerCase());
+  return rankEmails(raw);
 }
 
 module.exports = {
