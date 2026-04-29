@@ -56,6 +56,7 @@ export default function ColdEmailPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [actionInFlightId, setActionInFlightId] = useState<number | null>(null);
   const [savingDraftId, setSavingDraftId] = useState<number | null>(null);
+  const [cheatsheet, setCheatsheet] = useState(false);
   // Re-render every 30s so timeUntil() text on queued rows ticks down.
   const [, setTick] = useState(0);
   useEffect(() => {
@@ -227,6 +228,50 @@ export default function ColdEmailPage() {
     }
   };
 
+  // Keyboard shortcuts. Only active on the Pending tab (drafts) and only
+  // when focus is outside an input/textarea/contentEditable so typing in
+  // the editor doesn't trigger row navigation. Shortcuts:
+  //   j / down arrow — next draft
+  //   k / up arrow   — previous draft
+  //   a              — Approve & Send the focused draft (confirms)
+  //   r              — Reject the focused draft (prompts for reason)
+  //   Esc            — clear selection
+  //   ?              — toggle cheatsheet
+  useEffect(() => {
+    if (tab !== "pending") return;
+    const handler = (event: KeyboardEvent) => {
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      const target = event.target as HTMLElement | null;
+      if (target) {
+        const tag = target.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+        if (target.isContentEditable) return;
+      }
+      const key = event.key;
+      if (key === "?") { event.preventDefault(); setCheatsheet((v) => !v); return; }
+      if (key === "Escape") { setSelectedId(null); setCheatsheet(false); return; }
+      if (!rows.length) return;
+      const currentIndex = selectedId == null ? -1 : rows.findIndex((row) => row.id === selectedId);
+      if (key === "j" || key === "ArrowDown") {
+        event.preventDefault();
+        const next = rows[Math.min(rows.length - 1, currentIndex + 1)] || rows[0];
+        setSelectedId(next.id);
+      } else if (key === "k" || key === "ArrowUp") {
+        event.preventDefault();
+        const prev = rows[Math.max(0, currentIndex - 1)] || rows[0];
+        setSelectedId(prev.id);
+      } else if ((key === "a" || key === "A") && selectedLead) {
+        event.preventDefault();
+        approveAndSend(selectedLead);
+      } else if ((key === "r" || key === "R") && selectedLead) {
+        event.preventDefault();
+        rejectDraft(selectedLead);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [tab, rows, selectedId, selectedLead, approveAndSend, rejectDraft]);
+
   if (!authed) return <AuthGate onAuth={() => setAuthed(true)} title="Cold Email" />;
 
   return (
@@ -245,6 +290,16 @@ export default function ColdEmailPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {tab === "pending" && (
+              <button
+                onClick={() => setCheatsheet((v) => !v)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                title="Keyboard shortcuts"
+              >
+                <span className="font-mono text-[11px]">?</span>
+                Shortcuts
+              </button>
+            )}
             <button
               onClick={fetchData}
               disabled={loading}
@@ -256,6 +311,33 @@ export default function ColdEmailPage() {
           </div>
         </div>
       </header>
+
+      {cheatsheet && tab === "pending" && (
+        <div className="fixed top-20 right-4 z-50 w-64 rounded-lg border border-slate-200 bg-white shadow-xl p-4 text-xs">
+          <div className="flex items-center justify-between mb-2">
+            <span className="font-black text-slate-950">Keyboard shortcuts</span>
+            <button
+              type="button"
+              onClick={() => setCheatsheet(false)}
+              className="text-slate-400 hover:text-slate-700"
+              aria-label="Close cheatsheet"
+            >
+              <X size={14} />
+            </button>
+          </div>
+          <ul className="space-y-1.5 text-slate-700">
+            <li className="flex items-center justify-between gap-2"><span className="font-mono bg-slate-100 px-1.5 py-0.5 rounded">j</span> Next draft</li>
+            <li className="flex items-center justify-between gap-2"><span className="font-mono bg-slate-100 px-1.5 py-0.5 rounded">k</span> Previous draft</li>
+            <li className="flex items-center justify-between gap-2"><span className="font-mono bg-slate-100 px-1.5 py-0.5 rounded">a</span> Approve &amp; Send focused</li>
+            <li className="flex items-center justify-between gap-2"><span className="font-mono bg-slate-100 px-1.5 py-0.5 rounded">r</span> Reject focused</li>
+            <li className="flex items-center justify-between gap-2"><span className="font-mono bg-slate-100 px-1.5 py-0.5 rounded">Esc</span> Clear selection</li>
+            <li className="flex items-center justify-between gap-2"><span className="font-mono bg-slate-100 px-1.5 py-0.5 rounded">?</span> Toggle this</li>
+          </ul>
+          <p className="mt-3 text-[10px] text-slate-500 leading-snug">
+            Disabled while typing in any input. Approve/Reject still confirm.
+          </p>
+        </div>
+      )}
 
       <div className="max-w-[1500px] mx-auto px-4 sm:px-6 py-5 space-y-5">
         <section className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">

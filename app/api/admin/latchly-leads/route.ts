@@ -207,6 +207,8 @@ export async function GET(request: NextRequest) {
             COUNT(*) FILTER (WHERE outreach_status = 'day_zero_failed')::int AS outreach_failed,
             COUNT(*) FILTER (WHERE outreach_status = 'rejected')::int AS outreach_rejected,
             COUNT(*) FILTER (WHERE outreach_status = 'unsubscribed')::int AS outreach_unsubscribed,
+            COUNT(*) FILTER (WHERE email IS NOT NULL AND email <> '' AND email_status <> 'rejected')::int AS with_email,
+            COUNT(*) FILTER (WHERE decision_maker_name IS NOT NULL AND decision_maker_name <> '')::int AS with_owner,
             ROUND(AVG(score)::numeric, 1) AS avg_score
           FROM latchly_leads`
       : await sql`
@@ -236,6 +238,8 @@ export async function GET(request: NextRequest) {
             COUNT(*) FILTER (WHERE outreach_status = 'day_zero_failed')::int AS outreach_failed,
             COUNT(*) FILTER (WHERE outreach_status = 'rejected')::int AS outreach_rejected,
             COUNT(*) FILTER (WHERE outreach_status = 'unsubscribed')::int AS outreach_unsubscribed,
+            COUNT(*) FILTER (WHERE email IS NOT NULL AND email <> '' AND email_status <> 'rejected')::int AS with_email,
+            COUNT(*) FILTER (WHERE decision_maker_name IS NOT NULL AND decision_maker_name <> '')::int AS with_owner,
             ROUND(AVG(score)::numeric, 1) AS avg_score
           FROM latchly_leads
           WHERE archived_at IS NULL`;
@@ -310,6 +314,8 @@ export async function GET(request: NextRequest) {
         poorWebsite: Number(summary?.poor_website_count || 0),
         dueFollowUp: Number(summary?.due_follow_up_count || 0),
         avgScore: summary?.avg_score == null ? null : Number(summary.avg_score),
+        withEmail: Number(summary?.with_email || 0),
+        withOwner: Number(summary?.with_owner || 0),
         outreach: {
           draft: Number(summary?.outreach_draft || 0),
           queued: Number(summary?.outreach_queued || 0),

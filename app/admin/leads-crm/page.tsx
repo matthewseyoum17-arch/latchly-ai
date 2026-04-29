@@ -324,18 +324,25 @@ export default function LeadsCrmPage() {
 
       <main className="max-w-[1500px] mx-auto px-4 sm:px-6 py-5 space-y-5">
         {data && (
-          <div className="grid grid-cols-2 lg:grid-cols-5 xl:grid-cols-10 gap-3">
-            <StatTile icon={<Building2 size={15} />} label="In CRM" value={data.stats.total} />
-            <StatTile icon={<Star size={15} />} label="Premium" value={data.stats.premium} />
-            <StatTile icon={<Star size={15} />} label="Avg Score" value={data.stats.avgScore ?? "-"} />
-            <StatTile icon={<NotebookTabs size={15} />} label="New" value={data.stats.new} />
-            <StatTile icon={<Phone size={15} />} label="Active" value={data.stats.active} />
-            <StatTile icon={<MapPin size={15} />} label="Local" value={data.stats.local} />
-            <StatTile icon={<Globe size={15} />} label="No Website" value={data.stats.noWebsite} />
-            <StatTile icon={<Globe size={15} />} label="Poor Site" value={data.stats.poorWebsite} />
-            <StatTile icon={<CalendarClock size={15} />} label="Due" value={data.stats.dueFollowUp} />
-            <StatTile icon={<Check size={15} />} label="Won" value={data.stats.won} />
-          </div>
+          <>
+            <div className="grid grid-cols-2 lg:grid-cols-5 xl:grid-cols-10 gap-3">
+              <StatTile icon={<Building2 size={15} />} label="In CRM" value={data.stats.total} />
+              <StatTile icon={<Star size={15} />} label="Premium" value={data.stats.premium} />
+              <StatTile icon={<Star size={15} />} label="Avg Score" value={data.stats.avgScore ?? "-"} />
+              <StatTile icon={<NotebookTabs size={15} />} label="New" value={data.stats.new} />
+              <StatTile icon={<Phone size={15} />} label="Active" value={data.stats.active} />
+              <StatTile icon={<MapPin size={15} />} label="Local" value={data.stats.local} />
+              <StatTile icon={<Globe size={15} />} label="No Website" value={data.stats.noWebsite} />
+              <StatTile icon={<Globe size={15} />} label="Poor Site" value={data.stats.poorWebsite} />
+              <StatTile icon={<CalendarClock size={15} />} label="Due" value={data.stats.dueFollowUp} />
+              <StatTile icon={<Check size={15} />} label="Won" value={data.stats.won} />
+            </div>
+            <CoverageBar
+              total={data.stats.total}
+              withEmail={data.stats.withEmail ?? 0}
+              withOwner={data.stats.withOwner ?? 0}
+            />
+          </>
         )}
 
         {data && (
@@ -514,6 +521,60 @@ export default function LeadsCrmPage() {
           />
         </div>
       </main>
+    </div>
+  );
+}
+
+// Coverage strip — % of CRM rows with email + owner. Sits under the stat
+// tiles so the operator sees enrichment health at a glance and knows when
+// to run /enrich on a lead. Both metrics exclude rejected emails so a
+// hand-cleared address doesn't inflate the percentage.
+function CoverageBar({ total, withEmail, withOwner }: {
+  total: number;
+  withEmail: number;
+  withOwner: number;
+}) {
+  if (!total) return null;
+  const emailPct = Math.min(100, Math.round((withEmail / total) * 100));
+  const ownerPct = Math.min(100, Math.round((withOwner / total) * 100));
+  return (
+    <section className="bg-white border border-slate-200 rounded-lg p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+      <CoverageGauge
+        label="Email coverage"
+        ratio={`${withEmail}/${total}`}
+        pct={emailPct}
+        hint={emailPct >= 85 ? "Healthy" : emailPct >= 60 ? "Most leads have email" : "Run Find Email on the no-email rows"}
+      />
+      <CoverageGauge
+        label="Owner-name coverage"
+        ratio={`${withOwner}/${total}`}
+        pct={ownerPct}
+        hint={ownerPct >= 75 ? "Healthy" : ownerPct >= 50 ? "Most leads have an owner" : "Run Find Owner on the no-owner rows"}
+      />
+    </section>
+  );
+}
+
+function CoverageGauge({ label, ratio, pct, hint }: {
+  label: string;
+  ratio: string;
+  pct: number;
+  hint: string;
+}) {
+  const tone = pct >= 75 ? "bg-emerald-500" : pct >= 50 ? "bg-amber-500" : "bg-rose-500";
+  return (
+    <div>
+      <div className="flex items-center justify-between text-xs font-bold text-slate-700 mb-1.5">
+        <span>{label}</span>
+        <span>
+          <span className="font-black text-slate-950">{pct}%</span>
+          <span className="text-slate-500 font-semibold ml-1.5">({ratio})</span>
+        </span>
+      </div>
+      <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+        <div className={`h-full ${tone} transition-all`} style={{ width: `${pct}%` }} />
+      </div>
+      <div className="mt-1 text-[11px] text-slate-500">{hint}</div>
     </div>
   );
 }
