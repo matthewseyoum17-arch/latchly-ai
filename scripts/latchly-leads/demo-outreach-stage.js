@@ -16,7 +16,7 @@ const { enrichLead } = require('./enrichment');
 const { generateSiteContent } = require('./site-content-engine');
 const { buildDemoForLead } = require('./design-engine');
 const { queueDayZeroForLead } = require('./outreach-queue');
-const { findEmail } = require('./email-finder');
+const { findEmailFromVerifiedSources } = require('./finders');
 const { deriveBusinessDomain } = require('./email-utils');
 
 const SITE_BASE = (process.env.SITE_BASE || 'https://latchlyai.com').replace(/\/+$/, '');
@@ -90,49 +90,33 @@ async function runDemoOutreachStage(leads, opts = {}) {
       const enrichment = await enrichLead(lead, { anthropic, googleApiKey: process.env.GOOGLE_MAPS_API_KEY });
       if (enrichment) stats.enriched += 1;
 
-      // 1a) Pattern-guess email when enrichment found an owner name + the lead
-      // has a domain but no real email. MX-validated against the domain to
-      // avoid shipping addresses to dead servers. Marked `pattern_guess_mx_only`
-      // so QA stays aware the mailbox wasn't directly verified.
-      //
-      // Gate hard on ownerConfidence and isPersonName: business-name heuristics
-      // can produce candidates like "Service Department" with confidence 0.5,
-      // and pattern-guessing those would ship junk emails that hard-bounce
-      // and damage Resend warmup. The guess is opt-in by quality, not by
-      // existence of any string in ownerName.
+      // 1a) Verified-source email lookup when enrichment found nothing. We no
+      // longer pattern-guess; the chain (BBB → WHOIS → Yelp → on-page scrape)
+      // either returns a real verified email or `not_available`. Skip leads
+      // with no verified email — they don't enter the outreach queue.
       const hasRealEmail =
         Boolean(lead.email)
         || Boolean(enrichment?.email)
         || (Array.isArray(enrichment?.verifiedEmails) && enrichment.verifiedEmails.length > 0);
-      const ownerForGuess = enrichment?.ownerName || lead.decisionMakerName || lead.ownerName || '';
-      const ownerConfidenceForGuess = Number(
-        enrichment?.ownerConfidence
-        ?? enrichment?.decisionMakerConfidence
-        ?? lead.decisionMakerConfidence
-        ?? 0,
-      );
-      const domainForGuess = deriveBusinessDomain(lead.website || enrichment?.website || '');
-      if (!hasRealEmail && ownerForGuess && domainForGuess) {
+      const domainForLookup = deriveBusinessDomain(lead.website || enrichment?.website || '');
+      if (!hasRealEmail && (lead.businessName || domainForLookup)) {
         try {
-          const guess = await findEmail({
-            ownerName: ownerForGuess,
-            domain: domainForGuess,
-            ownerConfidence: Number.isFinite(ownerConfidenceForGuess) ? ownerConfidenceForGuess : null,
+          const verified = await findEmailFromVerifiedSources({
+            businessName: lead.businessName,
+            city: lead.city,
+            state: lead.state,
+            website: lead.website,
+            domain: domainForLookup,
           });
-          if (guess?.ok && guess.email) {
-            enrichment.guessedEmail = guess.email;
-            enrichment.guessedEmailMethod = guess.method;
-            enrichment.email = enrichment.email || guess.email;
-            enrichment.emailProvenance = enrichment.emailProvenance || guess.method;
+          if (verified?.ok && verified.email) {
+            enrichment.email = enrichment.email || verified.email;
+            enrichment.emailProvenance = enrichment.emailProvenance || `verified:${verified.source}`;
             stats.outreachSkipped.no_email_recovered = (stats.outreachSkipped.no_email_recovered || 0) + 1;
-          } else if (guess?.reason) {
-            // Surface the gate reason for observability without blocking
-            // the lead from the rest of the demo+outreach flow.
-            stats.errors.push({ stage: 'email_guess_skipped', businessKey: key, reason: guess.reason });
+          } else if (verified?.reason) {
+            stats.errors.push({ stage: 'email_lookup_not_available', businessKey: key, reason: verified.reason, attempted: verified.attempted });
           }
         } catch (err) {
-          // Pattern guess is best-effort; never block the lead on it.
-          stats.errors.push({ stage: 'email_guess', businessKey: key, error: err.message });
+          stats.errors.push({ stage: 'email_lookup', businessKey: key, error: err.message });
         }
       }
 

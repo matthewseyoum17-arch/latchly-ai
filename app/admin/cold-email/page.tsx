@@ -169,9 +169,7 @@ export default function ColdEmailPage() {
   // schedule and ships immediately. The save-draft endpoint is called first
   // if the operator was editing, so any in-flight changes ride along.
   const approveAndSend = async (lead: Lead, edits?: { subject?: string; body?: string; email?: string }) => {
-    const confirmText = lead.emailStatus === "guessed"
-      ? `This email was pattern-guessed (${lead.email}). Sending may bounce — confirm?`
-      : `Send to ${lead.email} now? Bypasses the 7-9am-local schedule.`;
+    const confirmText = `Send to ${lead.email} now? Bypasses the 7-9am-local schedule.`;
     if (!window.confirm(confirmText)) return;
     setActionInFlightId(lead.id);
     try {
@@ -499,14 +497,9 @@ function RowCard({
                 Premium
               </span>
             )}
-            {lead.emailStatus === "guessed" && (
-              <span
-                className="inline-flex border border-amber-300 bg-amber-50 text-amber-800 px-1.5 py-0.5 rounded-md text-[10px] font-bold"
-                title="Pattern-guessed · domain MX validated, mailbox unverified"
-              >
-                ⚠ guessed
-              </span>
-            )}
+            {/* Pattern-guessed badges removed: guessing is permanently off (see
+                scripts/latchly-leads/finders/) and any historical guessed rows
+                were purged by migration 021-purge-guessed-emails.sql. */}
           </div>
           <div className="mt-1 text-xs text-slate-700 truncate">
             {lead.emailSubject || <span className="text-slate-400 italic">No subject yet</span>}
@@ -683,15 +676,10 @@ function PendingDetail({
         </div>
       </div>
 
-      {lead.emailStatus === "guessed" && (
-        <div className="mx-5 mt-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">
-          <div className="font-bold flex items-center gap-1.5">⚠ Pattern-guessed email</div>
-          <div className="mt-1 leading-relaxed">
-            We MX-validated <span className="font-mono">{lead.email}</span> but did not verify the mailbox itself.
-            Sending may bounce. Edit the address below or reject the draft if you can't confirm it.
-          </div>
-        </div>
-      )}
+      {/* Pattern-guessed warning removed: every email queued for outreach now
+          comes from a verified public source (BBB, OpenCorporates, Yelp,
+          WHOIS, or contact-page scrape). Leads without a verified email are
+          marked email_status='not_available' and never reach this drafting UI. */}
 
       <div className="p-5 space-y-4 overflow-y-auto">
         {lead.demoUrl && (

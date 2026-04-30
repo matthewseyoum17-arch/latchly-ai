@@ -78,10 +78,14 @@ export interface Lead {
     | "operator_set"
     | "operator_cleared"
     | "enrichment"
-    | "pattern_guess_mx_only"
+    | "bbb"
+    | "opencorporates"
+    | "yelp"
+    | "whois"
+    | "website_scrape"
     | string
     | null;
-  emailStatus?: "unknown" | "verified" | "guessed" | "rejected";
+  emailStatus?: "unknown" | "verified" | "rejected" | "not_available";
   emailOpenCount?: number;
   emailFirstOpenedAt?: string | null;
   emailLastOpenedAt?: string | null;

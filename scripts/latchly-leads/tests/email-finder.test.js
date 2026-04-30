@@ -1,82 +1,65 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { permute, isPersonName, splitName, findEmail } = require('../email-finder');
+const { findEmail, verifyDeliverable } = require('../email-finder');
+const { _internals: whoisInternals } = require('../finders/whois');
 
-test('isPersonName accepts realistic first+last names', () => {
-  assert.equal(isPersonName('Jane Smith'), true);
-  assert.equal(isPersonName('John A. Doe'), true);
-  assert.equal(isPersonName("Maria O'Brien"), true);
-  assert.equal(isPersonName('Hans-Peter Mueller'), true);
-});
+// The legacy permute/isPersonName/splitName tests were deleted along with
+// the pattern-guess code path. Email finding is now verified-only — the
+// only way to get an email is for a real public source (BBB/WHOIS/Yelp/
+// website scrape) to surface one. The tests below exercise the new
+// contract: refusal-to-guess and the verified-source helpers.
 
-test('isPersonName rejects single tokens', () => {
-  assert.equal(isPersonName('Jane'), false);
-  assert.equal(isPersonName('Owner'), false);
-  assert.equal(isPersonName(''), false);
-  assert.equal(isPersonName(null), false);
-});
-
-test('isPersonName rejects department / role names', () => {
-  assert.equal(isPersonName('Service Department'), false);
-  assert.equal(isPersonName('Customer Care'), false);
-  assert.equal(isPersonName('Customer Support'), false);
-  assert.equal(isPersonName('Sales Office'), false);
-  assert.equal(isPersonName('Front Desk'), false);
-});
-
-test('isPersonName tolerates name particles like Jr / III', () => {
-  assert.equal(isPersonName('John Smith Jr'), true);
-  assert.equal(isPersonName('Henry Ford III'), true);
-  // ...but not "John Jr" alone — particle stripping leaves a single token.
-  assert.equal(isPersonName('John Jr'), false);
-});
-
-test('splitName parses standard cases', () => {
-  assert.deepEqual(splitName('Jane Smith'), { first: 'jane', last: 'smith' });
-  assert.deepEqual(splitName("Mary O'Brien"), { first: 'mary', last: "o'brien" });
-  assert.deepEqual(splitName('   '), null);
-});
-
-test('permute generates the expected high-priority patterns', () => {
-  const candidates = permute('Jane Smith', 'acme.com');
-  // First few should be the canonical SMB patterns
-  assert.ok(candidates.includes('jane@acme.com'), 'jane@acme.com missing');
-  assert.ok(candidates.includes('jane.smith@acme.com'), 'jane.smith@acme.com missing');
-  assert.ok(candidates.includes('jsmith@acme.com'), 'jsmith@acme.com missing');
-  // No duplicates
-  assert.equal(new Set(candidates).size, candidates.length);
-});
-
-test('permute returns nothing for unparseable input', () => {
-  assert.deepEqual(permute('', 'acme.com'), []);
-  assert.deepEqual(permute('Jane Smith', ''), []);
-});
-
-test('findEmail refuses non-person owner names', async () => {
-  const r = await findEmail({ ownerName: 'Service Department', domain: 'acme.com' });
+test('findEmail returns not_available when nothing is supplied', async () => {
+  const r = await findEmail({});
   assert.equal(r.ok, false);
-  assert.equal(r.reason, 'owner_name_not_person_shaped');
+  assert.equal(r.reason, 'no_business_name_or_domain');
 });
 
-test('findEmail refuses single-token names', async () => {
-  const r = await findEmail({ ownerName: 'Owner', domain: 'acme.com' });
-  assert.equal(r.ok, false);
-  assert.equal(r.reason, 'owner_name_not_person_shaped');
-});
-
-test('findEmail refuses confidence below the floor', async () => {
+test('findEmail never returns a method matching pattern_guess', async () => {
+  // Even if someone passes the legacy ownerName/website args, the new
+  // findEmail must not surface a guessed email. With no real data it
+  // should fall through to not_available.
   const r = await findEmail({
+    businessName: '',
     ownerName: 'Jane Smith',
-    domain: 'acme.com',
-    ownerConfidence: 0.4,
-    minConfidence: 0.6,
+    domain: 'definitely-not-a-real-domain-9eb4.com',
   });
-  assert.equal(r.ok, false);
-  assert.match(r.reason, /owner_confidence_below_floor/);
+  if (r.ok) {
+    assert.doesNotMatch(String(r.method || ''), /pattern_guess/i);
+  }
 });
 
-test('findEmail returns no_domain when both website and domain are empty', async () => {
-  const r = await findEmail({ ownerName: 'Jane Smith' });
+test('whois parser strips redacted-for-privacy registrant emails', () => {
+  const sample = `
+    Domain Name: ACME-EXAMPLE.COM
+    Registrant Name: REDACTED FOR PRIVACY
+    Registrant Email: redacted-for-privacy@example.com
+  `;
+  const parsed = whoisInternals.parseWhois(sample);
+  assert.equal(parsed.registrantEmail, null);
+  assert.equal(parsed.registrantName, null);
+});
+
+test('whois parser surfaces a real registrant email', () => {
+  const sample = `
+    Domain Name: ACME-EXAMPLE.COM
+    Registrant Name: Jane Smith
+    Registrant Email: jane@acme-example.com
+  `;
+  const parsed = whoisInternals.parseWhois(sample);
+  assert.equal(parsed.registrantEmail, 'jane@acme-example.com');
+  assert.equal(parsed.registrantName, 'Jane Smith');
+});
+
+test('whois person-name guard rejects entity strings', () => {
+  assert.equal(whoisInternals.isPersonShapedName('ACME LLC'), false);
+  assert.equal(whoisInternals.isPersonShapedName('Acme Holdings Group'), false);
+  assert.equal(whoisInternals.isPersonShapedName('Jane Smith'), true);
+  assert.equal(whoisInternals.isPersonShapedName('Jane'), false);
+});
+
+test('verifyDeliverable returns invalid_format for malformed input', async () => {
+  const r = await verifyDeliverable('not-an-email');
   assert.equal(r.ok, false);
-  assert.equal(r.reason, 'no_domain');
+  assert.equal(r.reason, 'invalid_format');
 });

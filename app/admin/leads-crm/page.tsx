@@ -67,6 +67,12 @@ export default function LeadsCrmPage() {
   const [scrapePending, setScrapePending] = useState(false);
   const [markingContactedId, setMarkingContactedId] = useState<number | null>(null);
   const [enrichingId, setEnrichingId] = useState<number | null>(null);
+  // Bulk find-email / find-owner state. Both run as a single /bulk-enrich
+  // SSE call with a target ('email' | 'owner' | 'both'); progress lines
+  // stream into bulkLog and the final summary lands in bulkSummary.
+  const [bulkRunning, setBulkRunning] = useState<null | "email" | "owner" | "both">(null);
+  const [bulkLog, setBulkLog] = useState<{ leadId: number; businessName: string | null; target: string; ok: boolean; source?: string; value?: string; reason?: string }[]>([]);
+  const [bulkSummary, setBulkSummary] = useState<null | { processed: number; skipped: number; found: { email: number; owner: number }; notAvailable: { email: number; owner: number }; errors: number }>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -180,6 +186,69 @@ export default function LeadsCrmPage() {
       setMarkingContactedId(null);
     }
   };
+
+  // Run the verified-source finder chain across every lead in the current
+  // filtered view that is missing the target field. Pattern-guessing is
+  // permanently off — leads that don't surface a verified hit are marked
+  // 'not_available' and never re-tried automatically.
+  const runBulkFind = useCallback(async (target: "email" | "owner" | "both") => {
+    if (!data?.leads?.length || bulkRunning) return;
+    const leadIds = data.leads
+      .filter((lead) => {
+        if (target === "email") return !lead.email;
+        if (target === "owner") return !lead.decisionMakerName;
+        return !lead.email || !lead.decisionMakerName;
+      })
+      .map((lead) => lead.id);
+    if (!leadIds.length) {
+      setToast(`No leads missing ${target === "both" ? "email or owner" : target} in this view`);
+      return;
+    }
+    setBulkRunning(target);
+    setBulkLog([]);
+    setBulkSummary(null);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/latchly-leads/bulk-enrich", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leadIds, target }),
+      });
+      if (!res.ok || !res.body) {
+        throw new Error(`bulk_enrich_failed_${res.status}`);
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      // SSE frames are `event: <name>\ndata: <json>\n\n`. Parse incrementally.
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let frameEnd: number;
+        while ((frameEnd = buffer.indexOf("\n\n")) !== -1) {
+          const frame = buffer.slice(0, frameEnd);
+          buffer = buffer.slice(frameEnd + 2);
+          const eventLine = frame.match(/^event:\s*(.+)$/m);
+          const dataLine = frame.match(/^data:\s*(.+)$/m);
+          if (!eventLine || !dataLine) continue;
+          const name = eventLine[1].trim();
+          let payload: any;
+          try { payload = JSON.parse(dataLine[1]); } catch { continue; }
+          if (name === "progress") {
+            setBulkLog((prev) => [payload, ...prev].slice(0, 60));
+          } else if (name === "summary") {
+            setBulkSummary(payload);
+          }
+        }
+      }
+      await fetchData();
+    } catch (err: any) {
+      setError(err?.message || "bulk_enrich_failed");
+    } finally {
+      setBulkRunning(null);
+    }
+  }, [data?.leads, bulkRunning, fetchData]);
 
   const enrichLead = async (lead: Lead, target: "email" | "owner" | "all" = "all") => {
     setEnrichingId(lead.id);
@@ -472,7 +541,7 @@ export default function LeadsCrmPage() {
 
         <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_430px] gap-5 items-start">
           <section className="bg-white border border-slate-200 rounded-lg overflow-hidden min-w-0">
-            <div className="px-4 py-3 flex items-center justify-between gap-3">
+            <div className="px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-2 min-w-0">
                 <Building2 size={16} className="text-slate-500" />
                 <span className="text-sm font-black text-slate-950">
@@ -484,8 +553,92 @@ export default function LeadsCrmPage() {
                   )}
                 </span>
               </div>
-              {loading && <Loader2 size={16} className="animate-spin text-slate-500" />}
+              <div className="flex items-center gap-2 flex-wrap">
+                {(() => {
+                  const missingEmail = data?.leads.filter(l => !l.email).length ?? 0;
+                  const missingOwner = data?.leads.filter(l => !l.decisionMakerName).length ?? 0;
+                  return (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => runBulkFind("email")}
+                        disabled={bulkRunning !== null || missingEmail === 0}
+                        className="inline-flex items-center gap-1.5 rounded-md border border-teal-200 bg-teal-50 px-2.5 py-1.5 text-[12px] font-bold text-teal-800 hover:bg-teal-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Find verified emails for every lead in this view that's missing one. Sources: BBB, OpenCorporates, Yelp, WHOIS, contact-page scrape. Never guesses."
+                      >
+                        {bulkRunning === "email" || bulkRunning === "both" ? (
+                          <Loader2 size={12} className="animate-spin" />
+                        ) : (
+                          <Mail size={12} />
+                        )}
+                        Find emails ({missingEmail})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => runBulkFind("owner")}
+                        disabled={bulkRunning !== null || missingOwner === 0}
+                        className="inline-flex items-center gap-1.5 rounded-md border border-teal-200 bg-teal-50 px-2.5 py-1.5 text-[12px] font-bold text-teal-800 hover:bg-teal-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Find verified owner names for every lead in this view that's missing one. Sources: BBB, OpenCorporates, Yelp, WHOIS."
+                      >
+                        {bulkRunning === "owner" || bulkRunning === "both" ? (
+                          <Loader2 size={12} className="animate-spin" />
+                        ) : (
+                          <UserRound size={12} />
+                        )}
+                        Find owners ({missingOwner})
+                      </button>
+                    </>
+                  );
+                })()}
+                {loading && <Loader2 size={16} className="animate-spin text-slate-500" />}
+              </div>
             </div>
+            {(bulkRunning || bulkSummary || bulkLog.length > 0) && (
+              <div className="px-4 py-2 border-t border-slate-100 bg-slate-50">
+                {bulkSummary ? (
+                  <div className="flex items-center justify-between gap-3 text-[12px] text-slate-700">
+                    <div>
+                      <span className="font-bold">Done.</span>{" "}
+                      Processed {bulkSummary.processed}
+                      {bulkSummary.skipped > 0 ? ` (skipped ${bulkSummary.skipped})` : ""} · Found{" "}
+                      <span className="font-bold text-emerald-700">
+                        {bulkSummary.found.email + bulkSummary.found.owner}
+                      </span>{" "}
+                      ({bulkSummary.found.email} email · {bulkSummary.found.owner} owner) · Not available{" "}
+                      <span className="font-bold text-slate-600">
+                        {bulkSummary.notAvailable.email + bulkSummary.notAvailable.owner}
+                      </span>
+                      {bulkSummary.errors > 0 ? <> · <span className="text-rose-700 font-bold">{bulkSummary.errors} errors</span></> : null}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setBulkLog([]); setBulkSummary(null); }}
+                      className="text-slate-500 hover:text-slate-700 text-[11px] font-bold"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                ) : (
+                  <div className="text-[12px] text-slate-700 font-medium">
+                    Running verified-source chain… {bulkLog.length} processed
+                  </div>
+                )}
+                {bulkLog.length > 0 && (
+                  <div className="mt-2 max-h-28 overflow-y-auto text-[11px] font-mono space-y-0.5">
+                    {bulkLog.slice(0, 8).map((entry, i) => (
+                      <div key={i} className={entry.ok ? "text-emerald-700" : entry.reason === "not_available" ? "text-slate-500" : "text-amber-700"}>
+                        {entry.ok ? "✓" : entry.reason === "not_available" ? "—" : "·"}{" "}
+                        <span className="text-slate-900">{entry.businessName}</span>{" "}
+                        <span className="text-slate-500">[{entry.target}]</span>{" "}
+                        {entry.ok
+                          ? <span>via {entry.source}: {entry.value}</span>
+                          : <span>{entry.reason}</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             <div className="hidden md:grid grid-cols-[minmax(220px,1.6fr)_130px_120px_100px_150px_130px] gap-3 px-4 py-2 bg-slate-50 border-t border-slate-100 text-[11px] font-bold uppercase tracking-wide text-slate-500">
               <div>Business</div>
               <div>Market</div>
@@ -624,7 +777,7 @@ function LeadRow({ lead, selected, onSelect, onMarkContacted, markingContacted }
             {contactSummary(lead)}
             {!lead.email && <span className="ml-1.5 inline-flex border border-amber-100 bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded text-[10px] font-bold align-middle">no email</span>}
             {!lead.decisionMakerName && <span className="ml-1.5 inline-flex border border-amber-100 bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded text-[10px] font-bold align-middle">no owner</span>}
-            {lead.emailStatus === "guessed" && <span className="ml-1.5 inline-flex border border-amber-300 bg-amber-50 text-amber-800 px-1.5 py-0.5 rounded text-[10px] font-bold align-middle" title="Pattern-guessed · MX validated, mailbox unverified">⚠ guessed</span>}
+            {lead.emailStatus === "not_available" && <span className="ml-1.5 inline-flex border border-slate-200 bg-slate-50 text-slate-600 px-1.5 py-0.5 rounded text-[10px] font-bold align-middle" title="Verified-source chain (BBB / OpenCorporates / Yelp / WHOIS) returned nothing">not available</span>}
           </div>
         </div>
         <div className="text-xs text-slate-600 min-w-0">
@@ -917,41 +1070,11 @@ function LeadDetail({ lead, onSaved, onMarkContacted, markingContacted, onEnrich
             <div className="flex items-center gap-2 text-[11px] font-bold uppercase text-slate-500">
               <UserRound size={14} /> Contact
             </div>
-            <div className="flex items-center gap-1.5">
-              {!lead.email && (
-                <button
-                  type="button"
-                  onClick={() => onEnrich(lead, "email")}
-                  disabled={enriching}
-                  className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-bold text-amber-800 hover:bg-amber-100 disabled:opacity-50"
-                  title="Scrape contact pages and pattern-guess the owner email"
-                >
-                  {enriching ? <Loader2 size={11} className="animate-spin" /> : <Mail size={11} />} Find email
-                </button>
-              )}
-              {!lead.decisionMakerName && (
-                <button
-                  type="button"
-                  onClick={() => onEnrich(lead, "owner")}
-                  disabled={enriching}
-                  className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-bold text-amber-800 hover:bg-amber-100 disabled:opacity-50"
-                  title="Scrape about/team pages for the owner name"
-                >
-                  {enriching ? <Loader2 size={11} className="animate-spin" /> : <UserRound size={11} />} Find owner
-                </button>
-              )}
-              {lead.email && lead.decisionMakerName && (
-                <button
-                  type="button"
-                  onClick={() => onEnrich(lead, "all")}
-                  disabled={enriching}
-                  className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-                  title="Re-run enrichment to refresh email + owner"
-                >
-                  {enriching ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />} Re-enrich
-                </button>
-              )}
-            </div>
+            {(!lead.email || !lead.decisionMakerName) && lead.emailStatus !== "not_available" && (
+              <div className="text-[11px] text-slate-500 font-medium">
+                Use the bulk Find buttons above the leads list
+              </div>
+            )}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <input value={draft.decisionMakerName} onChange={(event) => setDraft({ ...draft, decisionMakerName: event.target.value })} className="rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-teal-500" placeholder="Name" />

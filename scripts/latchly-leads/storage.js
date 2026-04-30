@@ -515,11 +515,19 @@ function createDbStorage(url) {
         businessDomain: deriveBusinessDomain(enrichmentData?.website || ''),
       }) || null;
       const enrichmentEmailRaw = enrichmentData?.email ? String(enrichmentData.email).trim().toLowerCase() : null;
-      const guessedEmail = enrichmentData?.guessedEmailMethod === 'pattern_guess_mx_only'
-        ? (enrichmentData.guessedEmail || enrichmentEmailRaw)
-        : null;
+      const enrichmentProvenance = enrichmentData?.emailProvenance || null;
 
-      // Candidate + provenance: prefer verified > raw enrichment > pattern guess.
+      // Pattern-guessed emails are no longer accepted. If enrichment surfaces
+      // a `pattern_guess_mx_only` provenance (legacy enrichment payload, or
+      // an old cached row), drop it on the floor — the lead's email goes
+      // unset and the row falls into 'not_available'. The migration will have
+      // already purged any historical guessed rows, but the runtime guard
+      // keeps anything mid-flight from re-introducing one.
+      const isLegacyGuess = enrichmentProvenance === 'pattern_guess_mx_only'
+        || enrichmentData?.guessedEmailMethod === 'pattern_guess_mx_only';
+
+      // Candidate + provenance: verified scrape > raw enrichment with a real
+      // (non-guess) provenance > nothing.
       let candidateEmail = null;
       let candidateProvenance = null;
       let candidateStatus = null;
@@ -527,14 +535,10 @@ function createDbStorage(url) {
         candidateEmail = verifiedEmail;
         candidateProvenance = 'verified_scrape';
         candidateStatus = 'verified';
-      } else if (enrichmentEmailRaw && !guessedEmail) {
+      } else if (enrichmentEmailRaw && !isLegacyGuess) {
         candidateEmail = enrichmentEmailRaw;
-        candidateProvenance = enrichmentData?.emailProvenance || 'enrichment';
+        candidateProvenance = enrichmentProvenance || 'enrichment';
         candidateStatus = 'verified';
-      } else if (guessedEmail) {
-        candidateEmail = guessedEmail;
-        candidateProvenance = 'pattern_guess_mx_only';
-        candidateStatus = 'guessed';
       }
 
       await db`

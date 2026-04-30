@@ -1,22 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
-import dns from "node:dns/promises";
 import { verifyDashboardRequest } from "@/lib/auth";
 
-// On-demand enrichment for a single lead. Triggered from the CRM "Find
-// email" / "Find owner" buttons. Runs the FREE chain only:
-//   1. Re-scrape the lead's /contact, /about, /team pages for emails +
-//      owner names lifted from "Owner: ..." / "Meet our team" patterns.
-//   2. If we have an owner name + business domain but still no email,
-//      generate the standard person-shaped permutations and validate each
-//      against the domain's MX records.
-//   3. Backfill missing decision_maker_name + email columns (never clobber
-//      values the operator already set; we use NULLIF + COALESCE so a hand-
-//      typed entry always wins over the auto-found one).
+// On-demand enrichment for a single lead. Pattern-guessing is permanently
+// disabled — this route now delegates to the verified-source finder chain
+// (BBB → OpenCorporates → Yelp → WHOIS → on-page scrape) and falls back
+// to `email_status='not_available'` when nothing returns a verified hit.
 //
-// Florida public registries (Sunbiz, DBPR) are Cloudflare-protected against
-// server-side fetch, so they're not in this path — they belong on the
-// bulk-ingest side of the pipeline (deferred per the plan).
+// 1. Re-scrape the lead's /contact, /about, /team pages for emails +
+//    owner names lifted from "Owner: ..." / "Meet our team" patterns.
+// 2. If the scrape didn't surface either, fall through to the verified-
+//    source chain in scripts/latchly-leads/finders/.
+// 3. Backfill missing decision_maker_name + email columns (never clobber
+//    values the operator already set; we use NULLIF + COALESCE so a hand-
+//    typed entry always wins over the auto-found one).
+//
+// What we never do: generate `firstname@domain` permutations, MX-validate
+// guesses, or surface anything not returned by a real public source.
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -53,6 +53,7 @@ interface EnrichResult {
   };
   attempted: string[];
   notes: string[];
+  notAvailable?: { email?: boolean; owner?: boolean };
 }
 
 export async function POST(
@@ -96,13 +97,20 @@ export async function POST(
   const lead = rows[0];
   if (!lead) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
-  const result: EnrichResult = { ok: true, changes: {}, attempted: [], notes: [] };
+  const result: EnrichResult = {
+    ok: true,
+    changes: {},
+    attempted: [],
+    notes: [],
+    notAvailable: {},
+  };
 
   const initialEmail = (lead.email || "").trim().toLowerCase();
   const initialOwner = (lead.decision_maker_name || "").trim();
   const businessDomain = deriveBusinessDomain(lead.website || "");
 
-  // 1. Re-scrape the website for fresh contact pages.
+  // 1. Re-scrape the website for fresh contact pages — first chance at a
+  //    verified email + owner name.
   let scrapedEmails: string[] = [];
   let scrapedOwnerName: string | null = null;
   if (lead.website) {
@@ -129,35 +137,84 @@ export async function POST(
     }
   }
 
-  // 3. Owner name from scrape if we don't have one.
+  // 3. Owner name from scrape.
   let bestOwner = "";
   if (targetSet.has("owner") && !initialOwner && scrapedOwnerName) {
     bestOwner = scrapedOwnerName;
     result.changes.decisionMakerName = { old: null, new: bestOwner, via: "website_scrape" };
   }
 
-  // 4. Pattern-guess fallback when we have an owner name + domain but still no email.
-  const ownerForGuess = bestOwner || initialOwner;
-  if (targetSet.has("email") && !initialEmail && !bestEmail && ownerForGuess && businessDomain) {
-    result.attempted.push("pattern_guess");
-    const guess = await patternGuessEmail(ownerForGuess, businessDomain);
-    if (guess.email) {
-      bestEmail = guess.email;
-      result.changes.email = { old: null, new: bestEmail, via: "pattern_guess_mx_only" };
-      result.notes.push(`pattern_guess: ${guess.email} (MX validated)`);
-    } else {
-      result.notes.push(`pattern_guess: ${guess.reason}`);
+  // 4. Verified-source fallback chain (BBB → OpenCorporates → Yelp → WHOIS).
+  //    Replaces the deleted pattern-guess path. Each source returns either
+  //    a real verified hit or a reason; if all return reasons, the field
+  //    stays empty and the response surfaces `notAvailable: true`.
+  const ownerNeeded = targetSet.has("owner") && !initialOwner && !bestOwner;
+  const emailNeeded = targetSet.has("email") && !initialEmail && !bestEmail;
+  if (ownerNeeded || emailNeeded) {
+    // Lazy-require the chain so we don't pay the import cost on every
+    // request — most enrich calls hit the website-scrape first and stop.
+    const finders = await import("../../../../../../scripts/latchly-leads/finders/index.js");
+
+    if (ownerNeeded) {
+      result.attempted.push("verified_owner_chain");
+      try {
+        const owner = await finders.findOwnerFromVerifiedSources({
+          businessName: lead.business_name,
+          city: lead.city,
+          state: lead.state,
+          website: lead.website || "",
+          domain: businessDomain,
+        });
+        if (owner?.ok && owner.ownerName) {
+          bestOwner = owner.ownerName;
+          const ownerVia = String(owner.source || "verified");
+          result.changes.decisionMakerName = { old: null, new: bestOwner, via: ownerVia };
+          result.notes.push(`owner_via_${ownerVia}: ${owner.ownerName} (conf=${owner.confidence})`);
+        } else {
+          result.notAvailable!.owner = true;
+          result.notes.push(`owner_not_available (tried: ${(owner?.attempted || []).join(", ")})`);
+        }
+      } catch (err: any) {
+        result.notes.push(`owner_chain_error: ${err?.message || err}`);
+      }
+    }
+
+    if (emailNeeded) {
+      result.attempted.push("verified_email_chain");
+      try {
+        const verifiedEmail = await finders.findEmailFromVerifiedSources({
+          businessName: lead.business_name,
+          city: lead.city,
+          state: lead.state,
+          website: lead.website || "",
+          domain: businessDomain,
+        });
+        if (verifiedEmail?.ok && verifiedEmail.email) {
+          bestEmail = String(verifiedEmail.email).toLowerCase();
+          const emailVia = String(verifiedEmail.source || "verified");
+          result.changes.email = { old: null, new: bestEmail, via: emailVia };
+          result.notes.push(`email_via_${emailVia}: ${bestEmail} (conf=${verifiedEmail.confidence})`);
+        } else {
+          result.notAvailable!.email = true;
+          result.notes.push(`email_not_available (tried: ${(verifiedEmail?.attempted || []).join(", ")})`);
+        }
+      } catch (err: any) {
+        result.notes.push(`email_chain_error: ${err?.message || err}`);
+      }
     }
   }
 
-  // 5. Persist. NULLIF guard means we never clobber a hand-edited value
-  //    even if a rerun finds a different candidate. Email status is set so
-  //    the UI can warn that pattern-guessed addresses haven't been verified
-  //    against a real mailbox (Codex review #3) and so manual clears
-  //    (email_status='rejected') aren't auto-refilled (#2).
+  // 5. Persist. Determine the final email_status based on what we found:
+  //    - Any verified hit → 'verified'
+  //    - We tried the chain and nothing came back → 'not_available'
+  //    - We didn't try (already had a value) → leave existing status alone
+  //    NULLIF guard means we never clobber a hand-edited value even if a
+  //    rerun finds a different candidate. `email_status='rejected'` (operator
+  //    cleared the email) is also never auto-refilled.
   const provenance = result.changes.email?.via || null;
-  const emailStatus = provenance === "pattern_guess_mx_only" ? "guessed" : provenance ? "verified" : null;
-  if (bestEmail || bestOwner) {
+  const emailStatus = bestEmail ? "verified" : (result.notAvailable?.email ? "not_available" : null);
+  const shouldUpdate = bestEmail || bestOwner || result.notAvailable?.email;
+  if (shouldUpdate) {
     await sql`
       UPDATE latchly_leads SET
         email = CASE
@@ -177,7 +234,7 @@ export async function POST(
         END,
         decision_maker_name = COALESCE(NULLIF(decision_maker_name, ''), ${bestOwner || null}),
         decision_maker_confidence = CASE
-          WHEN decision_maker_name IS NULL OR decision_maker_name = '' THEN ${bestOwner ? 0.7 : null}
+          WHEN decision_maker_name IS NULL OR decision_maker_name = '' THEN ${bestOwner ? 0.85 : null}
           ELSE decision_maker_confidence
         END,
         updated_at = NOW()
@@ -189,7 +246,7 @@ export async function POST(
   const after = (await sql`
     SELECT id, business_key, business_name, niche, city, state,
            email, decision_maker_name, decision_maker_title, decision_maker_confidence,
-           website
+           website, email_status, email_provenance
     FROM latchly_leads WHERE id = ${leadId} LIMIT 1
   ` as any[])[0];
   result.lead = after;
@@ -369,60 +426,4 @@ function join(base: string, path: string): string {
 
 function uniquePaths(urls: string[]): string[] {
   return Array.from(new Set(urls.filter(Boolean)));
-}
-
-async function patternGuessEmail(ownerName: string, domain: string): Promise<{ email: string | null; reason: string }> {
-  if (!domain) return { email: null, reason: "no_domain" };
-  if (!(await hasMx(domain))) return { email: null, reason: "no_mx_records" };
-  const split = splitName(ownerName);
-  if (!split) return { email: null, reason: "unparseable_name" };
-  const candidates = permute(split, domain);
-  if (!candidates.length) return { email: null, reason: "no_candidates" };
-  const ranked = rankEmails(candidates, domain);
-  return { email: ranked[0] || null, reason: "ok" };
-}
-
-function splitName(name: string): { first: string; last: string } | null {
-  const trimmed = String(name || "").replace(/[^A-Za-z\s'-]/g, "").replace(/\s+/g, " ").trim();
-  if (!trimmed) return null;
-  const parts = trimmed.split(/\s+/);
-  if (!parts.length) return null;
-  return {
-    first: parts[0].toLowerCase(),
-    last: parts.length > 1 ? parts[parts.length - 1].toLowerCase() : "",
-  };
-}
-
-function permute(split: { first: string; last: string }, domain: string): string[] {
-  const { first, last } = split;
-  const fi = first.charAt(0);
-  const li = last.charAt(0);
-  const out: string[] = [];
-  if (first) out.push(`${first}@${domain}`);
-  if (first && last) {
-    out.push(`${first}.${last}@${domain}`);
-    out.push(`${first}${last}@${domain}`);
-    out.push(`${fi}${last}@${domain}`);
-    out.push(`${first}${li}@${domain}`);
-    out.push(`${fi}.${last}@${domain}`);
-  }
-  return out;
-}
-
-const MX_CACHE = new Map<string, { ok: boolean; at: number }>();
-const MX_CACHE_MS = 30 * 60 * 1000;
-
-async function hasMx(domain: string): Promise<boolean> {
-  if (!domain) return false;
-  const cached = MX_CACHE.get(domain);
-  if (cached && Date.now() - cached.at < MX_CACHE_MS) return cached.ok;
-  try {
-    const records = await dns.resolveMx(domain);
-    const ok = Array.isArray(records) && records.length > 0;
-    MX_CACHE.set(domain, { ok, at: Date.now() });
-    return ok;
-  } catch {
-    MX_CACHE.set(domain, { ok: false, at: Date.now() });
-    return false;
-  }
 }

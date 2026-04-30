@@ -360,15 +360,12 @@ async function enrichEmail(lead, html) {
     return best.email;
   }
 
-  // Step 2: Pattern guess — only if domain has MX records
-  if (domain && await domainAcceptsMail(domain)) {
-    const patterns = generatePatterns(domain, lead.owner_name);
-    // Use the highest-confidence pattern (first name or info@)
-    if (patterns.length > 0) {
-      const best = patterns[0];
-      log.info('email_pattern_guess', { business: lead.business_name, email: best, method: 'mx_verified_pattern' });
-      return best;
-    }
+  // Pattern-guess fallback removed. The verified-source chain in
+  // scripts/latchly-leads/finders/ is the canonical email finder; if
+  // openclaw-audit ever needs a real fallback it should call that chain
+  // rather than fabricating addresses. Until then, no email is better than
+  // a guessed email — guesses produce hard bounces and damage warmup.
+  if (domain) {
     log.info('email_not_found', { business: lead.business_name, domain });
   }
 

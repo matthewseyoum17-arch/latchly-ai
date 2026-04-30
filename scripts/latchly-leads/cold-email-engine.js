@@ -182,6 +182,22 @@ async function composeColdEmailForLead(lead, enrichment, demoUrl, opts = {}) {
   if (!lead) throw new Error('lead required');
   if (!demoUrl) throw new Error('demoUrl required');
 
+  // Belt-and-suspenders: pattern-guessed emails are permanently off (see
+  // scripts/latchly-leads/finders/). If a stale row with pattern_guess
+  // provenance somehow reaches us, refuse to compose. The migration
+  // (021-purge-guessed-emails.sql) clears historical rows; this throw catches
+  // anything mid-flight that bypassed it.
+  const provenance = String(
+    lead.emailProvenance
+    || lead.email_provenance
+    || enrichment?.emailProvenance
+    || enrichment?.guessedEmailMethod
+    || '',
+  ).toLowerCase();
+  if (/pattern_?guess/.test(provenance)) {
+    throw new Error(`refused_pattern_guess_email:${provenance}`);
+  }
+
   const anthropic = opts.anthropic;
   if (!anthropic) throw new Error('anthropic client required');
 
