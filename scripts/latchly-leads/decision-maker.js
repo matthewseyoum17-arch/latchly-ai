@@ -222,10 +222,21 @@ async function extractWithClaude(lead, pages, claudeClient) {
 }
 
 function createClaudeClient() {
-  if (!process.env.ANTHROPIC_API_KEY) return null;
+  // Default to the Max-plan CLI shim. Switch to the SDK with the
+  // LATCHLY_USE_API_KEY=1 env flag — useful when the operator wants
+  // sub-second composition latency and is paying for the API directly.
+  if (process.env.LATCHLY_USE_API_KEY === '1') {
+    if (!process.env.ANTHROPIC_API_KEY) return null;
+    try {
+      const Anthropic = require('@anthropic-ai/sdk');
+      return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    } catch {
+      return null;
+    }
+  }
   try {
-    const Anthropic = require('@anthropic-ai/sdk');
-    return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const { createMaxPlanClient } = require('./anthropic-via-cli');
+    return createMaxPlanClient();
   } catch {
     return null;
   }

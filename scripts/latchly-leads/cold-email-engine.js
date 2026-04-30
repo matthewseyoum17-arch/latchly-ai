@@ -296,7 +296,14 @@ async function composeColdEmailForLead(lead, enrichment, demoUrl, opts = {}) {
   if (!anthropic) throw new Error('anthropic client required');
 
   const fromEmail = opts.fromEmail || 'matt@latchlyai.com';
-  const senderFirstName = (fromEmail.split('@')[0] || 'matt').replace(/[^a-z]/gi, '') || 'matt';
+  // Sender first name comes from (in priority): opts.senderFirstName →
+  // LATCHLY_SENDER_FIRST_NAME env → from-email local-part. Lets the
+  // from-address stay `outreach@latchlyai.com` (good for IP reputation
+  // / domain alignment) while the body sign-off still reads "Matt".
+  const senderFirstNameRaw = opts.senderFirstName
+    || process.env.LATCHLY_SENDER_FIRST_NAME
+    || (fromEmail.split('@')[0] || 'matt');
+  const senderFirstName = String(senderFirstNameRaw).replace(/[^a-z]/gi, '').toLowerCase() || 'matt';
   const unsubUrl = opts.unsubUrl || buildUnsubLink(lead, opts.siteBase);
 
   // Per-lead variation seeds — deterministic from lead.id so re-runs for

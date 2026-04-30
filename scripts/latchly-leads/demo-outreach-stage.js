@@ -25,10 +25,11 @@ const DEMOS_DIR = path.join(process.cwd(), 'demos', 'prospects');
 let _anthropic = null;
 async function getAnthropic() {
   if (_anthropic) return _anthropic;
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set');
-  const { default: Anthropic } = await import('@anthropic-ai/sdk');
-  _anthropic = new Anthropic({ apiKey });
+  // Routes through the central helper — Max-plan CLI shim by default,
+  // SDK only when LATCHLY_USE_API_KEY=1. Daily pipeline runs against
+  // Max-plan auth so the cron doesn't burn API credits.
+  const { getAnthropicClient } = require('./anthropic-client');
+  _anthropic = await getAnthropicClient();
   return _anthropic;
 }
 
