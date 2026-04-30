@@ -66,7 +66,6 @@ export default function LeadsCrmPage() {
   const [scrapeDispatching, setScrapeDispatching] = useState(false);
   const [scrapePending, setScrapePending] = useState(false);
   const [markingContactedId, setMarkingContactedId] = useState<number | null>(null);
-  const [enrichingId, setEnrichingId] = useState<number | null>(null);
   // Bulk find-email / find-owner state. Both run as a single /bulk-enrich
   // SSE call with a target ('email' | 'owner' | 'both'); progress lines
   // stream into bulkLog and the final summary lands in bulkSummary.
@@ -250,35 +249,6 @@ export default function LeadsCrmPage() {
       setBulkRunning(null);
     }
   }, [data?.leads, bulkRunning, fetchData]);
-
-  const enrichLead = async (lead: Lead, target: "email" | "owner" | "website" | "all" = "all") => {
-    setEnrichingId(lead.id);
-    setError("");
-    try {
-      const res = await fetch(`/api/admin/latchly-leads/${lead.id}/enrich`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ targets: target === "all" ? ["website", "email", "owner"] : [target] }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Enrichment failed");
-      const found: string[] = [];
-      if (json.changes?.website) found.push(`website via ${json.changes.website.via}`);
-      if (json.changes?.email) found.push(`email via ${json.changes.email.via}`);
-      if (json.changes?.decisionMakerName) found.push(`owner via ${json.changes.decisionMakerName.via}`);
-      if (found.length) {
-        setToast(`Enriched: ${found.join(", ")}`);
-      } else {
-        const note = (json.notes || []).join(" · ");
-        setToast(`No new info found${note ? ` · ${note}` : ""}`);
-      }
-      await fetchData();
-    } catch (err: any) {
-      setError(err.message || "Enrichment failed");
-    } finally {
-      setEnrichingId(null);
-    }
-  };
 
   const pollRuns = useCallback(async () => {
     try {
@@ -687,8 +657,6 @@ export default function LeadsCrmPage() {
             onSaved={handleSaved}
             onMarkContacted={markContacted}
             markingContacted={Boolean(selectedLead && markingContactedId === selectedLead.id)}
-            onEnrich={enrichLead}
-            enriching={Boolean(selectedLead && enrichingId === selectedLead.id)}
           />
         </div>
       </main>
@@ -698,7 +666,7 @@ export default function LeadsCrmPage() {
 
 // Coverage strip — % of CRM rows with email + owner. Sits under the stat
 // tiles so the operator sees enrichment health at a glance and knows when
-// to run /enrich on a lead. Both metrics exclude rejected emails so a
+// to run the bulk Find buttons. Both metrics exclude rejected emails so a
 // hand-cleared address doesn't inflate the percentage.
 function CoverageBar({ total, withEmail, withOwner }: {
   total: number;
@@ -714,13 +682,13 @@ function CoverageBar({ total, withEmail, withOwner }: {
         label="Email coverage"
         ratio={`${withEmail}/${total}`}
         pct={emailPct}
-        hint={emailPct >= 85 ? "Healthy" : emailPct >= 60 ? "Most leads have email" : "Run Find Email on the no-email rows"}
+        hint={emailPct >= 85 ? "Healthy" : emailPct >= 60 ? "Most leads have email" : "Run the bulk Find emails button above"}
       />
       <CoverageGauge
         label="Owner-name coverage"
         ratio={`${withOwner}/${total}`}
         pct={ownerPct}
-        hint={ownerPct >= 75 ? "Healthy" : ownerPct >= 50 ? "Most leads have an owner" : "Run Find Owner on the no-owner rows"}
+        hint={ownerPct >= 75 ? "Healthy" : ownerPct >= 50 ? "Most leads have an owner" : "Run the bulk Find owners button above"}
       />
     </section>
   );
@@ -914,11 +882,9 @@ interface LeadDetailProps {
   onSaved: (lead: Lead) => void;
   onMarkContacted: (lead: Lead) => void;
   markingContacted: boolean;
-  onEnrich: (lead: Lead, target?: "email" | "owner" | "all") => void;
-  enriching: boolean;
 }
 
-function LeadDetail({ lead, onSaved, onMarkContacted, markingContacted, onEnrich, enriching }: LeadDetailProps) {
+function LeadDetail({ lead, onSaved, onMarkContacted, markingContacted }: LeadDetailProps) {
   const [draft, setDraft] = useState({
     status: "new" as CrmStatus,
     notes: "",
