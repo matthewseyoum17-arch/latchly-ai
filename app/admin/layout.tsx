@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  BarChart3,
   ChevronRight,
   LogOut,
   Mail,
@@ -33,6 +34,12 @@ const NAV: NavItem[] = [
     label: "Cold Email",
     icon: <Send size={16} />,
     description: "Pending QA · Sent history",
+  },
+  {
+    href: "/admin/analytics",
+    label: "Analytics",
+    icon: <BarChart3 size={16} />,
+    description: "Opens · clicks · per-lead engagement",
   },
 ];
 

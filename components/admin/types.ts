@@ -82,6 +82,16 @@ export interface Lead {
     | string
     | null;
   emailStatus?: "unknown" | "verified" | "guessed" | "rejected";
+  emailOpenCount?: number;
+  emailFirstOpenedAt?: string | null;
+  emailLastOpenedAt?: string | null;
+  emailClickCount?: number;
+  emailFirstClickedAt?: string | null;
+  emailLastClickedAt?: string | null;
+  emailBouncedAt?: string | null;
+  emailComplainedAt?: string | null;
+  emailRepliedAt?: string | null;
+  emailUnsubscribedAt?: string | null;
   enrichmentSummary?: {
     ownerFirstName?: string | null;
     ownerName?: string | null;

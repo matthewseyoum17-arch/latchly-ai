@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { neon } from '@neondatabase/serverless';
 import { Resend } from 'resend';
 import { verifyDashboardRequest } from '@/lib/auth';
+import { buildOutreachEmailPayload } from '@/lib/outreach-html';
 
 // Manual override: send a queued lead's Day-0 email immediately, bypassing
 // outreach_scheduled_for. Used from the CRM "Send now" button for live testing
@@ -86,14 +87,15 @@ export async function POST(
   }
 
   try {
-    const result = await resend.emails.send({
+    const result = await resend.emails.send(buildOutreachEmailPayload({
       from: fromEmail,
       replyTo,
       to: row.email,
       subject: row.email_subject,
       text: row.email_body,
+      leadId: row.id,
       headers: { 'X-Latchly-Source': 'latchly-send-now' },
-    });
+    }));
 
     if ('error' in result && result.error) {
       const message = (result.error as { message?: string })?.message || 'resend_error';

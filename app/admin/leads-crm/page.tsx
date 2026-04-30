@@ -7,6 +7,7 @@ import {
   Check,
   ChevronRight,
   ExternalLink,
+  Eye,
   Filter,
   Globe,
   Loader2,
@@ -656,6 +657,16 @@ function LeadRow({ lead, selected, onSelect, onMarkContacted, markingContacted }
                 {compactOutreachLabel(lead)}
               </a>
             )}
+            {(lead.emailOpenCount || 0) > 0 && (
+              <a
+                href={`/admin/analytics?leadId=${lead.id}`}
+                onClick={(event) => event.stopPropagation()}
+                className="inline-flex items-center gap-1 border border-emerald-100 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-2 py-1 rounded-md text-[11px] font-bold"
+                title={`${lead.emailOpenCount} email opens`}
+              >
+                <Eye size={11} /> {lead.emailOpenCount}
+              </a>
+            )}
           </div>
         </div>
         <div className="flex items-center justify-end gap-2">
@@ -702,6 +713,15 @@ function LeadRow({ lead, selected, onSelect, onMarkContacted, markingContacted }
           )}
           {!lead.email && <span className="inline-flex border border-amber-100 bg-amber-50 text-amber-700 px-2 py-1 rounded-md text-[11px] font-bold">no email</span>}
           {!lead.decisionMakerName && <span className="inline-flex border border-amber-100 bg-amber-50 text-amber-700 px-2 py-1 rounded-md text-[11px] font-bold">no owner</span>}
+          {(lead.emailOpenCount || 0) > 0 && (
+            <a
+              href={`/admin/analytics?leadId=${lead.id}`}
+              onClick={(event) => event.stopPropagation()}
+              className="inline-flex items-center gap-1 border border-emerald-100 bg-emerald-50 text-emerald-700 px-2 py-1 rounded-md text-[11px] font-bold"
+            >
+              <Eye size={11} /> {lead.emailOpenCount}
+            </a>
+          )}
         </div>
         {lead.status !== "contacted" && (
           <button

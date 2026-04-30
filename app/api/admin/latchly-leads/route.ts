@@ -108,6 +108,10 @@ export async function GET(request: NextRequest) {
       where.push(
         `outreach_status = 'day_zero_sent' AND email_sent_at >= date_trunc('day', NOW())`,
       );
+    } else if (outreachStatus === "attempted") {
+      where.push(
+        `outreach_status IN ('queued', 'sending', 'day_zero_sent', 'day_zero_failed')`,
+      );
     } else if (outreachStatus === "active") {
       where.push(
         `outreach_status IN ('draft', 'queued', 'sending', 'day_zero_failed')`,
@@ -171,6 +175,9 @@ export async function GET(request: NextRequest) {
         outreach_queued_at, outreach_scheduled_for, email_sent_at,
         last_resend_email_id, outreach_error, enrichment_data,
         email_provenance, email_status,
+        email_open_count, email_first_opened_at, email_last_opened_at,
+        email_click_count, email_first_clicked_at, email_last_clicked_at,
+        email_bounced_at, email_complained_at, email_replied_at, email_unsubscribed_at,
         first_seen_at, last_seen_at, delivered_at, created_at, updated_at
        FROM latchly_leads
        ${whereSql}
@@ -446,6 +453,16 @@ function mapLead(row: any) {
     outreachError: row.outreach_error || null,
     emailProvenance: row.email_provenance || null,
     emailStatus: row.email_status || "unknown",
+    emailOpenCount: row.email_open_count == null ? 0 : Number(row.email_open_count),
+    emailFirstOpenedAt: row.email_first_opened_at || null,
+    emailLastOpenedAt: row.email_last_opened_at || null,
+    emailClickCount: row.email_click_count == null ? 0 : Number(row.email_click_count),
+    emailFirstClickedAt: row.email_first_clicked_at || null,
+    emailLastClickedAt: row.email_last_clicked_at || null,
+    emailBouncedAt: row.email_bounced_at || null,
+    emailComplainedAt: row.email_complained_at || null,
+    emailRepliedAt: row.email_replied_at || null,
+    emailUnsubscribedAt: row.email_unsubscribed_at || null,
     enrichmentSummary: summarizeEnrichment(row.enrichment_data),
     firstSeenAt: row.first_seen_at,
     lastSeenAt: row.last_seen_at,

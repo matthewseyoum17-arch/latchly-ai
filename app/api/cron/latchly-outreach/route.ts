@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { neon } from '@neondatabase/serverless';
 import { Resend } from 'resend';
+import { buildOutreachEmailPayload } from '@/lib/outreach-html';
 
 // Drains the latchly_leads outreach queue. Runs every 15 min from 10:00 UTC
 // to 17:00 UTC (covers 7-9am ET → PT). Each tick:
@@ -115,27 +116,30 @@ export async function GET(request: NextRequest) {
 
   for (const row of due) {
     try {
-      const result = await resend.emails.send({
+      const result = await resend.emails.send(buildOutreachEmailPayload({
         from: fromEmail,
         replyTo,
         to: row.email,
         subject: row.email_subject,
         text: row.email_body,
+        leadId: row.id,
         headers: { 'X-Latchly-Source': 'latchly-outreach-cron' },
-      });
+      }));
 
       if ('error' in result && result.error) {
         const message = (result.error as { message?: string })?.message || 'resend_error';
         // 429 → backoff once and retry
         if (/429|rate/i.test(message)) {
           await new Promise(r => setTimeout(r, 2000));
-          const retry = await resend.emails.send({
+          const retry = await resend.emails.send(buildOutreachEmailPayload({
             from: fromEmail,
             replyTo,
             to: row.email,
             subject: row.email_subject,
             text: row.email_body,
-          });
+            leadId: row.id,
+            headers: { 'X-Latchly-Source': 'latchly-outreach-cron' },
+          }));
           if ('error' in retry && retry.error) {
             throw new Error((retry.error as { message?: string })?.message || 'resend_retry_error');
           }

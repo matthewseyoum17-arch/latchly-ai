@@ -7,10 +7,14 @@ import {
   ChevronRight,
   Clock,
   Edit3,
+  Eye,
   ExternalLink,
   Inbox,
+  Link2,
   Loader2,
+  MailCheck,
   RefreshCw,
+  Reply,
   Rocket,
   Save,
   Search,
@@ -19,6 +23,7 @@ import {
   X,
 } from "lucide-react";
 import { AuthGate, isClientAuthed } from "@/components/admin/auth-gate";
+import { EngagementTimeline, type EngagementEvent } from "@/components/admin/engagement-timeline";
 import { StatPill } from "@/components/admin/stat-tile";
 import {
   formatDateTime,
@@ -94,7 +99,7 @@ export default function ColdEmailPage() {
       // Tab determines the slice we ask the server for. The API sorts
       // outreach-relevant rows first when an outreach filter is set.
       if (tab === "pending") params.set("outreachStatus", "draft");
-      else params.set("outreachStatus", "active");
+      else params.set("outreachStatus", "attempted");
       const res = await fetch(`/api/admin/latchly-leads?${params.toString()}`);
       if (res.status === 401) { setAuthed(false); return; }
       const json = await res.json();
@@ -123,23 +128,11 @@ export default function ColdEmailPage() {
       return all.filter((lead) => lead.outreachStatus === "draft");
     }
     // Sent tab includes day_zero_sent, day_zero_failed, sending — anything
-    // with a real attempt history. Order: failures first (need attention),
-    // then most-recent sent.
+    // with a real attempt history. Recipient activity bubbles to the top.
     return all
       .filter((lead) => ["day_zero_sent", "day_zero_failed", "sending", "queued"].includes(String(lead.outreachStatus)))
       .sort((a, b) => {
-        const order = (lead: Lead) => {
-          if (lead.outreachStatus === "day_zero_failed") return 0;
-          if (lead.outreachStatus === "sending") return 1;
-          if (lead.outreachStatus === "queued") return 2;
-          return 3;
-        };
-        const oa = order(a);
-        const ob = order(b);
-        if (oa !== ob) return oa - ob;
-        const ta = new Date(a.emailSentAt || a.outreachScheduledFor || a.outreachQueuedAt || 0).getTime();
-        const tb = new Date(b.emailSentAt || b.outreachScheduledFor || b.outreachQueuedAt || 0).getTime();
-        return tb - ta;
+        return latestEngagementTime(b) - latestEngagementTime(a);
       });
   }, [data?.leads, tab]);
 
@@ -442,7 +435,12 @@ export default function ColdEmailPage() {
               savingDraft={Boolean(selectedLead && savingDraftId === selectedLead.id)}
             />
           ) : (
-            <SentDetail lead={selectedLead} />
+            <SentDetail
+              lead={selectedLead}
+              onRefresh={fetchData}
+              onToast={setToast}
+              onError={setError}
+            />
           )}
         </div>
       </div>
@@ -518,6 +516,7 @@ function RowCard({
             {lead.city ? ` · ${lead.city}` : ""}
             {tab === "sent" && timestampText ? ` · ${timestampText}` : ""}
           </div>
+          {tab === "sent" && <EngagementChips lead={lead} />}
           {lead.outreachError && (
             <div className="mt-1 text-[11px] text-rose-700 truncate">⚠ {lead.outreachError}</div>
           )}
@@ -529,6 +528,93 @@ function RowCard({
         </div>
       </div>
     </div>
+  );
+}
+
+function latestEngagementTime(lead: Lead) {
+  const values = [
+    lead.emailLastOpenedAt,
+    lead.emailLastClickedAt,
+    lead.emailBouncedAt,
+    lead.emailComplainedAt,
+    lead.emailRepliedAt,
+    lead.emailUnsubscribedAt,
+    lead.emailSentAt,
+    lead.outreachScheduledFor,
+    lead.outreachQueuedAt,
+    lead.updatedAt,
+  ];
+  return Math.max(
+    0,
+    ...values.map((value) => {
+      if (!value) return 0;
+      const time = new Date(value).getTime();
+      return Number.isNaN(time) ? 0 : time;
+    }),
+  );
+}
+
+function EngagementChips({ lead }: { lead: Lead }) {
+  const sent = lead.outreachStatus === "day_zero_sent";
+  const openCount = lead.emailOpenCount || 0;
+  const clickCount = lead.emailClickCount || 0;
+  return (
+    <div className="mt-2 flex flex-wrap gap-1.5">
+      {sent && (
+        <EngagementMiniChip tone="emerald" title="Sent">
+          <MailCheck size={11} /> sent
+        </EngagementMiniChip>
+      )}
+      <EngagementMiniChip tone={openCount > 0 ? "emerald" : "slate"} title="Open count">
+        <Eye size={11} /> {openCount}
+      </EngagementMiniChip>
+      <EngagementMiniChip tone={clickCount > 0 ? "violet" : "slate"} title="Click count">
+        <Link2 size={11} /> {clickCount}
+      </EngagementMiniChip>
+      {lead.emailRepliedAt && (
+        <EngagementMiniChip tone="amber" title="Marked replied">
+          <Reply size={11} /> replied
+        </EngagementMiniChip>
+      )}
+      {lead.emailBouncedAt && (
+        <EngagementMiniChip tone="rose" title="Bounced">
+          <AlertTriangle size={11} /> bounced
+        </EngagementMiniChip>
+      )}
+      {lead.emailComplainedAt && (
+        <EngagementMiniChip tone="rose" title="Spam complaint">
+          <X size={11} /> complained
+        </EngagementMiniChip>
+      )}
+      {lead.emailUnsubscribedAt && (
+        <EngagementMiniChip tone="slate" title="Unsubscribed">
+          <X size={11} /> unsub
+        </EngagementMiniChip>
+      )}
+    </div>
+  );
+}
+
+function EngagementMiniChip({
+  tone,
+  title,
+  children,
+}: {
+  tone: "emerald" | "violet" | "amber" | "rose" | "slate";
+  title: string;
+  children: React.ReactNode;
+}) {
+  const classes = {
+    emerald: "border-emerald-100 bg-emerald-50 text-emerald-700",
+    violet: "border-violet-100 bg-violet-50 text-violet-700",
+    amber: "border-amber-100 bg-amber-50 text-amber-800",
+    rose: "border-rose-100 bg-rose-50 text-rose-700",
+    slate: "border-slate-200 bg-slate-50 text-slate-600",
+  };
+  return (
+    <span title={title} className={`inline-flex items-center gap-1 border px-1.5 py-0.5 rounded-md text-[10px] font-bold ${classes[tone]}`}>
+      {children}
+    </span>
   );
 }
 
@@ -696,7 +782,60 @@ function PendingDetail({
 
 // ── Sent detail (read-only full body view) ──────────────────────────────────
 
-function SentDetail({ lead }: { lead: Lead | null }) {
+function SentDetail({
+  lead,
+  onRefresh,
+  onToast,
+  onError,
+}: {
+  lead: Lead | null;
+  onRefresh: () => Promise<void>;
+  onToast: (message: string) => void;
+  onError: (message: string) => void;
+}) {
+  const [events, setEvents] = useState<EngagementEvent[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(false);
+  const [markingReplied, setMarkingReplied] = useState(false);
+
+  const loadEvents = useCallback(async (leadId: number) => {
+    setEventsLoading(true);
+    try {
+      const res = await fetch(`/api/admin/analytics/engagement?range=90d&leadId=${leadId}`);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to load recipient activity");
+      setEvents(json.events || []);
+    } catch (err: any) {
+      onError(err.message || "Failed to load recipient activity");
+    } finally {
+      setEventsLoading(false);
+    }
+  }, [onError]);
+
+  useEffect(() => {
+    if (!lead?.id) {
+      setEvents([]);
+      return;
+    }
+    loadEvents(lead.id);
+  }, [lead?.id, loadEvents]);
+
+  const markReplied = async () => {
+    if (!lead) return;
+    setMarkingReplied(true);
+    try {
+      const res = await fetch(`/api/admin/latchly-leads/${lead.id}/mark-replied`, { method: "POST" });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Mark replied failed");
+      onToast("Marked replied");
+      await loadEvents(lead.id);
+      await onRefresh();
+    } catch (err: any) {
+      onError(err.message || "Mark replied failed");
+    } finally {
+      setMarkingReplied(false);
+    }
+  };
+
   if (!lead) {
     return (
       <aside className="bg-white border border-slate-200 rounded-lg min-h-[420px] flex items-center justify-center text-sm text-slate-500 sticky top-24">
@@ -765,9 +904,42 @@ function SentDetail({ lead }: { lead: Lead | null }) {
               <div className="text-[11px] text-rose-900 break-words">{lead.outreachError}</div>
             </div>
           )}
+          {lead.emailRepliedAt && (
+            <div className="rounded-md bg-amber-50 border border-amber-100 px-3 py-2 col-span-2">
+              <div className="text-[10px] font-bold uppercase text-amber-700">Replied</div>
+              <div className="font-semibold text-amber-900">{formatDateTime(lead.emailRepliedAt)}</div>
+            </div>
+          )}
+        </div>
+
+        <div className="pt-2 border-t border-slate-100">
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <h3 className="text-[11px] font-bold uppercase text-slate-500">Recipient activity</h3>
+            <button
+              type="button"
+              onClick={markReplied}
+              disabled={markingReplied || Boolean(lead.emailRepliedAt)}
+              className="inline-flex items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] font-bold text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+            >
+              {markingReplied ? <Loader2 size={12} className="animate-spin" /> : <Reply size={12} />}
+              {lead.emailRepliedAt ? "Replied" : "Mark as replied"}
+            </button>
+          </div>
+          <EngagementTimeline
+            events={events}
+            loading={eventsLoading}
+            emptyText="No engagement yet — opens land here within ~30s of recipient view."
+            compact
+          />
         </div>
 
         <div className="flex gap-2 pt-2 border-t border-slate-100">
+          <a
+            href={`/admin/analytics?leadId=${lead.id}`}
+            className="inline-flex items-center gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700 hover:bg-blue-100"
+          >
+            Analytics <ChevronRight size={14} />
+          </a>
           <a
             href={`/admin/leads-crm?leadId=${lead.id}`}
             className="ml-auto inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
