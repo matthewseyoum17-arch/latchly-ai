@@ -24,7 +24,7 @@ const { discoverCandidates, orderCandidatesForAudit } = require('./discovery');
 const { createStorage } = require('./storage');
 const { businessKey, currentHourET, ensureDir, loadEnv, todayInET } = require('./utils');
 const { scoreLead } = require('./scoring');
-const { enforcePremiumGate, enforceStandardGate } = require('./quality-gate');
+const { enforcePremiumGate, enforceStandardGate, hasVerifiableAudit } = require('./quality-gate');
 const { runDemoOutreachStage } = require('./demo-outreach-stage');
 const { pickBestEmail, deriveBusinessDomain } = require('./email-utils');
 
@@ -90,7 +90,16 @@ async function main() {
 
     const tiered = selectTieredLeads(qualified, targetLeads, { tierMode });
     const selected = tiered.leads;
-    const selection = summarizeSelection(qualified, selected, targetLeads);
+    const verificationRejections = tiered.verificationGate.rejected.map(item => rejection(
+      item.lead,
+      `unverifiable audit evidence: ${item.reasons.join('; ') || 'missing structured audit'}`,
+      {
+        score: item.lead.score,
+        wave: item.lead.sourceOpportunity || '',
+      },
+    ));
+    const allRejections = [...rejections, ...verificationRejections];
+    const selection = summarizeSelection(tiered.verificationGate.leads, selected, targetLeads);
     stats = {
       date,
       target: targetLeads,
@@ -99,10 +108,11 @@ async function main() {
       candidates: candidates.length,
       auditAttempts,
       audited,
-      qualified: qualified.length,
+      qualified: tiered.verificationGate.leads.length,
       delivered: selected.length,
-      rejected: rejections.length,
+      rejected: allRejections.length,
       localDelivered: selected.filter(lead => lead.isLocalMarket).length,
+      verificationRejected: verificationRejections.length,
       maxAuditAttempts: MAX_AUDIT_ATTEMPTS,
       maxRunMinutes: MAX_RUN_MINUTES,
       stopReason,
@@ -115,8 +125,8 @@ async function main() {
       premiumDelivered: tiered.premiumDelivered,
       standardDelivered: tiered.standardDelivered,
       premiumGateIssues: tiered.premiumGate.issues,
-      topRejectionReasons: topReasons(rejections),
-      topRejectionsBySource: topReasonsBySource(rejections),
+      topRejectionReasons: topReasons(allRejections),
+      topRejectionsBySource: topReasonsBySource(allRejections),
     };
 
     const qualityGate = enforceStandardGate(selected, stats, { minimum: minimumLeads, qualifiedScore: QUALIFIED_SCORE });
@@ -309,9 +319,11 @@ function selectDailyLeads(leads, target) {
 
 function selectTieredLeads(qualified, target, options = {}) {
   const tierMode = options.tierMode || 'both';
+  const verificationGate = splitVerifiableQualifiedLeads(qualified);
+  const verifiedQualified = verificationGate.leads;
   const premiumGate = tierMode === 'standard'
     ? { leads: [], rejected: [], issues: [] }
-    : enforcePremiumGate(qualified, {}, { minimum: 0 });
+    : enforcePremiumGate(verifiedQualified, {}, { minimum: 0 });
   const premiumPool = premiumGate.leads;
   const selectedPremium = tierMode === 'standard'
     ? []
@@ -320,7 +332,7 @@ function selectTieredLeads(qualified, target, options = {}) {
 
   const used = new Set(selectedPremium.map(lead => businessKey(lead)).filter(Boolean));
   const standardPool = tierMode === 'premium' || tierMode === 'both' || tierMode === 'standard'
-    ? qualified
+    ? verifiedQualified
         .filter(lead => !used.has(businessKey(lead)))
         .map(lead => ({ ...lead, tier: 'standard' }))
     : [];
@@ -334,10 +346,25 @@ function selectTieredLeads(qualified, target, options = {}) {
   return {
     leads,
     premiumGate,
+    verificationGate,
     premiumQualified: premiumPool.length,
     premiumDelivered: leads.filter(lead => lead.tier === 'premium').length,
     standardDelivered: leads.filter(lead => lead.tier !== 'premium').length,
   };
+}
+
+function splitVerifiableQualifiedLeads(leads = []) {
+  const accepted = [];
+  const rejected = [];
+  for (const lead of leads || []) {
+    const verdict = hasVerifiableAudit(lead);
+    if (verdict.ok) {
+      accepted.push(lead);
+    } else {
+      rejected.push({ lead, reasons: verdict.reasons || [] });
+    }
+  }
+  return { leads: accepted, rejected };
 }
 
 async function auditAndScoreCandidates(candidates, deliveredKeys = new Set(), options = {}) {
@@ -999,6 +1026,7 @@ module.exports = {
   hasQualifiedMix,
   selectDailyLeads,
   selectTieredLeads,
+  splitVerifiableQualifiedLeads,
   qualifiedTargetMet,
   shouldStopWave,
   summarizeSelection,

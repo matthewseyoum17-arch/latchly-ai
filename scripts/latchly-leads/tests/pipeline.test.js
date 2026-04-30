@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { auditAndScoreCandidates, buildAuditWaves } = require('../pipeline');
+const { auditAndScoreCandidates, buildAuditWaves, selectTieredLeads } = require('../pipeline');
 
 test('bounded audit batches preserve candidate scoring order', async () => {
   const candidates = [
@@ -93,6 +93,35 @@ test('audit contact email is carried onto qualified lead records', async () => {
   assert.equal(result.qualified[0].email, 'owner@email.example');
 });
 
+test('tiered selection drops unverifiable qualified leads before delivery', () => {
+  const valid = {
+    ...fakeCandidate('Verified No Site'),
+    score: 8.5,
+    websiteStatus: 'no_website',
+    leadType: 'no_website_creation',
+    audit: verifiedNoSiteAudit(),
+  };
+  const invalid = {
+    ...fakeCandidate('Unverified No Site'),
+    score: 9.9,
+    websiteStatus: 'no_website',
+    leadType: 'no_website_creation',
+    audit: {
+      verifiedSignals: {
+        evidenceIntegrity: { verifiable: false, issues: ['missing resolver evidence'] },
+        websiteTruth: { status: 'unknown', confidence: 0.2, evidence: [] },
+        websiteQuality: { negativeSignals: [] },
+      },
+    },
+  };
+
+  const result = selectTieredLeads([invalid, valid], 2, { tierMode: 'standard' });
+
+  assert.deepEqual(result.leads.map(lead => lead.businessName), ['Verified No Site']);
+  assert.equal(result.verificationGate.rejected.length, 1);
+  assert.equal(result.verificationGate.rejected[0].lead.businessName, 'Unverified No Site');
+});
+
 test('low-yield possible-poor-site wave stops before grinding through all candidates', async () => {
   const candidates = Array.from({ length: 30 }, (_, index) => fakeCandidate(`Weak ${index}`, {
     website: `https://weak-${index}.example`,
@@ -147,6 +176,20 @@ function fakeAudit() {
     verifiedSignals: {
       evidenceIntegrity: { verifiable: true, issues: [] },
       websiteTruth: { status: 'no_site', confidence: 0.95, evidence: [] },
+    },
+  };
+}
+
+function verifiedNoSiteAudit() {
+  return {
+    verifiedSignals: {
+      evidenceIntegrity: { verifiable: true, issues: [] },
+      websiteTruth: {
+        status: 'no_site',
+        confidence: 0.95,
+        evidence: [{ source: 'test', url: '', detail: 'No owned website found', confidence: 0.95 }],
+      },
+      websiteQuality: { negativeSignals: [] },
     },
   };
 }
