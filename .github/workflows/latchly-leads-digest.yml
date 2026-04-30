@@ -66,6 +66,15 @@ jobs:
           # leads cluster at 7.4-7.9 just under the 8.0 score gate.
           LATCHLY_PROMISING_NEG_THRESHOLD: '1'
           LATCHLY_QUALIFIED_SCORE: '7.5'
+          # Manual scrape runs can hit long stretches of weak YellowPages/BBB
+          # candidates before a verified poor-site lead appears. Do not stop
+          # that wave after only 25 attempts when no resolver-backed no-site
+          # fallback is configured.
+          LATCHLY_SOURCE_PER_QUERY_LIMIT: '12'
+          LATCHLY_WAVE_LOW_YIELD_MIN_ATTEMPTS: '120'
+          LATCHLY_WAVE_LOW_YIELD_MIN_RATE: '0.015'
+          LATCHLY_MAX_AUDIT_ATTEMPTS: '220'
+          LATCHLY_MAX_RUN_MINUTES: '45'
           # Demo + outreach v1: composes per-lead demos + Day-0 cold emails and
           # queues them for the Vercel cron to drain in 7-9am-local windows.
           # Flip to '0' to disable end-to-end (e.g. before SPF/DKIM is verified
