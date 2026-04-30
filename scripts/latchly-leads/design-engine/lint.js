@@ -84,7 +84,11 @@ async function lintDemoHtml(html, { lead = {}, enrichment = {} } = {}) {
     { rule: 'aeo_canonical_missing',       severity: 'major',    weight: 10, test: () => /<link\s+rel="canonical"\s+href="[^"]+"/i.test(html) },
     { rule: 'aeo_og_image_missing',        severity: 'minor',    weight: 5,  test: () => /<meta\s+property="og:image"\s+content="[^"]+"/i.test(html) },
     { rule: 'aeo_localbusiness_jsonld_missing', severity: 'critical', weight: 18,
-      test: () => /<script\s+type="application\/ld\+json">[\s\S]*?LocalBusiness[\s\S]*?<\/script>/i.test(html) },
+      // seo.js maps niches to subtypes of LocalBusiness (Electrician, Plumber,
+      // RoofingContractor, HVACBusiness, GeneralContractor, ...). Match any
+      // valid LocalBusiness or its subtypes by checking for `aggregateRating`
+      // OR `LocalBusiness` literal — both indicate a real business JSON-LD.
+      test: () => /<script\s+type="application\/ld\+json">[\s\S]*?(?:LocalBusiness|Electrician|Plumber|RoofingContractor|HVACBusiness|GeneralContractor|HomeAndConstructionBusiness)[\s\S]*?<\/script>/i.test(html) },
     { rule: 'aeo_faq_jsonld_missing',      severity: 'major',    weight: 12,
       test: () => /<script\s+type="application\/ld\+json">[\s\S]*?FAQPage[\s\S]*?<\/script>/i.test(html) },
     { rule: 'aeo_visible_faq_missing',     severity: 'major',    weight: 10,

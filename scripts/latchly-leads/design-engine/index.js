@@ -49,9 +49,18 @@ async function buildDemoForLead(lead, opts = {}) {
         keepTemp: opts.keepTemp,
       });
       if (bespoke.ok) return bespoke;
-      // Fall through to template — log the reason but never crash the run.
+      // Fall through to template — log the reason (and any captured stderr
+      // from the subprocess) but never crash the run.
       // eslint-disable-next-line no-console
       console.warn(`[design-engine] bespoke failed (${bespoke.reason}); falling back to template`);
+      if (bespoke.scanError) {
+        // eslint-disable-next-line no-console
+        console.warn(`[design-engine] scan stderr/stdout (truncated):\n${String(bespoke.scanError).slice(0, 2000)}`);
+      }
+      if (bespoke.candidatesScored) {
+        // eslint-disable-next-line no-console
+        console.warn('[design-engine] candidate scores:', JSON.stringify(bespoke.candidatesScored, null, 2));
+      }
     } else {
       // eslint-disable-next-line no-console
       console.warn('[design-engine] LATCHLY_DEMO_ENGINE=bespoke but `claude` CLI unavailable; using template');

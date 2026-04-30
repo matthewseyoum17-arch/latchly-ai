@@ -96,9 +96,13 @@ const COLD_EMAIL_RULES = {
   ],
 
   lengthPool: [
-    { key: 'tight',  min: 60,  max: 85,  directive: 'Body 60-85 words. Tight. Probably 2 short paragraphs.' },
-    { key: 'medium', min: 90,  max: 115, directive: 'Body 90-115 words. The default mid-length. Three short paragraphs.' },
-    { key: 'long',   min: 115, max: 150, directive: 'Body 115-150 words. Use only when there is enough real detail to justify the room. Three or four paragraphs.' },
+    // Buckets are validator floors/ceilings — Haiku treats the prompt
+    // ranges as soft targets, so we keep the lower bounds wider than the
+    // directives say. The directives above are what the model actually
+    // sees and aims for; the numbers below are what the validator tolerates.
+    { key: 'tight',  min: 45,  max: 90,  directive: 'Body 50-85 words. Tight. Probably 2 short paragraphs.' },
+    { key: 'medium', min: 65,  max: 120, directive: 'Body 80-115 words. The default mid-length. Three short paragraphs.' },
+    { key: 'long',   min: 100, max: 160, directive: 'Body 110-150 words. Use only when there is enough real detail to justify the room. Three or four paragraphs.' },
   ],
 
   signoffPool: [
@@ -325,11 +329,11 @@ async function composeColdEmailForLead(lead, enrichment, demoUrl, opts = {}) {
       const message = await anthropic.messages.create({
         model: opts.model || 'claude-haiku-4-5-20251001',
         max_tokens: 800,
-        // Phase C: bumped from 0.6 → 0.85 with top_p 0.92. Combined with
-        // the variation seed pools, this kills the structural sameness
-        // without breaking professional tone or the structural validators.
+        // Phase C: bumped 0.6 → 0.85. Haiku 4.5 rejects setting both
+        // temperature and top_p ("invalid_request_error"), so we use
+        // temperature alone — the variation-seed pools carry the rest of
+        // the diversity budget.
         temperature: 0.85,
-        top_p: 0.92,
         system: SYSTEM_PROMPT,
         messages: [{ role: 'user', content: userContent }],
       });

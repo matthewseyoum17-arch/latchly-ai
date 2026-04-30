@@ -113,32 +113,37 @@ async function buildBespokeDemoForLead(lead, opts = {}) {
     }
     const directions = scan.recommendedDirections.slice(0, 3);
 
-    // ── Pass 2: 3 parallel candidate builds ───────────────────────────
+    // ── Pass 2: 3 sequential candidate builds ─────────────────────────
+    // Sequential (not parallel) keeps us under the org's 30k tok/min rate
+    // limit. Wall time is ~3x longer but the pipeline actually completes.
     const candidatePaths = directions.map((_, i) => path.join(tmp.dir, `candidate-${i + 1}.html`));
-    const candidateResults = await Promise.all(
-      directions.map((direction, i) =>
-        passBuild({
-          briefPath,
-          scanPath: scan.scanPath,
-          direction,
-          outFile: candidatePaths[i],
-          tmpDir: tmp.dir,
-        }),
-      ),
-    );
+    const candidateResults = [];
+    for (let i = 0; i < directions.length; i += 1) {
+      const r = await passBuild({
+        briefPath,
+        scanPath: scan.scanPath,
+        direction: directions[i],
+        outFile: candidatePaths[i],
+        tmpDir: tmp.dir,
+      });
+      candidateResults.push(r);
+    }
 
-    // ── Pass 3: 3 parallel polish passes ──────────────────────────────
+    // ── Pass 3: sequential polish passes ──────────────────────────────
     const polishedPaths = directions.map((_, i) => path.join(tmp.dir, `polished-${i + 1}.html`));
-    const polishedResults = await Promise.all(
-      candidateResults.map((cand, i) => {
-        if (!cand.ok) return Promise.resolve({ ok: false, reason: cand.reason });
-        return passPolish({
-          inFile: candidatePaths[i],
-          outFile: polishedPaths[i],
-          tmpDir: tmp.dir,
-        });
-      }),
-    );
+    const polishedResults = [];
+    for (let i = 0; i < candidateResults.length; i += 1) {
+      if (!candidateResults[i].ok) {
+        polishedResults.push({ ok: false, reason: candidateResults[i].reason });
+        continue;
+      }
+      const r = await passPolish({
+        inFile: candidatePaths[i],
+        outFile: polishedPaths[i],
+        tmpDir: tmp.dir,
+      });
+      polishedResults.push(r);
+    }
 
     // ── Pass 4: score + pick winner ────────────────────────────────────
     const scoreds = await Promise.all(directions.map(async (direction, i) => {
@@ -371,7 +376,7 @@ function scoreAeoPresence(html) {
     [/<meta\s+name="description"\s+content="[^"]+"/i,                         12, 'meta_description'],
     [/<link\s+rel="canonical"\s+href="[^"]+"/i,                               10, 'canonical'],
     [/<meta\s+property="og:image"\s+content="[^"]+"/i,                        10, 'og_image'],
-    [/<script\s+type="application\/ld\+json">[\s\S]*?LocalBusiness[\s\S]*?<\/script>/i, 18, 'jsonld_localbusiness'],
+    [/<script\s+type="application\/ld\+json">[\s\S]*?(?:LocalBusiness|Electrician|Plumber|RoofingContractor|HVACBusiness|GeneralContractor|HomeAndConstructionBusiness)[\s\S]*?<\/script>/i, 18, 'jsonld_localbusiness'],
     [/<script\s+type="application\/ld\+json">[\s\S]*?FAQPage[\s\S]*?<\/script>/i,        14, 'jsonld_faq'],
     [/<section[^>]+id=["']faq["'][^>]*>/i,                                    10, 'visible_faq'],
     [/aggregateRating/i,                                                       8, 'aggregateRating'],

@@ -134,9 +134,14 @@ async function main() {
   console.log('\n═══ STAGE 3: DEMO BUILD ═══');
   const slug = makeSlug(lead);
   const demo = await buildDemoForLead(lead, {
-    enrichment, content: content || {},
+    enrichment,
+    content: content || null,
     slug,
     siteBase: process.env.SITE_BASE || 'https://latchlyai.com',
+    // Pass anthropic so the bespoke pipeline can regenerate copy from the
+    // site-content engine if Stage 2 didn't supply it. Required for
+    // LATCHLY_DEMO_ENGINE=bespoke.
+    anthropic,
   });
   console.log(JSON.stringify({
     ok: demo.ok, direction: demo.direction,

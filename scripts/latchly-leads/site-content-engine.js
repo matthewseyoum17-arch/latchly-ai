@@ -188,10 +188,10 @@ async function generateSiteContent(lead, enrichment, opts = {}) {
       const message = await anthropic.messages.create({
         model: opts.model || 'claude-haiku-4-5-20251001',
         max_tokens: 1500,
-        // Phase B.6: bumped 0.55 → 0.78. With seeded directives this gives
-        // real variation without breaking the structural validators.
+        // Phase B.6: bumped 0.55 → 0.78. Haiku 4.5 rejects setting both
+        // temperature and top_p simultaneously, so we use temperature alone
+        // — the variation-seed pools carry the rest of the diversity budget.
         temperature: 0.78,
-        top_p: 0.92,
         system: SYSTEM_PROMPT,
         messages: [{ role: 'user', content: userContent }],
       });
