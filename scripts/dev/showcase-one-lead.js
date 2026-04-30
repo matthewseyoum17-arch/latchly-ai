@@ -121,8 +121,18 @@ async function main() {
     enrichmentErrors: enrichment.enrichmentErrors,
   }, null, 2));
 
-  const Anthropic = (await import('@anthropic-ai/sdk')).default;
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  // Stages 2 + 4 default to the Max-plan CLI shim — flat-rate, no API
+  // credit burn. Set LATCHLY_USE_API_KEY=1 to fall back to the SDK.
+  let anthropic;
+  if (process.env.LATCHLY_USE_API_KEY === '1') {
+    const Anthropic = (await import('@anthropic-ai/sdk')).default;
+    anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    console.log('[showcase] using Anthropic SDK with API key');
+  } else {
+    const { createMaxPlanClient } = require('../latchly-leads/anthropic-via-cli');
+    anthropic = createMaxPlanClient();
+    console.log('[showcase] using Max-plan claude -p shim (flat-rate)');
+  }
 
   console.log('\n═══ STAGE 2: SITE CONTENT ═══');
   const content = await generateSiteContent(lead, enrichment, {

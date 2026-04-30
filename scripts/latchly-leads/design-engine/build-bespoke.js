@@ -81,15 +81,20 @@ async function buildBespokeDemoForLead(lead, opts = {}) {
   }
 
   // ── Pass 0: copy + SEO (deterministic) ────────────────────────────────
-  if (!anthropic) {
-    return { ok: false, reason: 'anthropic_client_required_for_copy' };
-  }
-  const content = opts.content
-    || await generateSiteContent(lead, enrichment, {
+  // If the caller already produced site copy (e.g. Stage 2 of the
+  // showcase pipeline), use it verbatim and skip the SDK call. Anthropic
+  // client is only required when we need to generate copy here.
+  let content = opts.content;
+  if (!content) {
+    if (!anthropic) {
+      return { ok: false, reason: 'anthropic_client_required_for_copy' };
+    }
+    content = await generateSiteContent(lead, enrichment, {
       anthropic,
       mode: lead.website ? 'souped-up' : 'fresh-build',
       recentCopy: opts.recentCopy || [],
     });
+  }
   if (!content) return { ok: false, reason: 'copy_generation_failed' };
 
   const seo = buildSeo({ lead, enrichment, content, slug, siteBase });
@@ -330,7 +335,10 @@ async function passBuild({ briefPath, scanPath, direction, outFile, tmpDir }) {
     'Use the Write tool. After writing, output a single sentence confirming the path.',
   ].join('\n');
 
-  const res = await runClaude({ prompt, expectFile: outFile, timeoutMs: 5 * 60 * 1000 });
+  // Opus 4.7 + xhigh on a full HTML build can take 8-15 min. Keep the
+  // ceiling generous since per-token cost is zero under Max-plan auth —
+  // we'd rather wait than fail on timeout and fall back to template.
+  const res = await runClaude({ prompt, expectFile: outFile, timeoutMs: 18 * 60 * 1000 });
   if (!res.ok) return { ok: false, reason: res.reason };
   // Sanity: HTML must contain the seo blocks verbatim.
   return { ok: true };
@@ -362,7 +370,9 @@ async function passPolish({ inFile, outFile, tmpDir }) {
     'Use the Write tool. Output is a single complete HTML file.',
   ].join('\n');
 
-  const res = await runClaude({ prompt, expectFile: outFile, timeoutMs: 4 * 60 * 1000 });
+  // Polish pass is shorter than build (input HTML already exists) but
+  // Opus + xhigh still chews on it. 12 min is generous but free.
+  const res = await runClaude({ prompt, expectFile: outFile, timeoutMs: 12 * 60 * 1000 });
   if (!res.ok) return { ok: false, reason: res.reason };
   return { ok: true };
 }

@@ -54,12 +54,17 @@ async function isClaudeCliAvailable() {
   _cliCheck = await new Promise(resolve => {
     let proc;
     try {
-      proc = spawn('claude', ['--version'], { timeout: 5000, stdio: ['ignore', 'pipe', 'pipe'] });
+      // Strip API-key env vars on the version probe too — leaving them in
+      // can make `claude --version` slower or fail on auth init.
+      const probeEnv = { ...process.env };
+      delete probeEnv.ANTHROPIC_API_KEY;
+      delete probeEnv.ANTHROPIC_AUTH_TOKEN;
+      proc = spawn('claude', ['--version'], { timeout: 15_000, stdio: ['ignore', 'pipe', 'pipe'], env: probeEnv });
     } catch {
       return resolve(false);
     }
     let timedOut = false;
-    const t = setTimeout(() => { timedOut = true; try { proc.kill(); } catch {} resolve(false); }, 5000);
+    const t = setTimeout(() => { timedOut = true; try { proc.kill(); } catch {} resolve(false); }, 15_000);
     proc.on('error', () => { clearTimeout(t); resolve(false); });
     proc.on('close', code => {
       clearTimeout(t);
