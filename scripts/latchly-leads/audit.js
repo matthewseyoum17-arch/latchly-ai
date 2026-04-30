@@ -101,6 +101,25 @@ async function auditLead(lead, options = {}) {
       };
     }
 
+    if (resolution.verifiedNoWebsite) {
+      const audit = decorateAudit(lead, await attachDecisionMaker(lead, {
+        status: 'no_website',
+        finalUrl: '',
+        html: '',
+        signals: {},
+        pagesChecked: [],
+        auditor: resolution.source || 'website-resolver',
+        noWebsiteVerification: resolution,
+      }));
+      return {
+        ...audit,
+        promising: true,
+        promisingReason: resolution.reason || 'verified_no_website',
+        auditStage: 'verified-no-site',
+        websiteResolution: resolution,
+      };
+    }
+
     const allowSourceOnlyNoSite = options.allowSourceOnlyNoSite
       || process.env.LATCHLY_ALLOW_SOURCE_ONLY_NO_SITE === '1';
     if (!allowSourceOnlyNoSite) {

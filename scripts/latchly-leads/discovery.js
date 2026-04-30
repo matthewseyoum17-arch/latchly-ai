@@ -638,13 +638,18 @@ function parseYellowPagesSearch(html, niche, city, state, url = '') {
   for (const chunk of chunks) {
     const name = clean(extract(chunk, /class=["'][^"']*business-name[^"']*["'][^>]*>([\s\S]*?)<\/a>/i))
       || clean(extract(chunk, /<a[^>]+class=["'][^"']*business-name[^"']*["'][^>]*>([\s\S]*?)<\/a>/i));
+    const profilePath = clean(extract(chunk, /<a[^>]+class=["'][^"']*business-name[^"']*["'][^>]*href=["']([^"']+)["']/i))
+      || clean(extract(chunk, /href=["']([^"']+)["'][^>]+class=["'][^"']*business-name[^"']*["']/i));
     const phone = normalizePhone(clean(extract(chunk, /class=["'][^"']*phones?[^"']*["'][^>]*>([\s\S]*?)<\/div>/i)));
     const website = normalizeWebsite(clean(extract(chunk, /href=["'](https?:\/\/(?!www\.yellowpages\.com)[^"']+)["'][^>]*>(?:Website|Visit Website)/i)));
     if (!name || !phone || isYellowPagesAdLead(name)) continue;
+    const profileUrl = profilePath
+      ? (profilePath.startsWith('http') ? profilePath : `https://www.yellowpages.com${profilePath.startsWith('/') ? '' : '/'}${profilePath}`)
+      : '';
     leads.push({
       sourceName: 'yellowpages',
       sourceRecordId: `${name}|${city}|${state}`,
-      rawPayload: { url },
+      rawPayload: { url, profileUrl },
       businessName: name,
       normalizedName: name.toLowerCase(),
       niche,

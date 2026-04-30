@@ -149,6 +149,7 @@ test('YellowPages parser handles current result markup without splitting nested 
   assert.equal(rows[0].businessName, 'Wolfe Plumbing Inc');
   assert.equal(rows[0].phone, '(386) 433-3504');
   assert.equal(rows[0].website, 'https://www.wolfeplumbing.net');
+  assert.equal(rows[0].rawPayload.profileUrl, 'https://www.yellowpages.com/gainesville-fl/mip/wolfe-plumbing-inc-123');
 });
 
 test('source opportunity ordering prioritizes no-website and likely poor-site rows before website-rich BBB', () => {

@@ -77,6 +77,25 @@ test('audit rejects blank website as unverified when no resolver confirms absenc
   assert.equal(audit.verifiedSignals.evidenceIntegrity.verifiable, false);
 });
 
+test('audit accepts resolver-verified no-site evidence without source-only mode', async () => {
+  const audit = await auditLead(baseLead({ website: '' }), {
+    resolveMissingWebsite: async () => ({
+      website: '',
+      attempted: true,
+      verifiedNoWebsite: true,
+      source: 'public_directory_resolver',
+      reason: 'directory_verified_no_site',
+      evidence: [{ source: 'yellowpages_profile', url: 'https://www.yellowpages.com/biz', detail: 'No owned website link found', confidence: 0.84 }],
+    }),
+  });
+
+  assert.equal(audit.status, 'no_website');
+  assert.equal(audit.promising, true);
+  assert.equal(audit.auditStage, 'verified-no-site');
+  assert.equal(audit.verifiedSignals.websiteTruth.status, 'no_site');
+  assert.equal(audit.verifiedSignals.evidenceIntegrity.verifiable, true);
+});
+
 test('good modern site produces positive evidence and no score-driving poor-site evidence', () => {
   const lead = baseLead({ website: 'https://modern.example' });
   const html = `<html><head><meta name="viewport" content="width=device-width"><style>@media(max-width:600px){main{display:flex}} @font-face{font-family:x}</style><script type="application/ld+json">{}</script></head><body><main><a href="tel:3525551212">Call now</a><form></form><p>${'licensed insured reviews free estimate '.repeat(100)}</p></main></body></html>`;
