@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
+  auditLead,
   candidatePages,
   createAuditSession,
   decorateAudit,
@@ -35,6 +36,45 @@ test('no-site candidate is verified separately from unreachable website', () => 
 
   assert.equal(unreachableAudit.verifiedSignals.websiteTruth.status, 'unreachable');
   assert.equal(unreachableAudit.verifiedSignals.evidenceIntegrity.verifiable, false);
+});
+
+test('audit resolves a missing source website before no-site classification', async () => {
+  const prior = process.env.LATCHLY_SKIP_WEBSITE_FETCH;
+  process.env.LATCHLY_SKIP_WEBSITE_FETCH = '1';
+  try {
+    const audit = await auditLead(baseLead({ businessName: 'Kayco Roofing', website: '' }), {
+      resolveMissingWebsite: async () => ({
+        website: 'https://kayco.example',
+        attempted: true,
+        source: 'test_resolver',
+        confidence: 0.9,
+        evidence: [{ source: 'test_resolver', url: 'https://kayco.example', detail: 'resolved in test', confidence: 0.9 }],
+      }),
+    });
+
+    assert.equal(audit.resolvedWebsite, 'https://kayco.example');
+    assert.notEqual(audit.verifiedSignals.websiteTruth.status, 'no_site');
+    assert.match(audit.auditStage, /^resolved-/);
+  } finally {
+    if (prior == null) delete process.env.LATCHLY_SKIP_WEBSITE_FETCH;
+    else process.env.LATCHLY_SKIP_WEBSITE_FETCH = prior;
+  }
+});
+
+test('audit rejects blank website as unverified when no resolver confirms absence', async () => {
+  const audit = await auditLead(baseLead({ website: '' }), {
+    resolveMissingWebsite: async () => ({
+      website: '',
+      attempted: true,
+      reason: 'website_not_found',
+      evidence: [{ source: 'test_resolver', url: '', detail: 'no verified site found', confidence: 0.4 }],
+    }),
+  });
+
+  assert.equal(audit.status, 'unverified_no_website');
+  assert.equal(audit.promising, false);
+  assert.equal(audit.verifiedSignals.websiteTruth.status, 'unknown');
+  assert.equal(audit.verifiedSignals.evidenceIntegrity.verifiable, false);
 });
 
 test('good modern site produces positive evidence and no score-driving poor-site evidence', () => {

@@ -48,6 +48,7 @@ interface EnrichResult {
   ok: boolean;
   lead?: any;
   changes: {
+    website?: { old: string | null; new: string; via: string };
     email?: { old: string | null; new: string; via: string };
     decisionMakerName?: { old: string | null; new: string; via: string };
   };
@@ -85,13 +86,14 @@ export async function POST(
   if (targetSet.has("all")) {
     targetSet.add("email");
     targetSet.add("owner");
+    targetSet.add("website");
   }
 
   const sql = neon(dbUrl);
   const rows = await sql`
     SELECT id, business_key, business_name, niche, city, state,
            email, decision_maker_name, decision_maker_title, decision_maker_confidence,
-           website, website_status
+           phone, website, website_status, source_payload
     FROM latchly_leads WHERE id = ${leadId} LIMIT 1
   ` as any[];
   const lead = rows[0];
@@ -107,15 +109,49 @@ export async function POST(
 
   const initialEmail = (lead.email || "").trim().toLowerCase();
   const initialOwner = (lead.decision_maker_name || "").trim();
-  const businessDomain = deriveBusinessDomain(lead.website || "");
+  let resolvedWebsite = "";
+
+  if (targetSet.has("website") && !(lead.website || "").trim()) {
+    result.attempted.push("website_resolver");
+    try {
+      const resolver = await import("../../../../../../scripts/latchly-leads/website-resolver.js");
+      const rawPayload = lead.source_payload?.rawPayload || lead.source_payload?.raw_payload || lead.source_payload || {};
+      const resolved = await resolver.resolveMissingWebsite({
+        businessName: lead.business_name || "",
+        niche: lead.niche || "",
+        city: lead.city || "",
+        state: lead.state || "",
+        phone: lead.phone || "",
+        website: lead.website || "",
+        rawPayload,
+      }, { timeoutMs: FETCH_TIMEOUT_MS });
+      if (resolved?.website) {
+        const resolvedSource = String((resolved as any).source || "website_resolver");
+        resolvedWebsite = String(resolved.website);
+        result.changes.website = {
+          old: null,
+          new: resolvedWebsite,
+          via: resolvedSource,
+        };
+        result.notes.push(`website_via_${resolvedSource}: ${resolvedWebsite}`);
+      } else {
+        result.notes.push(`website_not_verified: ${resolved?.reason || "not_found"}`);
+      }
+    } catch (err: any) {
+      result.notes.push(`website_resolver_error: ${err?.message || err}`);
+    }
+  }
+
+  const effectiveWebsite = resolvedWebsite || lead.website || "";
+  const businessDomain = deriveBusinessDomain(effectiveWebsite);
 
   // 1. Re-scrape the website for fresh contact pages — first chance at a
   //    verified email + owner name.
   let scrapedEmails: string[] = [];
   let scrapedOwnerName: string | null = null;
-  if (lead.website) {
+  if (effectiveWebsite) {
     result.attempted.push("website_scrape");
-    const scrape = await scrapeContactPages(lead.website);
+    const scrape = await scrapeContactPages(effectiveWebsite);
     scrapedEmails = scrape.emails;
     scrapedOwnerName = scrape.ownerName;
     if (!scrape.emails.length && !scrape.ownerName) {
@@ -213,10 +249,19 @@ export async function POST(
   //    cleared the email) is also never auto-refilled.
   const provenance = result.changes.email?.via || null;
   const emailStatus = bestEmail ? "verified" : (result.notAvailable?.email ? "not_available" : null);
-  const shouldUpdate = bestEmail || bestOwner || result.notAvailable?.email;
+  const shouldUpdate = resolvedWebsite || bestEmail || bestOwner || result.notAvailable?.email;
   if (shouldUpdate) {
     await sql`
       UPDATE latchly_leads SET
+        website = CASE
+          WHEN website IS NOT NULL AND website <> '' THEN website
+          ELSE COALESCE(${resolvedWebsite || null}, website)
+        END,
+        website_status = CASE
+          WHEN website IS NOT NULL AND website <> '' THEN website_status
+          WHEN ${resolvedWebsite || null} IS NOT NULL THEN 'has_website'
+          ELSE website_status
+        END,
         email = CASE
           WHEN email_status = 'rejected' THEN email
           WHEN email IS NOT NULL AND email <> '' THEN email
@@ -246,7 +291,7 @@ export async function POST(
   const after = (await sql`
     SELECT id, business_key, business_name, niche, city, state,
            email, decision_maker_name, decision_maker_title, decision_maker_confidence,
-           website, email_status, email_provenance
+           website, website_status, email_status, email_provenance
     FROM latchly_leads WHERE id = ${leadId} LIMIT 1
   ` as any[])[0];
   result.lead = after;

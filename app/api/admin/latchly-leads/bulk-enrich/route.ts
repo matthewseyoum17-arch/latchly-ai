@@ -4,7 +4,7 @@ import { verifyDashboardRequest } from "@/lib/auth";
 
 // Bulk enrichment endpoint. Replaces the per-lead "Find email" / "Find owner"
 // buttons in the CRM. Accepts a list of lead ids + a target ('email' | 'owner'
-// | 'both'), then runs the verified-source chain for each lead in parallel
+// | 'website' | 'both'), then runs the verified-source chain for each lead in parallel
 // (concurrency-bounded), streaming progress as Server-Sent Events.
 //
 // The CRM passes the currently-filtered view's lead ids; the server skips
@@ -13,7 +13,7 @@ import { verifyDashboardRequest } from "@/lib/auth";
 //
 // Response is text/event-stream with three event types:
 //   - `progress`   { leadId, businessName, target, ok, source?, value?, reason? }
-//   - `summary`    { processed, found: { email, owner }, notAvailable: { email, owner }, errors }
+//   - `summary`    { processed, found: { email, owner, website }, notAvailable: { email, owner, website }, errors }
 //   - `error`      { message }   — fatal only
 
 export const dynamic = "force-dynamic";
@@ -25,7 +25,7 @@ const CONCURRENCY = 4;
 
 interface BulkBody {
   leadIds: number[];
-  target: "email" | "owner" | "both";
+  target: "email" | "owner" | "website" | "both";
 }
 
 export async function POST(request: NextRequest) {
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     return new Response("invalid_body", { status: 400 });
   }
 
-  const target = body.target === "email" || body.target === "owner" || body.target === "both" ? body.target : "both";
+  const target = body.target === "email" || body.target === "owner" || body.target === "website" || body.target === "both" ? body.target : "both";
   const leadIds = Array.isArray(body.leadIds) ? body.leadIds.map(Number).filter(Number.isFinite) : [];
   if (!leadIds.length) return new Response("no_lead_ids", { status: 400 });
 
@@ -51,18 +51,21 @@ export async function POST(request: NextRequest) {
   if (!dbUrl) return new Response("no_database_url", { status: 500 });
   const sql = neon(dbUrl);
 
-  // Lazy-load the finder chain — Node-only module (uses child_process for whois).
-  const finders = await import("../../../../../scripts/latchly-leads/finders/index.js");
+  // Lazy-load Node-only helpers. `finders` uses child_process for whois;
+  // `websiteResolver` uses server-side HTTP to verify missing websites.
+  const finders = target === "website" ? null : await import("../../../../../scripts/latchly-leads/finders/index.js");
+  const websiteResolver = await import("../../../../../scripts/latchly-leads/website-resolver.js");
 
   // Pull the leads we'll work on. Skip any that already satisfy the target.
   const rows = await sql`
     SELECT id, business_name, niche, city, state,
-           email, decision_maker_name, website, email_status
+           phone, email, decision_maker_name, website, website_status, email_status, source_payload
     FROM latchly_leads
     WHERE id = ANY(${leadIds})
   ` as any[];
 
   const eligible = rows.filter(row => {
+    if (target === "website") return !row.website;
     if (target === "email") return !row.email;
     if (target === "owner") return !row.decision_maker_name;
     // 'both' — eligible if either is missing
@@ -79,8 +82,8 @@ export async function POST(request: NextRequest) {
       const summary = {
         processed: 0,
         skipped: rows.length - eligible.length,
-        found: { email: 0, owner: 0 },
-        notAvailable: { email: 0, owner: 0 },
+        found: { email: 0, owner: 0, website: 0 },
+        notAvailable: { email: 0, owner: 0, website: 0 },
         errors: 0,
       };
 
@@ -95,15 +98,12 @@ export async function POST(request: NextRequest) {
           const lead = queue.shift();
           if (!lead) return;
           try {
-            const out = await processLead(lead, target, finders, sql);
+            const out = await processLead(lead, target, finders, websiteResolver, sql);
             for (const event of out.events) {
               send("progress", event);
-              if (event.target === "email") {
-                if (event.ok) summary.found.email += 1;
-                else if (event.reason === "not_available") summary.notAvailable.email += 1;
-              } else if (event.target === "owner") {
-                if (event.ok) summary.found.owner += 1;
-                else if (event.reason === "not_available") summary.notAvailable.owner += 1;
+              if (event.target === "email" || event.target === "owner" || event.target === "website") {
+                if (event.ok) summary.found[event.target] += 1;
+                else if (event.reason === "not_available") summary.notAvailable[event.target] += 1;
               }
             }
             summary.processed += 1;
@@ -142,16 +142,19 @@ interface LeadRow {
   niche: string | null;
   city: string | null;
   state: string | null;
+  phone: string | null;
   email: string | null;
   decision_maker_name: string | null;
   website: string | null;
+  website_status: string | null;
   email_status: string | null;
+  source_payload: any;
 }
 
 interface ProgressEvent {
   leadId: number;
   businessName: string | null;
-  target: "email" | "owner";
+  target: "email" | "owner" | "website";
   ok: boolean;
   source?: string;
   value?: string;
@@ -161,8 +164,9 @@ interface ProgressEvent {
 
 async function processLead(
   lead: LeadRow,
-  target: "email" | "owner" | "both",
+  target: "email" | "owner" | "website" | "both",
   finders: any,
+  websiteResolver: any,
   sql: any,
 ): Promise<{ events: ProgressEvent[] }> {
   const events: ProgressEvent[] = [];
@@ -172,6 +176,43 @@ async function processLead(
     state: lead.state || "",
     website: lead.website || "",
   };
+
+  // Website --------------------------------------------------------------
+  let websiteFound: string | null = null;
+  let websiteSource: string | null = null;
+  if (target === "website" && !lead.website) {
+    const rawPayload = lead.source_payload?.rawPayload || lead.source_payload?.raw_payload || lead.source_payload || {};
+    const r = await websiteResolver.resolveMissingWebsite({
+      businessName: lead.business_name || "",
+      niche: lead.niche || "",
+      city: lead.city || "",
+      state: lead.state || "",
+      phone: lead.phone || "",
+      website: lead.website || "",
+      rawPayload,
+    });
+    if (r?.website) {
+      websiteFound = String(r.website);
+      websiteSource = String(r.source || "website_resolver");
+      events.push({
+        leadId: lead.id,
+        businessName: lead.business_name,
+        target: "website",
+        ok: true,
+        source: websiteSource,
+        value: websiteFound,
+      });
+    } else {
+      events.push({
+        leadId: lead.id,
+        businessName: lead.business_name,
+        target: "website",
+        ok: false,
+        reason: "not_available",
+        attempted: r?.evidence?.map((item: any) => item.source).filter(Boolean),
+      });
+    }
+  }
 
   // Owner ----------------------------------------------------------------
   let ownerFound: string | null = null;
@@ -247,9 +288,18 @@ async function processLead(
       ? "not_available"
       : null;
 
-  if (emailFound || ownerFound || emailStatusUpdate) {
+  if (websiteFound || emailFound || ownerFound || emailStatusUpdate) {
     await sql`
       UPDATE latchly_leads SET
+        website = CASE
+          WHEN website IS NOT NULL AND website <> '' THEN website
+          ELSE COALESCE(${websiteFound}, website)
+        END,
+        website_status = CASE
+          WHEN website IS NOT NULL AND website <> '' THEN website_status
+          WHEN ${websiteFound} IS NOT NULL THEN 'has_website'
+          ELSE website_status
+        END,
         email = CASE
           WHEN email_status = 'rejected' THEN email
           WHEN email IS NOT NULL AND email <> '' THEN email

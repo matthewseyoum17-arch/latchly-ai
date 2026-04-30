@@ -70,9 +70,9 @@ export default function LeadsCrmPage() {
   // Bulk find-email / find-owner state. Both run as a single /bulk-enrich
   // SSE call with a target ('email' | 'owner' | 'both'); progress lines
   // stream into bulkLog and the final summary lands in bulkSummary.
-  const [bulkRunning, setBulkRunning] = useState<null | "email" | "owner" | "both">(null);
+  const [bulkRunning, setBulkRunning] = useState<null | "email" | "owner" | "website" | "both">(null);
   const [bulkLog, setBulkLog] = useState<{ leadId: number; businessName: string | null; target: string; ok: boolean; source?: string; value?: string; reason?: string }[]>([]);
-  const [bulkSummary, setBulkSummary] = useState<null | { processed: number; skipped: number; found: { email: number; owner: number }; notAvailable: { email: number; owner: number }; errors: number }>(null);
+  const [bulkSummary, setBulkSummary] = useState<null | { processed: number; skipped: number; found: { email: number; owner: number; website: number }; notAvailable: { email: number; owner: number; website: number }; errors: number }>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -191,12 +191,13 @@ export default function LeadsCrmPage() {
   // filtered view that is missing the target field. Pattern-guessing is
   // permanently off — leads that don't surface a verified hit are marked
   // 'not_available' and never re-tried automatically.
-  const runBulkFind = useCallback(async (target: "email" | "owner" | "both") => {
+  const runBulkFind = useCallback(async (target: "email" | "owner" | "website" | "both") => {
     if (!data?.leads?.length || bulkRunning) return;
     const leadIds = data.leads
       .filter((lead) => {
         if (target === "email") return !lead.email;
         if (target === "owner") return !lead.decisionMakerName;
+        if (target === "website") return !lead.website;
         return !lead.email || !lead.decisionMakerName;
       })
       .map((lead) => lead.id);
@@ -250,18 +251,19 @@ export default function LeadsCrmPage() {
     }
   }, [data?.leads, bulkRunning, fetchData]);
 
-  const enrichLead = async (lead: Lead, target: "email" | "owner" | "all" = "all") => {
+  const enrichLead = async (lead: Lead, target: "email" | "owner" | "website" | "all" = "all") => {
     setEnrichingId(lead.id);
     setError("");
     try {
       const res = await fetch(`/api/admin/latchly-leads/${lead.id}/enrich`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ targets: target === "all" ? ["email", "owner"] : [target] }),
+        body: JSON.stringify({ targets: target === "all" ? ["website", "email", "owner"] : [target] }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Enrichment failed");
       const found: string[] = [];
+      if (json.changes?.website) found.push(`website via ${json.changes.website.via}`);
       if (json.changes?.email) found.push(`email via ${json.changes.email.via}`);
       if (json.changes?.decisionMakerName) found.push(`owner via ${json.changes.decisionMakerName.via}`);
       if (found.length) {
@@ -557,8 +559,23 @@ export default function LeadsCrmPage() {
                 {(() => {
                   const missingEmail = data?.leads.filter(l => !l.email).length ?? 0;
                   const missingOwner = data?.leads.filter(l => !l.decisionMakerName).length ?? 0;
+                  const missingWebsite = data?.leads.filter(l => !l.website).length ?? 0;
                   return (
                     <>
+                      <button
+                        type="button"
+                        onClick={() => runBulkFind("website")}
+                        disabled={bulkRunning !== null || missingWebsite === 0}
+                        className="inline-flex items-center gap-1.5 rounded-md border border-teal-200 bg-teal-50 px-2.5 py-1.5 text-[12px] font-bold text-teal-800 hover:bg-teal-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Find verified websites for every no-website lead in this view. Uses configured Google/Maps resolvers and rejects unverified guesses."
+                      >
+                        {bulkRunning === "website" ? (
+                          <Loader2 size={12} className="animate-spin" />
+                        ) : (
+                          <Globe size={12} />
+                        )}
+                        Find websites ({missingWebsite})
+                      </button>
                       <button
                         type="button"
                         onClick={() => runBulkFind("email")}
@@ -602,11 +619,11 @@ export default function LeadsCrmPage() {
                       Processed {bulkSummary.processed}
                       {bulkSummary.skipped > 0 ? ` (skipped ${bulkSummary.skipped})` : ""} · Found{" "}
                       <span className="font-bold text-emerald-700">
-                        {bulkSummary.found.email + bulkSummary.found.owner}
+                        {bulkSummary.found.email + bulkSummary.found.owner + bulkSummary.found.website}
                       </span>{" "}
-                      ({bulkSummary.found.email} email · {bulkSummary.found.owner} owner) · Not available{" "}
+                      ({bulkSummary.found.website} website · {bulkSummary.found.email} email · {bulkSummary.found.owner} owner) · Not available{" "}
                       <span className="font-bold text-slate-600">
-                        {bulkSummary.notAvailable.email + bulkSummary.notAvailable.owner}
+                        {bulkSummary.notAvailable.email + bulkSummary.notAvailable.owner + bulkSummary.notAvailable.website}
                       </span>
                       {bulkSummary.errors > 0 ? <> · <span className="text-rose-700 font-bold">{bulkSummary.errors} errors</span></> : null}
                     </div>

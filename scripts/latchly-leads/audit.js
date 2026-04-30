@@ -1,6 +1,7 @@
 const { execFileSync } = require('child_process');
 const { chromium } = require('playwright');
 const { absoluteUrl, fetchText, normalizePhone, normalizeWebsite, sleep } = require('./utils');
+const { resolveMissingWebsite } = require('./website-resolver');
 const {
   extractHtmlSignals,
   isChainBusiness,
@@ -77,15 +78,64 @@ function createAuditSession(options = {}) {
 async function auditLead(lead, options = {}) {
   const website = normalizeWebsite(lead.website);
   if (!website) {
+    const resolver = options.resolveMissingWebsite || resolveMissingWebsite;
+    const resolution = options.skipWebsiteResolution
+      ? { website: '', attempted: false, reason: 'resolver_skipped', evidence: [] }
+      : await resolver(lead, options.websiteResolverOptions || options);
+
+    if (resolution.website) {
+      const resolvedLead = {
+        ...lead,
+        website: resolution.website,
+        sourceOpportunity: lead.sourceOpportunity === 'no_source_website'
+          ? 'possible_poor_site'
+          : lead.sourceOpportunity,
+      };
+      const audit = await auditLead(resolvedLead, { ...options, skipWebsiteResolution: true });
+      return {
+        ...audit,
+        resolvedWebsite: resolution.website,
+        websiteResolution: resolution,
+        originalWebsite: '',
+        auditStage: audit.auditStage ? `resolved-${audit.auditStage}` : 'resolved-website',
+      };
+    }
+
+    const allowSourceOnlyNoSite = options.allowSourceOnlyNoSite
+      || process.env.LATCHLY_ALLOW_SOURCE_ONLY_NO_SITE === '1';
+    if (!allowSourceOnlyNoSite) {
+      const audit = decorateAudit(lead, await attachDecisionMaker(lead, {
+        status: 'unverified_no_website',
+        finalUrl: '',
+        html: '',
+        signals: {},
+        pagesChecked: [],
+        auditor: resolution.attempted ? 'website-resolver' : 'none',
+        noWebsiteVerification: resolution,
+      }));
+      return {
+        ...audit,
+        promising: false,
+        promisingReason: resolution.attempted ? 'missing_website_unverified' : 'missing_website_no_resolver',
+        auditStage: resolution.attempted ? 'unverified-no-site' : 'no-site-unchecked',
+        websiteResolution: resolution,
+      };
+    }
+
     const audit = decorateAudit(lead, await attachDecisionMaker(lead, {
       status: 'no_website',
       finalUrl: '',
       html: '',
       signals: {},
       pagesChecked: [],
-      auditor: 'none',
+      auditor: 'source-only',
+      noWebsiteVerification: {
+        attempted: false,
+        reason: 'source_only_legacy',
+        evidence: [{ source: 'source_candidate', url: '', detail: 'Source-only no-site mode enabled by environment', confidence: 0.8 }],
+      },
     }));
-    return { ...audit, promising: true, promisingReason: 'no_site', auditStage: 'skip-no-site' };
+    return { ...audit, promising: true, promisingReason: 'source_only_no_site', auditStage: 'source-only-no-site' };
   }
 
   if (process.env.LATCHLY_SKIP_WEBSITE_FETCH === '1') {
@@ -511,6 +561,7 @@ function decorateAudit(lead = {}, audit = {}) {
 
   if (status === 'skipped') integrityIssues.push('Website fetch/audit was skipped');
   if (status === 'unreachable') integrityIssues.push('Website could not be reached');
+  if (websiteTruth.status === 'unknown') integrityIssues.push('Website existence was not independently verified');
   if (websiteTruth.status === 'real_business_website' && !negativeSignals.length && !positiveSignals.length) {
     integrityIssues.push('No verifiable website quality evidence was extracted');
   }
@@ -554,6 +605,28 @@ function decorateAudit(lead = {}, audit = {}) {
 function buildWebsiteTruth(lead, audit, signals, finalUrl) {
   const requested = normalizeWebsite(lead.website);
   if (!requested) {
+    if (audit.status === 'unverified_no_website') {
+      return {
+        status: 'unknown',
+        url: '',
+        confidence: 0.2,
+        evidence: [evidence(
+          audit.noWebsiteVerification?.attempted ? 'website_resolver' : 'source_candidate',
+          '',
+          audit.noWebsiteVerification?.reason || 'Missing website was not independently verified',
+          0.2,
+        )].concat(audit.noWebsiteVerification?.evidence || []),
+      };
+    }
+    const verification = audit.noWebsiteVerification;
+    if (verification?.evidence?.length) {
+      return {
+        status: 'no_site',
+        url: '',
+        confidence: 0.85,
+        evidence: verification.evidence,
+      };
+    }
     return {
       status: 'no_site',
       url: '',
