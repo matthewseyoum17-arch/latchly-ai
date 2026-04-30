@@ -81,15 +81,18 @@ async function messagesCreate(opts = {}) {
   // model strings we already use in the SDK calls (haiku-4-5, opus-4-7).
   const model = opts.model || 'claude-haiku-4-5-20251001';
 
-  // Effort: SDK has no equivalent. We tier by model: Opus → xhigh; Haiku
-  // → medium. Callers can pass `effort` explicitly to override.
-  const defaultEffort = /opus/i.test(model) ? 'xhigh' : 'medium';
+  // Effort: SDK has no equivalent. JSON-shaped composition (cold email,
+  // site copy) doesn't need much reasoning — `low` is plenty. Opus
+  // callers passing the model explicitly get xhigh by default since
+  // they're doing creative work (design generation, scoring).
+  const defaultEffort = /opus/i.test(model) ? 'xhigh' : 'low';
   const effort = opts.effort || defaultEffort;
 
-  // 2-minute soft cap per call. Site-content + cold-email both retry up
-  // to 3x; if a single call can't land in 2 minutes we'd rather fail
-  // fast and retry with feedback than hang forever.
-  const timeoutMs = opts.timeoutMs || 120_000;
+  // 6-minute soft cap per call. The CLI subprocess startup + Haiku
+  // response on a long SYSTEM_PROMPT routinely exceeds 2 min on a
+  // 4GB chromebook; 6 min tolerates that without making us wait
+  // forever on a wedged process.
+  const timeoutMs = opts.timeoutMs || 6 * 60 * 1000;
 
   // Allowed tools: nothing creative needed for JSON-only composition.
   // Read is enough so the model can sanity-check files if it wants.

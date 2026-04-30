@@ -234,6 +234,8 @@ async function generateSiteContent(lead, enrichment, opts = {}) {
     }
   }
 
+  // eslint-disable-next-line no-console
+  console.warn('[site-content-engine] all 3 attempts failed:', lastError?.message || lastError);
   return null; // Caller handles null → skip demo for this lead
 }
 
