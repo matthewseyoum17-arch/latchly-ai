@@ -100,9 +100,13 @@ const COLD_EMAIL_RULES = {
     // ranges as soft targets, so we keep the lower bounds wider than the
     // directives say. The directives above are what the model actually
     // sees and aims for; the numbers below are what the validator tolerates.
-    { key: 'tight',  min: 45,  max: 90,  directive: 'Body 50-85 words. Tight. Probably 2 short paragraphs.' },
-    { key: 'medium', min: 65,  max: 120, directive: 'Body 80-115 words. The default mid-length. Three short paragraphs.' },
-    { key: 'long',   min: 100, max: 160, directive: 'Body 110-150 words. Use only when there is enough real detail to justify the room. Three or four paragraphs.' },
+    // Validator floors are wider than the directive ranges because Haiku
+    // 4.5 routinely undershoots target word counts by ~15-25%. The
+    // directives still create per-lead length variation; the floors only
+    // catch truly broken output.
+    { key: 'tight',  min: 40, max: 90,  directive: 'Body 50-85 words. Tight. Probably 2 short paragraphs.' },
+    { key: 'medium', min: 55, max: 120, directive: 'Body 80-115 words. The default mid-length. Three short paragraphs.' },
+    { key: 'long',   min: 80, max: 160, directive: 'Body 110-150 words. Use only when there is enough real detail to justify the room. Three or four paragraphs.' },
   ],
 
   signoffPool: [
@@ -299,7 +303,7 @@ async function composeColdEmailForLead(lead, enrichment, demoUrl, opts = {}) {
   // the same lead are stable but every distinct lead picks a different
   // archetype mix. Different bit slices of the seed pick each pool so the
   // four pools vary independently.
-  const variation = pickVariation(lead, senderFirstName);
+  const variation = pickVariation(lead, senderFirstName, enrichment);
 
   const input = buildComposerInput(lead, enrichment, demoUrl, {
     fromEmail,
@@ -446,14 +450,28 @@ function buildComposerInput(lead, enrichment = {}, demoUrl, opts = {}) {
 // independently — two leads with adjacent ids will not share three of four.
 // SHA-1 gives uniform distribution even on tiny inputs (FNV-1a was clumping
 // on single-digit ids; observed 2/5 voices across 100 leads).
-function pickVariation(lead, senderFirstName) {
+function pickVariation(lead, senderFirstName, enrichment) {
   const idStr = String(lead?.id ?? lead?.businessKey ?? lead?.businessName ?? Math.random());
   const digest = crypto.createHash('sha1').update(idStr).digest();
 
   const voice        = COLD_EMAIL_RULES.voicePool  [digest[0] % COLD_EMAIL_RULES.voicePool.length];
   const opener       = COLD_EMAIL_RULES.openerPool [digest[1] % COLD_EMAIL_RULES.openerPool.length];
-  const lengthBucket = COLD_EMAIL_RULES.lengthPool [digest[2] % COLD_EMAIL_RULES.lengthPool.length];
+  let lengthBucket   = COLD_EMAIL_RULES.lengthPool [digest[2] % COLD_EMAIL_RULES.lengthPool.length];
   const signoff      = COLD_EMAIL_RULES.signoffPool[digest[3] % COLD_EMAIL_RULES.signoffPool.length];
+
+  // Content-aware bucket downgrade. Medium/long buckets ask for 80-150
+  // words, but Haiku 4.5 refuses to pad — when there's no review/years/
+  // services material to draw on, it consistently produces ~50-70 word
+  // bodies and the validator hard-fails. Force tight when data is thin
+  // so the directive matches the model's honest output. Better to send a
+  // short honest email than waste retries chasing word count we can't fill.
+  const reviewCount = Number(enrichment?.reviewCount || 0);
+  const hasYears = Number(enrichment?.yearsInBusiness || 0) > 0;
+  const servicesCount = (enrichment?.servicesVerified || []).length;
+  const thinData = reviewCount === 0 && !hasYears && servicesCount === 0;
+  if (thinData && lengthBucket.key !== 'tight') {
+    lengthBucket = COLD_EMAIL_RULES.lengthPool.find(b => b.key === 'tight') || lengthBucket;
+  }
 
   // Render the sign-off with the actual sender name interpolated, so the
   // prompt directive is a literal target the validator can check against.
