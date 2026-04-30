@@ -12,10 +12,16 @@ const crypto = require('crypto');
 // ── Tone bible (anti-AI-slop) ────────────────────────────────────────────────
 
 const COLD_EMAIL_RULES = {
-  initialEmailWords: { min: 70, max: 140 },
+  initialEmailWords: { min: 60, max: 150 },
   subjectLineWords: { min: 3, max: 9 },
 
+  // Hard cap: max 2 em-dashes per body. Em-dash repetition is the single
+  // strongest AI cadence tell — humans use them but not 4-5 times in a 100
+  // word email. Sign-off em-dash counts.
+  maxEmDashesInBody: 2,
+
   bannedPhrases: [
+    // Original ban list ----------------------------------------------------
     'game changer', '10x', 'explosive growth', 'revolutionize',
     'AI-powered growth machine', 'quick question', 'just bumping this',
     'once-in-a-lifetime', 'hope you\'re doing well', 'reaching out because',
@@ -28,9 +34,19 @@ const COLD_EMAIL_RULES = {
     'committed to excellence', 'state-of-the-art',
     'proudly serving', 'your trusted partner', 'we understand that',
     'in the heart of', 'nestled in', 'when it comes to',
+    // Phase C expansion — AI cadence tells -------------------------------
+    'delve', 'deep dive', 'dive into', 'in today\'s market',
+    'in today\'s fast-paced', 'given that', 'I see that you',
+    'navigate', 'in the spirit of', 'spearhead', 'as you may know',
+    'I wanted to take a moment', 'I trust this finds you', 'thoughts on',
+    'we noticed that', 'I\'d love to', 'empower your business',
+    'drive growth', 'scalable solution', 'optimize your',
+    'synergize', 'paradigm', 'holistic', 'ecosystem', 'journey',
+    'streamline', 'going forward',
   ],
 
   bannedFramings: [
+    // Original list -------------------------------------------------------
     'spotted a huge issue',
     'your site is bad',
     'your site is ugly',
@@ -41,6 +57,56 @@ const COLD_EMAIL_RULES = {
     'we found issues',
     'I noticed your business',
     'I came across your business',
+    // Phase C expansion ---------------------------------------------------
+    'your business deserves',
+    'time and time again',
+    'the perfect partner',
+    'turn-key solution',
+    'value proposition',
+    'mission-critical',
+  ],
+
+  // ── Per-lead variation pools (Phase C) ─────────────────────────────────
+  // Hashed by lead.id so repeat composes are stable per-lead but vary
+  // sharply across leads. Claude is forced to follow the chosen archetype.
+  voicePool: [
+    { key: 'trades-text-cadence', name: 'Trades-shop-owner-text-cadence',
+      directive: 'Write like a contractor texting back: short choppy sentences, plain words, no jargon, no sales polish. Two- to five-word sentence fragments allowed.' },
+    { key: 'wry-brand', name: 'Wry-brand-person',
+      directive: 'Voice is brand-savvy but slightly self-deprecating. One small wink at the cold-outreach genre is allowed (not required). No agency-speak.' },
+    { key: 'sales-engineer-direct', name: 'Sales-engineer-direct',
+      directive: 'Numbers + concrete outcome only. Zero adjectives. Read like a one-screen Slack message from a senior engineer.' },
+    { key: 'morning-coffee', name: 'Morning-coffee-friendly',
+      directive: 'Warm, relaxed, conversational without being chatty. No exclamation points. Read like the second message of an existing thread, not the first.' },
+    { key: 'no-bullshit-30s', name: 'No-bullshit-30-seconds',
+      directive: 'Punchy: "here\'s the thing, [link], [question]". Three short paragraphs max. Cuts every word that isn\'t earning its place.' },
+  ],
+
+  openerPool: [
+    { key: 'reference-based',
+      directive: 'Open by referencing one specific thing on their site, profile, or service area. Format: "Saw your {detail} — {reaction}." Use a real fact from enrichment, never invented.' },
+    { key: 'niche-question',
+      directive: 'Open with a focused question for the niche + city. Format: "Quick one for a {niche} op in {city} — {observation}". The question is the bait; the demo is the answer.' },
+    { key: 'direct-builder',
+      directive: 'Open as the maker delivering work. Format: "Built a draft of a homepage for {businessName} last night — {one detail}". Lead with what was made, not what is wanted.' },
+    { key: 'acquaintance',
+      directive: 'Open by acknowledging the cold-email risk and earning the read. Format: "Going to risk you not opening this — {specific reason this is worth it}". Use only when there is a strong real-fact hook (review count, years, BBB rating).' },
+    { key: 'single-fact-hook',
+      directive: 'Open with one concrete real fact, then the implication. Format: "{specific real fact, e.g. \\"187 5★ reviews on Google\\"} — but the homepage doesn\'t say that anywhere yet." Requires a real reviewCount + averageRating in enrichment.' },
+  ],
+
+  lengthPool: [
+    { key: 'tight',  min: 60,  max: 85,  directive: 'Body 60-85 words. Tight. Probably 2 short paragraphs.' },
+    { key: 'medium', min: 90,  max: 115, directive: 'Body 90-115 words. The default mid-length. Three short paragraphs.' },
+    { key: 'long',   min: 115, max: 150, directive: 'Body 115-150 words. Use only when there is enough real detail to justify the room. Three or four paragraphs.' },
+  ],
+
+  signoffPool: [
+    { key: 'em-matt',          format: '—{first}',                   directive: 'Sign off as a single dash, no space, then your first name. No company line.' },
+    { key: 'matt-comma-co',    format: '{first}, Latchly',           directive: 'Sign off as "{first}, Latchly" on a single line.' },
+    { key: 'matt-at-co',       format: '{first} @ Latchly',          directive: 'Sign off as "{first} @ Latchly" on a single line.' },
+    { key: 'lower-slash',      format: '{lower} / latchly',          directive: 'Sign off as lowercased first name + " / latchly" on a single line.' },
+    { key: 'em-founder',       format: '—{lower} (founder, Latchly)', directive: 'Sign off as a single dash, lowercased first name, then "(founder, Latchly)" on the same line.' },
   ],
 
   // Personalization sources, used in priority order. Use only what's in the
@@ -67,6 +133,14 @@ const COLD_EMAIL_RULES = {
     'low-friction link',   // "take a look if you get a minute"
     'simple reply',        // "want the link?"
   ],
+
+  // Cross-lead de-dupe (Phase C) — overlap ratio above this triggers retry.
+  dedupeOverlapThreshold: 0.4,
+  // 7-gram window: small enough to catch reused phrasing, big enough to
+  // ignore incidental token overlap (city names, common words).
+  dedupeNgramSize: 7,
+  // Compare against this many recent prior bodies.
+  dedupeRecentLimit: 30,
 };
 
 // ── SYSTEM_PROMPT (canonical body — synced into the skill) ──────────────────
@@ -133,11 +207,23 @@ Strict JSON only, no prose, no markdown:
 ═══ TOTAL LENGTH ═══
 Body: 70-130 words. Subject: 4-8 words. Hard caps — go shorter, never longer.
 
-═══ TONE ═══
+═══ TONE — PER-LEAD VOICE / OPENER / LENGTH / SIGN-OFF ═══
+The input includes a \`variation\` block with four hashed directives. Follow ALL FOUR EXACTLY — they're how we keep ten emails feeling like ten different humans wrote them, not ten outputs of the same prompt.
+- variation.voice         — sentence cadence + register
+- variation.opener        — the first sentence's shape
+- variation.lengthBucket  — body word count (use the bucket's min/max, not the default 70-130)
+- variation.signoff       — exact sign-off line, with your first name interpolated
+
+If the chosen voice contradicts the structural rules above (e.g. trades-text-cadence wants two-word fragments), the structural rules still win — but stretch them as far as the voice allows.
+
+═══ ANTI-AI-CADENCE RULES ═══
 - Owner-to-owner. You're a builder showing real work, not an agency pitching services.
 - Short declarative sentences. Active voice. Concrete nouns over abstract ones.
 - Confident, not cute. Specific, not generic. Direct, not pushy.
 - Grammar matters: complete sentences, periods, proper capitalization throughout.
+- Em-dashes: max TWO across the entire body (sign-off em-dash counts as one). More is an AI tell.
+- Never have two consecutive paragraphs both start with "I" — restructure if needed.
+- Never reuse the same sentence opening template across the email's three paragraphs.
 
 ═══ BANNED PHRASES — REJECT IF PRESENT ═══
 ${COLD_EMAIL_RULES.bannedPhrases.map(p => '  - "' + p + '"').join('\n')}
@@ -205,28 +291,47 @@ async function composeColdEmailForLead(lead, enrichment, demoUrl, opts = {}) {
   const senderFirstName = (fromEmail.split('@')[0] || 'matt').replace(/[^a-z]/gi, '') || 'matt';
   const unsubUrl = opts.unsubUrl || buildUnsubLink(lead, opts.siteBase);
 
+  // Per-lead variation seeds — deterministic from lead.id so re-runs for
+  // the same lead are stable but every distinct lead picks a different
+  // archetype mix. Different bit slices of the seed pick each pool so the
+  // four pools vary independently.
+  const variation = pickVariation(lead, senderFirstName);
+
   const input = buildComposerInput(lead, enrichment, demoUrl, {
     fromEmail,
     senderFirstName,
     unsubUrl,
+    variation,
   });
+
+  // Cross-lead de-dupe corpus (last N sent/queued/draft bodies). The caller
+  // can pass these explicitly; otherwise we leave it empty and skip the
+  // overlap check. Real production wiring lives in outreach-queue.js.
+  const recentBodies = Array.isArray(opts.recentBodies) ? opts.recentBodies : [];
+  const recentNgrams = recentBodies
+    .map(body => ngramSet(String(body || ''), COLD_EMAIL_RULES.dedupeNgramSize))
+    .filter(set => set.size > 0);
 
   let lastError = null;
   let bannedHit = null;
+  let overlapFeedback = null;
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
+      const userContent = overlapFeedback
+        ? `Compose the Day-0 email. Return JSON only.\n\n<input>\n${JSON.stringify(input, null, 2)}\n</input>\n\n<retry_feedback>\nThe prior attempt overlapped heavily with a recent send (${(overlapFeedback.ratio * 100).toFixed(0)}% 7-gram overlap). Use a fundamentally different opener, sentence rhythm, and vocabulary. Do NOT echo phrasing from the prior attempt.\n</retry_feedback>`
+        : `Compose the Day-0 email. Return JSON only.\n\n<input>\n${JSON.stringify(input, null, 2)}\n</input>`;
+
       const message = await anthropic.messages.create({
         model: opts.model || 'claude-haiku-4-5-20251001',
         max_tokens: 800,
-        temperature: 0.6,
+        // Phase C: bumped from 0.6 → 0.85 with top_p 0.92. Combined with
+        // the variation seed pools, this kills the structural sameness
+        // without breaking professional tone or the structural validators.
+        temperature: 0.85,
+        top_p: 0.92,
         system: SYSTEM_PROMPT,
-        messages: [
-          {
-            role: 'user',
-            content: `Compose the Day-0 email. Return JSON only.\n\n<input>\n${JSON.stringify(input, null, 2)}\n</input>`,
-          },
-        ],
+        messages: [{ role: 'user', content: userContent }],
       });
 
       const text = (message.content || []).map(b => b.text || '').join('').trim();
@@ -243,10 +348,31 @@ async function composeColdEmailForLead(lead, enrichment, demoUrl, opts = {}) {
         continue;
       }
 
-      const structural = validateStructure({ subject, body, demoUrl, businessName: lead.businessName });
+      const structural = validateStructure({
+        subject, body, demoUrl,
+        businessName: lead.businessName,
+        lengthBucket: variation.lengthBucket,
+      });
       if (structural) {
         lastError = new Error(`structural: ${structural}`);
         continue;
+      }
+
+      // Cross-lead de-dupe — last gate before accepting the draft. If the
+      // new body's 7-grams overlap >= threshold with any prior body, retry
+      // with explicit feedback. Skipped when no recent corpus was supplied.
+      if (recentNgrams.length) {
+        const candidate = ngramSet(body, COLD_EMAIL_RULES.dedupeNgramSize);
+        let maxRatio = 0;
+        for (const prior of recentNgrams) {
+          const ratio = jaccardOverlap(candidate, prior);
+          if (ratio > maxRatio) maxRatio = ratio;
+        }
+        if (maxRatio >= COLD_EMAIL_RULES.dedupeOverlapThreshold) {
+          overlapFeedback = { ratio: maxRatio };
+          lastError = new Error(`overlap_with_prior_send:${maxRatio.toFixed(2)}`);
+          continue;
+        }
       }
 
       const plainText =
@@ -261,6 +387,7 @@ async function composeColdEmailForLead(lead, enrichment, demoUrl, opts = {}) {
         hash: hashEmail(subject, body),
         attempts: attempt + 1,
         unsubUrl,
+        variation: { voice: variation.voice.key, opener: variation.opener.key, length: variation.lengthBucket.key, signoff: variation.signoff.key },
       };
     } catch (err) {
       lastError = err;
@@ -273,6 +400,7 @@ async function composeColdEmailForLead(lead, enrichment, demoUrl, opts = {}) {
 function buildComposerInput(lead, enrichment = {}, demoUrl, opts = {}) {
   const review = pickReview(enrichment.reviews);
   const topService = (enrichment.servicesVerified || [])[0] || lead.niche || null;
+  const variation = opts.variation || null;
   return {
     businessName: lead.businessName || null,
     city: lead.city || null,
@@ -293,7 +421,71 @@ function buildComposerInput(lead, enrichment = {}, demoUrl, opts = {}) {
     fromEmail: opts.fromEmail,
     senderFirstName: opts.senderFirstName,
     unsubUrl: opts.unsubUrl,
+    // Per-lead variation seed — Claude must follow these directives. See
+    // COLD_EMAIL_RULES.{voicePool, openerPool, lengthPool, signoffPool}.
+    variation: variation ? {
+      voice: variation.voice.directive,
+      opener: variation.opener.directive,
+      lengthBucket: {
+        min: variation.lengthBucket.min,
+        max: variation.lengthBucket.max,
+        directive: variation.lengthBucket.directive,
+      },
+      signoff: variation.signoffRendered,
+      signoffDirective: variation.signoff.directive,
+    } : null,
   };
+}
+
+// Pick a variation set deterministically from lead.id. Different bytes of
+// a SHA-1 digest pick each pool so voice/opener/length/sign-off vary
+// independently — two leads with adjacent ids will not share three of four.
+// SHA-1 gives uniform distribution even on tiny inputs (FNV-1a was clumping
+// on single-digit ids; observed 2/5 voices across 100 leads).
+function pickVariation(lead, senderFirstName) {
+  const idStr = String(lead?.id ?? lead?.businessKey ?? lead?.businessName ?? Math.random());
+  const digest = crypto.createHash('sha1').update(idStr).digest();
+
+  const voice        = COLD_EMAIL_RULES.voicePool  [digest[0] % COLD_EMAIL_RULES.voicePool.length];
+  const opener       = COLD_EMAIL_RULES.openerPool [digest[1] % COLD_EMAIL_RULES.openerPool.length];
+  const lengthBucket = COLD_EMAIL_RULES.lengthPool [digest[2] % COLD_EMAIL_RULES.lengthPool.length];
+  const signoff      = COLD_EMAIL_RULES.signoffPool[digest[3] % COLD_EMAIL_RULES.signoffPool.length];
+
+  // Render the sign-off with the actual sender name interpolated, so the
+  // prompt directive is a literal target the validator can check against.
+  const first = capitalize(senderFirstName);
+  const lower = String(senderFirstName || '').toLowerCase();
+  const signoffRendered = signoff.format
+    .replace('{first}', first)
+    .replace('{lower}', lower);
+
+  return { voice, opener, lengthBucket, signoff, signoffRendered };
+}
+
+// 7-gram set built from the body's normalized words. Used for overlap-based
+// de-dupe against recent prior sends.
+function ngramSet(text, n = 7) {
+  const words = String(text || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]+/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean);
+  if (words.length < n) return new Set();
+  const out = new Set();
+  for (let i = 0; i <= words.length - n; i += 1) {
+    out.add(words.slice(i, i + n).join(' '));
+  }
+  return out;
+}
+
+function jaccardOverlap(a, b) {
+  if (!a.size || !b.size) return 0;
+  let inter = 0;
+  const small = a.size <= b.size ? a : b;
+  const large = small === a ? b : a;
+  for (const g of small) if (large.has(g)) inter += 1;
+  const union = a.size + b.size - inter;
+  return union ? inter / union : 0;
 }
 
 function pickReview(reviews) {
@@ -307,7 +499,7 @@ function pickReview(reviews) {
   return sorted[0];
 }
 
-function validateStructure({ subject, body, demoUrl, businessName }) {
+function validateStructure({ subject, body, demoUrl, businessName, lengthBucket }) {
   // Subject: not all-lowercase, no exclamation, sensible length, contains business name.
   const subjTrim = String(subject || '').trim();
   if (!subjTrim) return 'subject_empty';
@@ -332,13 +524,36 @@ function validateStructure({ subject, body, demoUrl, businessName }) {
     return 'body_missing_business_name';
   }
 
-  // Sign-off: must end with —/Thanks/dash + name on a separate line + Latchly on the next.
+  // Sign-off: a non-empty last block with a recognizable Latchly signature.
+  // The signoffPool gives the model freedom to drop the dash format ("Matt,
+  // Latchly", "matt / latchly", etc.), so we accept any block that ends with
+  // a Latchly-shaped token rather than requiring "Latchly\s*$" verbatim.
   const lastBlock = bodyTrim.split(/\n\s*\n/).pop() || '';
-  if (!/Latchly\s*$/i.test(lastBlock)) return 'body_missing_signoff';
+  if (!/latchly/i.test(lastBlock)) return 'body_missing_signoff';
 
-  // Word count.
+  // Word count — honor the chosen length bucket if supplied; fall back to
+  // the wide default range otherwise.
   const words = bodyTrim.split(/\s+/).filter(Boolean).length;
-  if (words < 50 || words > 160) return `body_word_count:${words}`;
+  const minW = lengthBucket?.min ?? 50;
+  const maxW = lengthBucket?.max ?? 160;
+  if (words < minW || words > maxW) return `body_word_count:${words}`;
+
+  // Em-dash cap. AI cadence tells favor 4-5 em-dashes per email; humans
+  // rarely use more than one or two. We allow up to maxEmDashesInBody.
+  const emDashCount = (bodyTrim.match(/—/g) || []).length;
+  if (emDashCount > COLD_EMAIL_RULES.maxEmDashesInBody) {
+    return `body_em_dash_overuse:${emDashCount}`;
+  }
+
+  // No two consecutive paragraphs may both start with "I". Classic AI tell
+  // ("I built…\n\nI'd love…\n\nI think…"). Detected over double-newline
+  // splits so genuine intra-paragraph "I" is fine.
+  const paragraphs = bodyTrim.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+  for (let i = 1; i < paragraphs.length; i += 1) {
+    if (/^I\b/.test(paragraphs[i]) && /^I\b/.test(paragraphs[i - 1])) {
+      return 'body_consecutive_I_paragraphs';
+    }
+  }
 
   return null;
 }
@@ -394,5 +609,5 @@ module.exports = {
   composeColdEmailForLead,
   findBanned,
   // exposed for tests
-  __test: { buildComposerInput, parseStrictJson },
+  __test: { buildComposerInput, parseStrictJson, pickVariation, ngramSet, jaccardOverlap, validateStructure },
 };

@@ -9,7 +9,46 @@
  * queueDayZeroForLead is exposed for the manual "send-now" override route.
  */
 
-const { composeColdEmailForLead } = require('./cold-email-engine');
+const { composeColdEmailForLead, COLD_EMAIL_RULES } = require('./cold-email-engine');
+
+// Cache the most-recent bodies for the de-dupe pass. We refresh on the first
+// compose per process and then again every dedupeCacheMs to keep cold-start
+// + sustained-batch costs low.
+let _recentBodiesCache = null;
+let _recentBodiesAt = 0;
+const RECENT_CACHE_MS = 60 * 1000;
+
+async function loadRecentBodies(opts = {}) {
+  if (Array.isArray(opts.recentBodies)) return opts.recentBodies;
+  if (_recentBodiesCache && (Date.now() - _recentBodiesAt) < RECENT_CACHE_MS) {
+    return _recentBodiesCache;
+  }
+  const url = process.env.DATABASE_URL_UNPOOLED || process.env.POSTGRES_URL_NON_POOLING || process.env.DATABASE_URL;
+  if (!url) {
+    _recentBodiesCache = [];
+    _recentBodiesAt = Date.now();
+    return _recentBodiesCache;
+  }
+  try {
+    const { neon } = await import('@neondatabase/serverless');
+    const sql = neon(url);
+    const rows = await sql`
+      SELECT email_body
+      FROM latchly_leads
+      WHERE email_body IS NOT NULL AND email_body <> ''
+        AND outreach_status IN ('sent', 'day_zero_sent', 'queued', 'draft')
+      ORDER BY COALESCE(email_sent_at, outreach_queued_at, updated_at) DESC NULLS LAST
+      LIMIT ${COLD_EMAIL_RULES.dedupeRecentLimit}
+    `;
+    _recentBodiesCache = (rows || []).map(r => String(r.email_body || '')).filter(Boolean);
+  } catch {
+    // DB hiccup — skip de-dupe rather than block composition. The structural
+    // and banned-phrase validators still run.
+    _recentBodiesCache = [];
+  }
+  _recentBodiesAt = Date.now();
+  return _recentBodiesCache;
+}
 
 // Copied from scripts/openclaw-outreach.js — single source of truth lives there;
 // keep this in sync if states are added.
@@ -140,11 +179,13 @@ async function queueDayZeroForLead(lead, enrichment, opts = {}) {
 
   let composed;
   try {
+    const recentBodies = await loadRecentBodies(opts);
     composed = await composeColdEmailForLead(lead, enrichment || {}, lead.demoUrl, {
       anthropic: opts.anthropic,
       fromEmail: opts.fromEmail,
       siteBase: opts.siteBase,
       model: opts.model,
+      recentBodies,
     });
   } catch (err) {
     return { ok: false, reason: 'compose_failed', error: err.message };
