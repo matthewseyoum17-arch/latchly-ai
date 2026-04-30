@@ -122,6 +122,7 @@ async function publicDirectoryResolution(lead = {}, options = {}) {
   const evidenceItems = [];
   const websiteCandidates = [];
   let attempted = false;
+  evidenceItems.push(...sourceBackedNoWebsiteEvidence(lead));
 
   for (const target of publicDirectoryTargets(lead)) {
     attempted = true;
@@ -288,7 +289,8 @@ function analyzeDirectoryPage(html, lead, url, source) {
   const content = scoreWebsiteContent(html, lead);
   const identityScore = Math.max(identity.score, content.score);
   const websites = officialWebsiteLinks(html);
-  const identityConfirmed = identityScore >= 0.65;
+  const trustedSourceMatch = isTrustedDirectorySource(source);
+  const identityConfirmed = identityScore >= 0.65 || trustedSourceMatch;
 
   if (!identityConfirmed) {
     return {
@@ -304,7 +306,7 @@ function analyzeDirectoryPage(html, lead, url, source) {
     websiteCandidates: websites.map(website => ({
       source,
       website,
-      identityScore: Math.max(0.82, identityScore),
+      identityScore: Math.max(trustedSourceMatch ? 0.82 : 0, identityScore),
       evidence: identity.evidence.concat(content.evidence).concat([
         evidence(source, url, 'Directory profile exposed an official Website link', 0.82),
       ]),
@@ -314,6 +316,41 @@ function analyzeDirectoryPage(html, lead, url, source) {
       ? []
       : [evidence(source, url, 'Directory profile matched lead identity and exposed no business-owned Website link', 0.84)],
   };
+}
+
+function sourceBackedNoWebsiteEvidence(lead = {}) {
+  if (normalizeWebsite(lead.website)) return [];
+  if (sourceWebsiteCandidates(lead).length) return [];
+
+  const raw = lead.rawPayload || lead.sourcePayload?.rawPayload || lead.sourcePayload || {};
+  const sourceName = String(lead.sourceName || '').toLowerCase();
+  const businessName = String(lead.businessName || '').trim();
+  const phone = normalizePhone(lead.phone);
+  if (!businessName || !phone) return [];
+
+  if (/bbb/.test(sourceName) && (raw.profileUrl || raw.profile_url || raw.reportUrl)) {
+    return [evidence(
+      'bbb_source_profile',
+      absoluteBbbProfileUrl(raw.profileUrl || raw.profile_url || raw.reportUrl || ''),
+      'BBB source record matched lead name and phone and did not list a business-owned website',
+      0.82,
+    )];
+  }
+
+  if (/yellowpages/.test(sourceName) && (raw.profileUrl || raw.profile_url || raw.url || raw.searchUrl)) {
+    return [evidence(
+      'yellowpages_source_profile',
+      normalizeWebsite(raw.profileUrl || raw.profile_url || raw.url || raw.searchUrl || ''),
+      'YellowPages source record matched lead name and phone and did not list a business-owned website',
+      0.82,
+    )];
+  }
+
+  return [];
+}
+
+function isTrustedDirectorySource(source) {
+  return /^(bbb|yellowpages)_(?:profile|search)$/.test(String(source || ''));
 }
 
 async function googlePlacesCandidates(lead, apiKey, options = {}) {

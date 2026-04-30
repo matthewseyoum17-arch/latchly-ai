@@ -122,6 +122,30 @@ test('missing-website resolver verifies no-site evidence from a matched public d
   }
 });
 
+test('missing-website resolver accepts source-backed BBB no-site evidence when profile markup is sparse', async () => {
+  const result = await resolveMissingWebsite({
+    businessName: 'Brehm Roofing & Restoration',
+    city: 'Gainesville',
+    state: 'FL',
+    phone: '(352) 555-2323',
+    website: '',
+    sourceName: 'bbb',
+    rawPayload: { profileUrl: '/us/fl/gainesville/profile/roofing-contractors/brehm-roofing-restoration-123' },
+  }, {
+    fetcher: async (url) => ({
+      ok: true,
+      status: 200,
+      url,
+      text: '<html><head><title>BBB Business Profile</title></head><body><main>Profile shell</main></body></html>',
+    }),
+  });
+
+  assert.equal(result.website, '');
+  assert.equal(result.verifiedNoWebsite, true);
+  assert.equal(result.reason, 'directory_verified_no_site');
+  assert.ok(result.evidence.some(item => item.source === 'bbb_source_profile'));
+});
+
 test('public directory resolver prefers an exposed owned website over no-site evidence', async () => {
   const result = await resolveMissingWebsite({
     businessName: 'Kayco Roofing LLC',
@@ -174,6 +198,41 @@ test('public directory resolver does not mark no-site when an exposed website fa
           status: 200,
           url,
           text: '<html><body><h1>Kayco Roofing LLC</h1><div class="phone">(352) 555-1212</div><a class="track-visit-website" href="https://wrong.example">Website</a></body></html>',
+        };
+      }
+      if (url === 'https://wrong.example') {
+        return {
+          ok: true,
+          status: 200,
+          url,
+          text: '<html><body><h1>Different Electric Company</h1><p>Orlando electrical service</p></body></html>',
+        };
+      }
+      throw new Error(`unexpected_url:${url}`);
+    },
+  });
+
+  assert.equal(result.website, '');
+  assert.notEqual(result.verifiedNoWebsite, true);
+});
+
+test('source-backed BBB evidence still defers to an exposed website candidate', async () => {
+  const result = await resolveMissingWebsite({
+    businessName: 'Brehm Roofing & Restoration',
+    city: 'Gainesville',
+    state: 'FL',
+    phone: '(352) 555-2323',
+    website: '',
+    sourceName: 'bbb',
+    rawPayload: { profileUrl: '/us/fl/gainesville/profile/roofing-contractors/brehm-roofing-restoration-123' },
+  }, {
+    fetcher: async (url) => {
+      if (/bbb\.org/.test(url)) {
+        return {
+          ok: true,
+          status: 200,
+          url,
+          text: '<html><head><title>BBB Business Profile</title></head><body><a href="https://wrong.example">Website</a></body></html>',
         };
       }
       if (url === 'https://wrong.example') {
