@@ -33,13 +33,17 @@ const DEFAULT_TIMEOUT_MS = 4 * 60 * 1000; // 4 minutes per pass
 // WebFetch cover the rest of the design pass needs (read brief, write
 // HTML, optional Bash for image processing, fetch real photos).
 const DEFAULT_ALLOWED_TOOLS = 'Read,Write,Bash,WebFetch,Skill';
-// Default to Haiku — cheaper per token and stays under the org rate limit.
-// The bespoke flow can pass a stronger model via opts.model when needed.
-const DEFAULT_MODEL = 'claude-haiku-4-5-20251001';
+// Opus 4.7 with xhigh reasoning. The user is on a Claude Max plan so
+// `claude -p` is flat-rate (no per-token billing) — Opus's stronger
+// design instincts are worth the longer wall time. Override per-call
+// via opts.model / opts.effort.
+const DEFAULT_MODEL = 'claude-opus-4-7';
+const DEFAULT_EFFORT = 'xhigh';
 
-// Anthropic enforces token rate limits (typically 30k input tokens/min on
-// developer plans). When `claude -p` hits a 429, we back off and retry
-// rather than fail the whole pipeline.
+// Anthropic still enforces an org-level token rate limit even on Max
+// (~30k input tok/min on dev tiers). When `claude -p` hits a 429, we
+// back off and retry rather than fail the pipeline. Opus prompts are
+// larger than Haiku's, so retries matter more.
 const RATE_LIMIT_BACKOFF_MS = 30_000;
 const MAX_RATE_LIMIT_RETRIES = 3;
 
@@ -81,7 +85,7 @@ async function isClaudeCliAvailable() {
  * @param {Object} [args.env]            — additional env vars
  * @returns {Promise<{ ok: boolean, reason?: string, output?: string, stdout: string, stderr: string, exitCode: number | null }>}
  */
-async function runClaude({ prompt, expectFile, allowedTools, model, timeoutMs, cwd, env } = {}) {
+async function runClaude({ prompt, expectFile, allowedTools, model, effort, timeoutMs, cwd, env } = {}) {
   if (!prompt) return { ok: false, reason: 'no_prompt', stdout: '', stderr: '', exitCode: null };
   if (!(await isClaudeCliAvailable())) {
     return { ok: false, reason: 'claude_cli_unavailable', stdout: '', stderr: '', exitCode: null };
@@ -89,7 +93,7 @@ async function runClaude({ prompt, expectFile, allowedTools, model, timeoutMs, c
 
   let lastResult = null;
   for (let attempt = 0; attempt <= MAX_RATE_LIMIT_RETRIES; attempt += 1) {
-    const result = await runClaudeOnce({ prompt, expectFile, allowedTools, model, timeoutMs, cwd, env });
+    const result = await runClaudeOnce({ prompt, expectFile, allowedTools, model, effort, timeoutMs, cwd, env });
     if (result.ok) return result;
     lastResult = result;
     // Detect Anthropic rate-limit by parsing the captured stderr/stdout.
@@ -109,13 +113,23 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function runClaudeOnce({ prompt, expectFile, allowedTools, model, timeoutMs, cwd, env } = {}) {
+function runClaudeOnce({ prompt, expectFile, allowedTools, model, effort, timeoutMs, cwd, env } = {}) {
   const args = [
     '-p', prompt,
     '--allowed-tools', allowedTools || DEFAULT_ALLOWED_TOOLS,
     '--model', model || DEFAULT_MODEL,
+    '--effort', effort || DEFAULT_EFFORT,
     '--output-format', 'text',
   ];
+
+  // Strip ANTHROPIC_API_KEY from the subprocess env. If we leave it in,
+  // `claude -p` uses the dev API tier (rate-limited at 30k input tok/min)
+  // instead of the operator's Max-plan auth, which is flat-rate. The
+  // SDK-driven engines (site-content, cold-email) still use the API key
+  // because they're in this Node process, not the subprocess.
+  const subprocessEnv = { ...process.env, ...(env || {}) };
+  delete subprocessEnv.ANTHROPIC_API_KEY;
+  delete subprocessEnv.ANTHROPIC_AUTH_TOKEN;
 
   return new Promise(resolve => {
     let proc;
@@ -123,7 +137,7 @@ function runClaudeOnce({ prompt, expectFile, allowedTools, model, timeoutMs, cwd
       proc = spawn('claude', args, {
         timeout: timeoutMs || DEFAULT_TIMEOUT_MS,
         cwd: cwd || process.cwd(),
-        env: { ...process.env, ...(env || {}) },
+        env: subprocessEnv,
         stdio: ['ignore', 'pipe', 'pipe'],
       });
     } catch (err) {

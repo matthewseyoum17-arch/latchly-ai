@@ -424,7 +424,10 @@ async function scoreContentFit({ html, scanProfile, direction, tmpDir }) {
     '<<<JSON_END>>>',
   ].join('\n');
 
-  const res = await runClaudeJson({ prompt, model: 'claude-haiku-4-5-20251001', timeoutMs: 60_000 });
+  // Fit-score is a small judgment call — Haiku is plenty for it. Everything
+  // creative (scan / build / polish) defaults to Opus 4.7 + xhigh from
+  // claude-runner.js.
+  const res = await runClaudeJson({ prompt, model: 'claude-haiku-4-5-20251001', effort: 'medium', timeoutMs: 60_000 });
   if (!res.ok || !res.json || typeof res.json.score !== 'number') {
     throw new Error(res.reason || 'fit_score_invalid');
   }
