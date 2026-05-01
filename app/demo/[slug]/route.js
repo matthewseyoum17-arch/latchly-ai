@@ -97,6 +97,8 @@ async function loadDemoFromDb(safeSlug) {
       LIMIT 1
     `;
 
+    console.log(`[demo-route DEBUG] slug=${safeSlug} demo_pages.rows=${demoPages.length} hasHtml=${!!(demoPages[0] && demoPages[0].html)} bytes=${demoPages[0]?.html?.length || 0}`);
+
     if (demoPages.length && demoPages[0].html) {
       return {
         html: demoPages[0].html,
