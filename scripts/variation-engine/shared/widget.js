@@ -181,7 +181,7 @@ function generateWidget(lead, style, quickReplies, serviceOptions) {
   function renderQR(){quickDiv.innerHTML='';QUICK_REPLIES.forEach(function(q){var b=document.createElement('button');b.className='lw-qr';b.textContent=q;b.addEventListener('click',function(){handleMsg(q);});quickDiv.appendChild(b);});}
   function hideQR(){quickDiv.innerHTML='';}
   async function getAI(text){try{var r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:messages,businessInfo:{name:BIZ_NAME,phone:BIZ_PHONE,services:BIZ_SERVICES}})});var d=await r.json();return d.text||d.reply;}catch(e){return"Sorry, I'm having a moment! Call us at "+BIZ_PHONE;}}
-  function handleMsg(text){if(!text.trim()||isTyping)return;addMsg('user',text.trim());input.value='';hideQR();showTyping();getAI(text).then(function(resp){hideTyping();addMsg('bot',resp);setTimeout(renderQR,300);});}
+  function handleMsg(text){if(!text.trim()||isTyping)return;addMsg('user',text.trim());input.value='';hideQR();showTyping();getAI(text).then(function(resp){hideTyping();addMsg('bot',resp);});}
   function openChat(){isOpen=true;panel.classList.add('open');fab.style.display='none';nudge.classList.remove('show');if(messages.length===0){setTimeout(function(){addMsg('bot',"Hi there! Welcome to "+BIZ_NAME+". I can answer questions, get you a quote, and help you book a service. How can I help?");renderQR();},400);}setTimeout(function(){input.focus();},500);}
   function closeChat(){isOpen=false;panel.classList.remove('open');fab.style.display='flex';}
   fab.addEventListener('click',openChat);

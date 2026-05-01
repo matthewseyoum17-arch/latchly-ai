@@ -1141,7 +1141,7 @@ ${buildServiceOptions(template.serviceOptions)}
     if (!text.trim() || isTyping) return;
     addMsg('user', text.trim()); input.value = ''; hideQR();
     showTyping();
-    getAI(text).then(function(resp) { hideTyping(); addMsg('bot', resp); setTimeout(renderQR, 300); });
+    getAI(text).then(function(resp) { hideTyping(); addMsg('bot', resp); });
   }
 
   function openChat() {
