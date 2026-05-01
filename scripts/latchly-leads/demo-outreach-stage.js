@@ -2,7 +2,8 @@
  * scripts/latchly-leads/demo-outreach-stage.js
  *
  * Per-lead orchestration: enrichment → site-content → demo build → queue cold
- * email. Run after upsertLeads in pipeline.js, gated by LATCHLY_DEMO_OUTREACH=1.
+ * email. Runs after upsertLeads in pipeline.js for every daily run; opt out
+ * with --skip-demo (or LATCHLY_SKIP_DEMO=1) when ops needs an escape hatch.
  *
  * Failures are isolated per-lead — one bad lead never aborts the run.
  * The pipeline does NOT send emails. That's the cron's job (drain queue).
@@ -17,6 +18,7 @@ const { generateSiteContent } = require('./site-content-engine');
 const { buildDemoForLead } = require('./design-engine');
 const { queueDayZeroForLead } = require('./outreach-queue');
 const { findEmailFromVerifiedSources } = require('./finders');
+const { findStockPhotos } = require('./finders/stock-photos');
 const { deriveBusinessDomain } = require('./email-utils');
 
 const SITE_BASE = (process.env.SITE_BASE || 'https://latchlyai.com').replace(/\/+$/, '');
@@ -137,18 +139,42 @@ async function runDemoOutreachStage(leads, opts = {}) {
       });
       if (content) stats.contentGenerated += 1;
 
+      // 2a) Stock photos. Always fetched — souped-up leads will prefer
+      // existingCopy.galleryImageUrls first (see seo.pickHeroPhoto), and
+      // stockPhotos[] is the fallback bucket the bespoke build pass pulls
+      // from when scraped imagery is thin or missing.
+      ctx.stage = 'stock_photos';
+      const stockPhotos = await findStockPhotos({
+        niche: lead.niche,
+        services: enrichment?.servicesVerified || [],
+        count: 6,
+      }).catch(err => {
+        stats.errors.push({ businessKey: key, stage: 'stock_photos', error: err?.message || String(err) });
+        return [];
+      });
+      const contentWithPhotos = { ...(content || {}), stockPhotos };
+
       // 3) Demo build
       ctx.stage = 'demo_build';
       const slugForLead = makeSlug(lead);
       const demo = await buildDemoForLead(lead, {
         enrichment,
-        content: content || {},
+        content: contentWithPhotos,
         slug: slugForLead,
         siteBase: SITE_BASE,
+        anthropic,
+        storage: opts.storage,
       });
       if (!demo.ok) {
         stats.demosFailed += 1;
-        stats.errors.push({ businessKey: key, stage: 'demo_build', reason: demo.reason, lint: demo.lint });
+        stats.errors.push({
+          businessKey: key,
+          stage: 'demo_build',
+          reason: demo.reason,
+          lint: demo.lint,
+          candidatesScored: demo.candidatesScored,
+          wallTimeMs: demo.wallTimeMs,
+        });
         continue;
       }
 

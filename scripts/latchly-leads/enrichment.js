@@ -85,6 +85,14 @@ async function enrichLead(lead, opts = {}) {
         about: cloned.aboutText || null,
         services: cloned.services || [],
         testimonials: cloned.testimonials || [],
+        // Surface scraped imagery so the bespoke build pass can render
+        // real per-business photos. heroImageUrl falls back to logoUrl
+        // (pointed at the brand mark) so souped-up demos always have
+        // *something* on-brand even when the site has no hero photo.
+        heroImageUrl: cloned.heroImageUrl || cloned.heroImage || cloned.logoUrl || null,
+        galleryImageUrls: Array.isArray(cloned.galleryImageUrls)
+          ? cloned.galleryImageUrls.slice(0, 8)
+          : (Array.isArray(cloned.images) ? cloned.images.slice(0, 8) : []),
       };
       if (cloned.logoUrl) result.brandLogo = { url: cloned.logoUrl, dominantColor: cloned.colors?.[0] || null };
       if (cloned.colors && cloned.colors.length) {
@@ -154,16 +162,13 @@ async function fetchPlaces(lead, opts = {}) {
         .filter(r => r.text && r.text.length > 20)
     : [];
 
-  const photos = Array.isArray(data.photos)
-    ? data.photos.slice(0, 6).map(p => ({
-        url: `${PLACES_BASE}/photo?maxwidth=1600&photo_reference=${p.photo_reference}&key=${apiKey}`,
-        width: p.width,
-        height: p.height,
-        attribution: (p.html_attributions || [])[0] || null,
-        source: 'google',
-        license: 'gbp',
-      }))
-    : [];
+  // Google Places photos intentionally skipped:
+  //   1. The URL signs the API key into the HTML — leaks credentials.
+  //   2. URLs expire (~24h) so emailed demos break.
+  //   3. We have a free, license-clean alternative: Pexels + Unsplash Source
+  //      (see scripts/latchly-leads/finders/stock-photos.js) for fresh-build
+  //      leads, and scraped existing-site images for souped-up leads.
+  const photos = [];
 
   let hours = null;
   if (data.opening_hours && Array.isArray(data.opening_hours.weekday_text)) {
