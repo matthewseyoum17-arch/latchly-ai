@@ -19,9 +19,12 @@
  */
 
 const { find: findBbb } = require('./bbb');
+const { find: findBizapedia } = require('./bizapedia');
+const { find: findManta } = require('./manta');
 const { find: findOpenCorp } = require('./opencorporates');
 const { find: findWhois } = require('./whois');
 const { find: findYelp } = require('./yelp');
+const { find: findClaudeSearch } = require('./claude-search');
 const { deriveBusinessDomain } = require('../email-utils');
 
 const DEFAULT_CONFIDENCE_FLOOR = 0.7;
@@ -44,7 +47,7 @@ function deriveDomain(websiteOrDomain) {
  * @returns {Promise<{ ok: boolean, ownerName?: string, ownerTitle?: string, source?: string, confidence?: number, attempted: string[], reason?: string, evidence?: object }>}
  */
 async function findOwnerFromVerifiedSources(args = {}) {
-  const { businessName, city, state, website, domain } = args;
+  const { businessName, city, state, website, domain, niche } = args;
   const floor = typeof args.minConfidence === 'number' ? args.minConfidence : DEFAULT_CONFIDENCE_FLOOR;
   const resolvedDomain = (domain || deriveDomain(website) || '').toLowerCase();
   const attempted = [];
@@ -66,7 +69,31 @@ async function findOwnerFromVerifiedSources(args = {}) {
     notes.push(`bbb_error:${err?.message || err}`);
   }
 
-  // 2. OpenCorporates
+  // 2. Bizapedia — state filings, all 50 states, structured.
+  attempted.push('bizapedia');
+  try {
+    const bp = await findBizapedia({ businessName, state });
+    if (bp.ok && bp.ownerName && bp.confidence >= floor) {
+      return { ...bp, attempted, notes };
+    }
+    if (bp.reason) notes.push(`bizapedia:${bp.reason}`);
+  } catch (err) {
+    notes.push(`bizapedia_error:${err?.message || err}`);
+  }
+
+  // 3. Manta — alt republisher of state filings; different layout/coverage.
+  attempted.push('manta');
+  try {
+    const mt = await findManta({ businessName, city, state });
+    if (mt.ok && mt.ownerName && mt.confidence >= floor) {
+      return { ...mt, attempted, notes };
+    }
+    if (mt.reason) notes.push(`manta:${mt.reason}`);
+  } catch (err) {
+    notes.push(`manta_error:${err?.message || err}`);
+  }
+
+  // 4. OpenCorporates
   attempted.push('opencorporates');
   try {
     const oc = await findOpenCorp({ businessName, state });
@@ -78,7 +105,7 @@ async function findOwnerFromVerifiedSources(args = {}) {
     notes.push(`opencorporates_error:${err?.message || err}`);
   }
 
-  // 3. Yelp
+  // 5. Yelp
   attempted.push('yelp');
   try {
     const yp = await findYelp({ businessName, city, state, domain: resolvedDomain });
@@ -90,7 +117,7 @@ async function findOwnerFromVerifiedSources(args = {}) {
     notes.push(`yelp_error:${err?.message || err}`);
   }
 
-  // 4. WHOIS — fallback for owner only when registrant is a person
+  // 6. WHOIS — fallback for owner only when registrant is a person
   if (resolvedDomain) {
     attempted.push('whois');
     try {
@@ -102,6 +129,20 @@ async function findOwnerFromVerifiedSources(args = {}) {
     } catch (err) {
       notes.push(`whois_error:${err?.message || err}`);
     }
+  }
+
+  // 7. Claude CLI catch-all — license boards, Google Maps, Facebook, own-site,
+  // Google search. Slow (30-90s) but bypasses bot-walls. Auto-skipped if the
+  // `claude` CLI isn't on PATH (serverless).
+  attempted.push('claude_search');
+  try {
+    const cs = await findClaudeSearch({ businessName, city, state, website, niche });
+    if (cs.ok && cs.ownerName && cs.confidence >= floor) {
+      return { ...cs, attempted, notes };
+    }
+    if (cs.reason) notes.push(`claude_search:${cs.reason}`);
+  } catch (err) {
+    notes.push(`claude_search_error:${err?.message || err}`);
   }
 
   return { ok: false, reason: 'not_available', attempted, notes };
@@ -121,7 +162,7 @@ async function findOwnerFromVerifiedSources(args = {}) {
  * @returns {Promise<{ ok: boolean, email?: string, source?: string, confidence?: number, attempted: string[], reason?: string, ownerName?: string, evidence?: object }>}
  */
 async function findEmailFromVerifiedSources(args = {}) {
-  const { businessName, city, state, website, domain } = args;
+  const { businessName, city, state, website, domain, niche } = args;
   const floor = typeof args.minConfidence === 'number' ? args.minConfidence : DEFAULT_CONFIDENCE_FLOOR;
   const resolvedDomain = (domain || deriveDomain(website) || '').toLowerCase();
   const attempted = [];
@@ -170,6 +211,22 @@ async function findEmailFromVerifiedSources(args = {}) {
       if (yp.reason) notes.push(`yelp:${yp.reason}`);
     } catch (err) {
       notes.push(`yelp_error:${err?.message || err}`);
+    }
+  }
+
+  // 4. Claude CLI catch-all — pulls FB About / business website Contact /
+  // license-board "agent for service" emails when they're public-listed.
+  // Auto-skipped if `claude` CLI is unavailable.
+  if (businessName) {
+    attempted.push('claude_search');
+    try {
+      const cs = await findClaudeSearch({ businessName, city, state, website, niche });
+      if (cs.ok && cs.email && cs.confidence >= floor) {
+        return { ...cs, attempted, notes };
+      }
+      if (cs.reason) notes.push(`claude_search:${cs.reason}`);
+    } catch (err) {
+      notes.push(`claude_search_error:${err?.message || err}`);
     }
   }
 
