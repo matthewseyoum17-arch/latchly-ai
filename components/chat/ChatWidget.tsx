@@ -16,7 +16,7 @@ export interface ChatWidgetConfig {
   logoUrl?: string;
   avatarUrl?: string;
   greeting?: string;
-  businessType?: "dental" | "hvac" | "legal" | "medspa" | "plumbing" | "realestate";
+  businessType?: "dental" | "hvac" | "legal" | "medspa" | "plumbing" | "realestate" | "salon";
   hours?: BusinessHours;
   nudgeDelay?: number;
   plan?: "solo" | "team" | "multi";
@@ -38,6 +38,7 @@ const QUICK_REPLIES: Record<string, string[]> = {
   medspa: ["Book a consultation", "Treatment pricing", "Hours & location", "Current specials"],
   plumbing: ["Get a quote", "Emergency plumbing", "Hours & service area", "Drain cleaning"],
   realestate: ["Search listings", "Home valuation", "Hours & location", "Selling my home"],
+  salon: ["Book Appointment", "Services & Pricing", "Hours & Location", "Stylists & Specials"],
 };
 
 // ── Business Hours Helpers ─────────────────────────────────────────────────────
@@ -413,6 +414,7 @@ export default function ChatWidget({ config = {} }: { config?: ChatWidgetConfig 
                   {businessType === "medspa" && "💆"}
                   {businessType === "plumbing" && "🔧"}
                   {businessType === "realestate" && "🏠"}
+                  {businessType === "salon" && "💅"}
                 </div>
               )}
               <div className="flex-1 min-w-0">

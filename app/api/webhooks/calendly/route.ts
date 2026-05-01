@@ -32,34 +32,42 @@ export async function POST(request: NextRequest) {
       if (question.includes("service") || question.includes("need")) service = answer;
     }
 
-    const sql = neon(process.env.DATABASE_URL!);
+    let existing: any[] = [];
+    try {
+      const sql = neon(process.env.DATABASE_URL!);
 
-    // Try to find existing lead by email and update with booking info
-    const existing = await sql`
-      SELECT id FROM leads WHERE email = ${email} ORDER BY created_at DESC LIMIT 1
-    `;
+      // Try to find existing lead by email and update with booking info
+      existing = await sql`
+        SELECT id FROM leads WHERE email = ${email} ORDER BY created_at DESC LIMIT 1
+      `;
 
-    if (existing.length > 0) {
-      // Update existing lead with booking status
-      await sql`
-        UPDATE leads 
-        SET contact_method = 'booked',
-            transcript = COALESCE(transcript, '') || ${`\n[BOOKED: ${eventName} at ${scheduledTime}]`}
-        WHERE id = ${existing[0].id}
-      `;
-    } else {
-      // Create new lead record for this booking
-      await sql`
-        INSERT INTO leads (name, phone, email, contact_method, industry, transcript)
-        VALUES (
-          ${name || null},
-          ${phone || null},
-          ${email || null},
-          'booked',
-          ${null},
-          ${`[BOOKED via Calendly: ${eventName} at ${scheduledTime}]${service ? `\nService: ${service}` : ""}`}
-        )
-      `;
+      if (existing.length > 0) {
+        // Update existing lead with booking status
+        await sql`
+          UPDATE leads
+          SET contact_method = 'booked',
+              transcript = COALESCE(transcript, '') || ${`\n[BOOKED: ${eventName} at ${scheduledTime}]`}
+          WHERE id = ${existing[0].id}
+        `;
+      } else {
+        // Create new lead record for this booking
+        await sql`
+          INSERT INTO leads (name, phone, email, contact_method, industry, transcript)
+          VALUES (
+            ${name || null},
+            ${phone || null},
+            ${email || null},
+            'booked',
+            ${null},
+            ${`[BOOKED via Calendly: ${eventName} at ${scheduledTime}]${service ? `\nService: ${service}` : ""}`}
+          )
+        `;
+      }
+    } catch (dbErr) {
+      // Non-fatal: DB write failed (missing/stale DATABASE_URL, schema drift, etc.).
+      // The booking notification email below should still fire so the operator gets
+      // the alert in real time even if storage failed.
+      console.error("Calendly webhook DB error (non-fatal):", dbErr);
     }
 
     // Send notification email with booking details
