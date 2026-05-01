@@ -599,8 +599,12 @@ function validateStructure({ subject, body, demoUrl, businessName, lengthBucket 
   if (/[!?]{2,}|[!]/.test(subjTrim)) return 'subject_has_exclamation';
   const subjWords = subjTrim.split(/\s+/).filter(Boolean).length;
   if (subjWords < 3 || subjWords > 10) return 'subject_word_count';
-  if (businessName && !subjTrim.toLowerCase().includes(String(businessName).toLowerCase())) {
-    return 'subject_missing_business_name';
+  if (businessName) {
+    const bare = String(businessName).replace(/[,\s]+(llc|l\.l\.c\.?|inc\.?|incorporated|corp\.?|corporation|co\.?|company|ltd\.?|limited|llp|pllc)\.?\s*$/i, '').trim();
+    const target = bare || String(businessName);
+    if (!subjTrim.toLowerCase().includes(target.toLowerCase())) {
+      return 'subject_missing_business_name';
+    }
   }
 
   // Body: greeting, demo link exactly once, sign-off, businessName present.
@@ -611,8 +615,15 @@ function validateStructure({ subject, body, demoUrl, businessName, lengthBucket 
   const demoCount = bodyTrim.split(demoUrl).length - 1;
   if (demoCount !== 1) return `body_demo_link_count:${demoCount}`;
 
-  if (businessName && !bodyTrim.toLowerCase().includes(String(businessName).toLowerCase())) {
-    return 'body_missing_business_name';
+  if (businessName) {
+    // Strip legal suffixes — Haiku rarely repeats ", LLC" / ", Inc." in the
+    // body, and forcing it would push the email toward stiff legal-form
+    // phrasing. Match against the bare name instead.
+    const bare = String(businessName).replace(/[,\s]+(llc|l\.l\.c\.?|inc\.?|incorporated|corp\.?|corporation|co\.?|company|ltd\.?|limited|llp|pllc)\.?\s*$/i, '').trim();
+    const target = bare || String(businessName);
+    if (!bodyTrim.toLowerCase().includes(target.toLowerCase())) {
+      return 'body_missing_business_name';
+    }
   }
 
   // Sign-off: a non-empty last block with a recognizable Latchly signature.
