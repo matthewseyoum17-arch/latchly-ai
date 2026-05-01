@@ -27,6 +27,8 @@
     "leads:funnel:archive-bad-import": "node scripts/latchly-leads/archive-bad-import.js",
     "leads:funnel:quality": "node scripts/latchly-leads/quality-gate.js",
     "leads:funnel:test": "node --test scripts/latchly-leads/tests/*.test.js",
+    "leads:funnel:setup-skills": "bash scripts/latchly-leads/setup-skills.sh",
+    "lint:impeccable": "npx --yes impeccable detect",
     "resend:login": "resend login",
     "resend:doctor": "resend doctor",
     "leadclaw": "node scripts/leadclaw-pipeline.js",

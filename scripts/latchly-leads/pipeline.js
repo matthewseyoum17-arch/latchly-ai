@@ -151,10 +151,12 @@ async function main() {
     const files = await writeDigestFiles(digest, qualitySelected, stats);
     await storage.upsertLeads(qualitySelected, { date, stats });
 
-    // Demo + outreach stage (gated). Composes per-lead demos + Day-0 cold
+    // Demo + outreach stage. Composes per-lead bespoke demos + Day-0 cold
     // emails and queues them with 7-9am-local schedule. Sends are decoupled —
     // the Vercel cron at /api/cron/latchly-outreach drains the queue.
-    if (process.env.LATCHLY_DEMO_OUTREACH === '1') {
+    // Use --skip-demo (or LATCHLY_SKIP_DEMO=1) only as an ops escape hatch.
+    const skipDemo = cli.skipDemo || process.env.LATCHLY_SKIP_DEMO === '1';
+    if (!skipDemo) {
       try {
         const demoStats = await runDemoOutreachStage(qualitySelected, {
           storage,
@@ -166,6 +168,8 @@ async function main() {
         stats.demoOutreach = { error: err?.message || String(err) };
         if (verbose) console.error('[demo-outreach] stage failed:', err);
       }
+    } else if (verbose) {
+      console.log('[demo-outreach] skipped (--skip-demo)');
     }
 
     const sendResult = await sendDigest(digest, { dryRun: process.env.DRY_RUN === 'true' || process.env.SKIP_EMAIL === '1' });
@@ -189,11 +193,16 @@ function parseCliArgs(args = []) {
     tier: '',
     target: 0,
     dryRun: false,
+    skipDemo: false,
   };
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg === '--dry-run') {
       out.dryRun = true;
+      continue;
+    }
+    if (arg === '--skip-demo') {
+      out.skipDemo = true;
       continue;
     }
     if (arg === '--tier') {

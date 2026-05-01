@@ -115,7 +115,7 @@ export default function LeadsCrmPage() {
         city,
         niche,
         minScore: tier === "premium" ? "9" : minScore,
-        limit: "150",
+        limit: "500",
       });
       if (localOnly) params.set("local", "1");
       if (tier === "premium") params.set("websiteIssue", "1");
