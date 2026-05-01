@@ -83,9 +83,9 @@ async function messagesCreate(opts = {}) {
 
   // Effort: SDK has no equivalent. JSON-shaped composition (cold email,
   // site copy) doesn't need much reasoning — `low` is plenty. Opus
-  // callers passing the model explicitly get xhigh by default since
+  // callers passing the model explicitly get high by default since
   // they're doing creative work (design generation, scoring).
-  const defaultEffort = /opus/i.test(model) ? 'xhigh' : 'low';
+  const defaultEffort = /opus/i.test(model) ? 'high' : 'low';
   const effort = opts.effort || defaultEffort;
 
   // 6-minute soft cap per call. The CLI subprocess startup + Haiku

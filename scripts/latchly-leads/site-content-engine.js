@@ -186,7 +186,7 @@ async function generateSiteContent(lead, enrichment, opts = {}) {
         : `Compose site copy. Mode: ${mode}. Direction: ${direction}. Return JSON only.\n\n<input>\n${JSON.stringify(input, null, 2)}\n</input>`;
 
       const message = await anthropic.messages.create({
-        model: opts.model || 'claude-haiku-4-5-20251001',
+        model: opts.model || process.env.LATCHLY_SITE_CONTENT_MODEL || 'claude-opus-4-7',
         max_tokens: 1500,
         // Phase B.6: bumped 0.55 → 0.78. Haiku 4.5 rejects setting both
         // temperature and top_p simultaneously, so we use temperature alone

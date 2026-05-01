@@ -33,12 +33,12 @@ const DEFAULT_TIMEOUT_MS = 4 * 60 * 1000; // 4 minutes per pass
 // WebFetch cover the rest of the design pass needs (read brief, write
 // HTML, optional Bash for image processing, fetch real photos).
 const DEFAULT_ALLOWED_TOOLS = 'Read,Write,Bash,WebFetch,Skill';
-// Opus 4.7 with xhigh reasoning. The user is on a Claude Max plan so
+// Opus 4.7 with high reasoning. The user is on a Claude Max plan so
 // `claude -p` is flat-rate (no per-token billing) — Opus's stronger
 // design instincts are worth the longer wall time. Override per-call
 // via opts.model / opts.effort.
 const DEFAULT_MODEL = 'claude-opus-4-7';
-const DEFAULT_EFFORT = 'xhigh';
+const DEFAULT_EFFORT = 'high';
 
 // Anthropic still enforces an org-level token rate limit even on Max
 // (~30k input tok/min on dev tiers). When `claude -p` hits a 429, we

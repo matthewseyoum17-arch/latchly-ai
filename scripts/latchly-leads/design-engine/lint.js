@@ -111,10 +111,19 @@ async function lintDemoHtml(html, { lead = {}, enrichment = {} } = {}) {
     score -= 18;
   }
 
-  // 8. impeccable detect — anti-AI-slop CLI gate. Hard if installed.
-  const impec = await tryImpeccable(html).catch(() => null);
-  if (impec && Array.isArray(impec.findings)) {
-    for (const f of impec.findings) {
+  // 8. impeccable detect — anti-AI-slop CLI gate. Hard requirement: if
+  //    the binary is missing or returns garbage, the demo is rejected.
+  //    Set LATCHLY_LINT_IMPECCABLE_OPTIONAL=1 to soft-fail (CI without
+  //    npx access, dev probes). Default behavior is hard.
+  const impecResult = await tryImpeccable(html);
+  const impecRequired = process.env.LATCHLY_LINT_IMPECCABLE_OPTIONAL !== '1';
+  if (!impecResult.ran) {
+    if (impecRequired) {
+      issues.push({ rule: `impeccable_unavailable:${impecResult.reason || 'unknown'}`, severity: 'critical' });
+      score -= 25;
+    }
+  } else if (Array.isArray(impecResult.findings)) {
+    for (const f of impecResult.findings) {
       issues.push({ rule: `impeccable:${f.rule || f.id || 'unknown'}`, severity: f.severity || 'minor' });
       const weight = f.severity === 'critical' ? 12 : f.severity === 'major' ? 6 : 3;
       score -= weight;
@@ -124,7 +133,8 @@ async function lintDemoHtml(html, { lead = {}, enrichment = {} } = {}) {
   return {
     score: Math.max(0, Math.min(100, score)),
     issues,
-    impeccableRan: Boolean(impec),
+    impeccableRan: impecResult.ran,
+    impeccableUnavailableReason: impecResult.ran ? null : (impecResult.reason || null),
     domHash,
   };
 }
@@ -176,27 +186,38 @@ function updateAndDetectCollision(hash) {
   return collidedAgainst ? `${collidedAgainst.hash.slice(0, 8)}@${new Date(collidedAgainst.at).toISOString().slice(0, 10)}` : null;
 }
 
+// Runs `npx --yes impeccable detect --stdin --json`. Returns
+// `{ ran: true, findings: [...] }` on success, otherwise
+// `{ ran: false, reason: '...' }` so the caller can decide whether
+// to hard-fail or soft-fail. This is intentionally not throwing —
+// hard-fail policy lives in lintDemoHtml so the same wiring covers
+// dev probes (soft) and production demos (hard).
 async function tryImpeccable(html) {
   return new Promise((resolve) => {
     let proc;
     try {
       proc = spawn('npx', ['--yes', 'impeccable', 'detect', '--stdin', '--json'], {
-        timeout: 8000,
+        timeout: 15000,
       });
-    } catch {
-      return resolve(null);
+    } catch (err) {
+      return resolve({ ran: false, reason: `spawn_failed:${err.code || err.message}` });
     }
     let out = '';
     let err = '';
     proc.stdout?.on('data', d => { out += d.toString(); });
     proc.stderr?.on('data', d => { err += d.toString(); });
-    proc.on('error', () => resolve(null));
+    proc.on('error', e => resolve({ ran: false, reason: `proc_error:${e.code || e.message}` }));
     proc.on('close', (code) => {
-      if (code !== 0 || !out.trim()) return resolve(null);
+      if (code !== 0) {
+        return resolve({ ran: false, reason: `exit_${code}:${(err || '').slice(0, 120).trim() || 'no_stderr'}` });
+      }
+      if (!out.trim()) return resolve({ ran: false, reason: 'empty_stdout' });
       try {
-        resolve(JSON.parse(out));
-      } catch {
-        resolve(null);
+        const parsed = JSON.parse(out);
+        const findings = Array.isArray(parsed?.findings) ? parsed.findings : [];
+        resolve({ ran: true, findings });
+      } catch (e) {
+        resolve({ ran: false, reason: `json_parse_failed:${e.message}` });
       }
     });
     proc.stdin?.write(html);

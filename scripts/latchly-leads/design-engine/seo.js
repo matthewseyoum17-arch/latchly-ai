@@ -41,7 +41,14 @@ function buildSeo({ lead = {}, enrichment = {}, content = {}, slug, siteBase } =
   const phoneRaw = phone ? String(phone).replace(/[^0-9+]/g, '') : null;
   const baseUrl = (siteBase || 'https://latchlyai.com').replace(/\/+$/, '');
   const canonical = `${baseUrl}/demo/${slug}`;
-  const ogImage = (enrichment.photos || [])[0]?.url || `${baseUrl}/og-default.png`;
+
+  // Photo priority: scraped existing-site image (souped-up leads) >
+  // first stock photo (fresh-build leads) > fallback default. Google
+  // Places photos are intentionally not used here — see enrichment.js.
+  const heroPhoto = pickHeroPhoto({ enrichment, content });
+  const ogImage = heroPhoto?.url || `${baseUrl}/og-default.png`;
+  const ogImageWidth = heroPhoto?.width || 1600;
+  const ogImageHeight = heroPhoto?.height || 900;
 
   const schemaType = NICHE_TO_BUSINESS_TYPE[String(lead.niche || '').toLowerCase()] || 'LocalBusiness';
   const description = content.heroSubhead
@@ -52,25 +59,63 @@ function buildSeo({ lead = {}, enrichment = {}, content = {}, slug, siteBase } =
     ? `${businessName} — ${humanizeNiche(lead.niche)} in ${cityState}`
     : `${businessName} — ${humanizeNiche(lead.niche)}`;
 
+  const faqs = buildFaqs({ businessName, cityState, lead, enrichment });
+  const allPhotos = collectAllPhotos({ enrichment, content });
+
   const jsonLd = buildJsonLd({
     schemaType, businessName, canonical, ogImage,
     description, lead, enrichment, content,
-    phone, phoneRaw,
+    phone, phoneRaw, faqs, allPhotos, baseUrl, cityState,
   });
 
-  const faqs = buildFaqs({ businessName, cityState, lead, enrichment });
-
   return {
-    seoHead: renderHead({ titleTag, description, canonical, ogImage, businessName }),
+    seoHead: renderHead({ titleTag, description, canonical, ogImage, ogImageWidth, ogImageHeight, businessName }),
     seoJsonLd: `<script type="application/ld+json">\n${JSON.stringify(jsonLd, null, 0)}\n</script>`,
     faqSection: renderFaqSection({ faqs, businessName, cityState }),
     titleTag,
     description,
     canonical,
+    heroPhoto,
   };
 }
 
-function renderHead({ titleTag, description, canonical, ogImage, businessName }) {
+// Resolves the single best photo for hero/og:image use. Order of preference:
+//   1. content.stockPhotos[0]      — set by demo-outreach-stage for fresh-build
+//   2. enrichment.existingCopy.heroImageUrl — scraped from real site
+//   3. enrichment.existingCopy.galleryImageUrls[0]
+//   4. null  (caller falls back to og-default.png)
+function pickHeroPhoto({ enrichment = {}, content = {} } = {}) {
+  const stock = Array.isArray(content.stockPhotos) ? content.stockPhotos : [];
+  if (stock[0]?.url) return stock[0];
+  const ec = enrichment.existingCopy || {};
+  if (ec.heroImageUrl) return { url: ec.heroImageUrl, width: 1600, height: 900, source: 'existing-site' };
+  if (Array.isArray(ec.galleryImageUrls) && ec.galleryImageUrls[0]) {
+    return { url: ec.galleryImageUrls[0], width: 1600, height: 900, source: 'existing-site' };
+  }
+  return null;
+}
+
+// All photos that the demo can render (and that we want indexed as
+// ImageObject in the JSON-LD graph). Stock is appended after existing-site
+// images so souped-up demos primarily showcase the real business.
+function collectAllPhotos({ enrichment = {}, content = {} } = {}) {
+  const out = [];
+  const ec = enrichment.existingCopy || {};
+  if (ec.heroImageUrl) out.push({ url: ec.heroImageUrl, width: 1600, height: 900, source: 'existing-site', alt: 'Hero photo' });
+  for (const url of Array.isArray(ec.galleryImageUrls) ? ec.galleryImageUrls : []) {
+    if (!url) continue;
+    if (out.some(p => p.url === url)) continue;
+    out.push({ url, width: 1600, height: 900, source: 'existing-site', alt: 'Site photo' });
+  }
+  for (const sp of Array.isArray(content.stockPhotos) ? content.stockPhotos : []) {
+    if (!sp?.url) continue;
+    if (out.some(p => p.url === sp.url)) continue;
+    out.push(sp);
+  }
+  return out.slice(0, 8);
+}
+
+function renderHead({ titleTag, description, canonical, ogImage, ogImageWidth, ogImageHeight, businessName }) {
   // Returned as raw HTML — injected into the template via the seoHead
   // HTML_SAFE_KEY. All interpolated values are escaped here.
   return [
@@ -86,6 +131,8 @@ function renderHead({ titleTag, description, canonical, ogImage, businessName })
     `<meta property="og:description" content="${htmlEscape(description)}">`,
     `<meta property="og:url" content="${htmlEscape(canonical)}">`,
     `<meta property="og:image" content="${htmlEscape(ogImage)}">`,
+    `<meta property="og:image:width" content="${htmlEscape(ogImageWidth || 1600)}">`,
+    `<meta property="og:image:height" content="${htmlEscape(ogImageHeight || 900)}">`,
     `<meta property="og:site_name" content="${htmlEscape(businessName)}">`,
     `<meta property="og:locale" content="en_US">`,
 
@@ -97,7 +144,7 @@ function renderHead({ titleTag, description, canonical, ogImage, businessName })
   ].join('\n');
 }
 
-function buildJsonLd({ schemaType, businessName, canonical, ogImage, description, lead, enrichment, content, phone, phoneRaw }) {
+function buildJsonLd({ schemaType, businessName, canonical, ogImage, description, lead, enrichment, content, phone, phoneRaw, faqs = [], allPhotos = [], baseUrl, cityState }) {
   const node = {
     '@context': 'https://schema.org',
     '@graph': [],
@@ -176,6 +223,8 @@ function buildJsonLd({ schemaType, businessName, canonical, ogImage, description
 
   // WebPage with speakable specification — voice assistants + AI search
   // engines use this to know which parts of the page are answer-worthy.
+  // Speakable selectors expanded so AI search engines pull from the
+  // services list and FAQ summaries, not just hero/heading prose.
   node['@graph'].push({
     '@type': 'WebPage',
     '@id': canonical,
@@ -186,9 +235,91 @@ function buildJsonLd({ schemaType, businessName, canonical, ogImage, description
     about: { '@id': `${canonical}#business` },
     speakable: {
       '@type': 'SpeakableSpecification',
-      cssSelector: ['h1', '.hero p', '.section-head h2', '.review blockquote'],
+      cssSelector: ['h1', '.hero p', '.section-head h2', '.review blockquote', '#services li', '.faq-item summary'],
     },
   });
+
+  // FAQPage — moved from a separate <script> at the bottom of faqSection
+  // into the same @graph so AI Overviews / Perplexity see one cohesive
+  // structured-data block instead of two disconnected ones.
+  if (Array.isArray(faqs) && faqs.length) {
+    node['@graph'].push({
+      '@type': 'FAQPage',
+      '@id': `${canonical}#faq`,
+      mainEntity: faqs.map(f => ({
+        '@type': 'Question',
+        name: f.q,
+        acceptedAnswer: { '@type': 'Answer', text: f.a },
+      })),
+    });
+  }
+
+  // BreadcrumbList — Home → {city} services → {businessName}. Helps AI
+  // search engines place the business inside a hierarchy they can cite.
+  const crumbs = [{ name: 'Home', url: baseUrl || 'https://latchlyai.com' }];
+  if (cityState) {
+    crumbs.push({
+      name: `${humanizeNiche(lead.niche)} in ${cityState}`,
+      url: `${baseUrl || 'https://latchlyai.com'}/demo`,
+    });
+  }
+  crumbs.push({ name: businessName, url: canonical });
+  node['@graph'].push({
+    '@type': 'BreadcrumbList',
+    '@id': `${canonical}#breadcrumb`,
+    itemListElement: crumbs.map((c, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: c.name,
+      item: c.url,
+    })),
+  });
+
+  // HowTo — a verified-service answer the bespoke engine can cite. Only
+  // emit when the business has at least one verified service. Steps come
+  // from enrichment.howToSteps if present, else 3 sensible defaults
+  // anchored to the niche so we never invent details.
+  const topService = (enrichment.servicesVerified || [])[0];
+  if (topService) {
+    const niceService = String(topService).replace(/_/g, ' ');
+    const defaultSteps = [
+      { name: 'Call to describe the issue', text: `Call ${businessName} and describe what you're seeing — symptoms, when it started, and where it is in the home.` },
+      { name: 'On-site diagnosis', text: `${businessName} arrives in ${lead.city || 'your area'} and inspects the system to confirm the cause before doing any work.` },
+      { name: 'Repair or estimate', text: `If it's a quick fix you approve on the spot, ${businessName} completes ${niceService} on the same visit. Larger jobs get a written estimate first.` },
+    ];
+    const steps = Array.isArray(enrichment.howToSteps) && enrichment.howToSteps.length
+      ? enrichment.howToSteps
+      : defaultSteps;
+    node['@graph'].push({
+      '@type': 'HowTo',
+      '@id': `${canonical}#howto`,
+      name: `How ${businessName} handles ${niceService}${cityState ? ' in ' + cityState : ''}`,
+      description: `Typical ${niceService} workflow at ${businessName}.`,
+      totalTime: 'PT1H',
+      step: steps.slice(0, 6).map((s, i) => ({
+        '@type': 'HowToStep',
+        position: i + 1,
+        name: s.name || `Step ${i + 1}`,
+        text: s.text || s.name || '',
+      })),
+    });
+  }
+
+  // ImageObject — caption + dims for every rendered photo so AI search
+  // engines + Google Image have structured context. Only photos that
+  // will actually appear on the page (collected by collectAllPhotos).
+  for (const p of (allPhotos || []).slice(0, 6)) {
+    if (!p?.url) continue;
+    node['@graph'].push({
+      '@type': 'ImageObject',
+      contentUrl: p.url,
+      url: p.url,
+      width: p.width || 1600,
+      height: p.height || 900,
+      caption: p.alt || `${businessName}${cityState ? ' in ' + cityState : ''}`,
+      creditText: p.attribution || (p.source === 'pexels' ? 'Pexels' : p.source === 'unsplash' ? 'Unsplash' : 'Business'),
+    });
+  }
 
   return node;
 }
@@ -311,18 +442,9 @@ function buildFaqs({ businessName, cityState, lead, enrichment }) {
 
 function renderFaqSection({ faqs, businessName, cityState }) {
   if (!faqs.length) return '';
-  // FAQPage JSON-LD is rendered inline alongside visible <details>. AI search
-  // engines + Google parse the JSON-LD; humans see the visible accordion.
-  const ld = {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: faqs.map(f => ({
-      '@type': 'Question',
-      name: f.q,
-      acceptedAnswer: { '@type': 'Answer', text: f.a },
-    })),
-  };
-
+  // The visible accordion. The FAQPage JSON-LD itself is now folded into
+  // the main @graph (see buildJsonLd) so AI search engines see one
+  // cohesive structured-data block per page instead of two siblings.
   const items = faqs.map(f => `
         <details class="faq-item">
           <summary>${htmlEscape(f.q)}</summary>
@@ -341,7 +463,6 @@ function renderFaqSection({ faqs, businessName, cityState }) {
     <div class="faq-list">${items}
     </div>
   </div>
-  <script type="application/ld+json">${JSON.stringify(ld)}</script>
 </section>`;
 }
 

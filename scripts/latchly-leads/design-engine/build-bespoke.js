@@ -42,8 +42,20 @@ const { runClaude, runClaudeJson, isClaudeCliAvailable, makeTempDir } = require(
 const { buildSeo } = require('./seo');
 const { generateSiteContent } = require('../site-content-engine');
 const { lintDemoHtml } = require('./lint');
+const { appendTrace } = require('../build-trace');
 
 const SITE_BASE_DEFAULT = 'https://latchlyai.com';
+const DEFAULT_CANDIDATE_COUNT = Number(process.env.LATCHLY_DEMO_CANDIDATES || 3);
+
+// Three photo treatments — the build pass picks one per candidate so the
+// 3 demos for a single lead are visibly different even when the underlying
+// images are the same. The huashu-design philosophy still drives the rest
+// of the layout; this is just the photo "lens".
+const PHOTO_TREATMENTS = [
+  'collage-led: 2-3 photos arranged as an editorial grid in the hero or just after, with intentional white space between them. NO single full-bleed hero photo.',
+  'hero-background: ONE photo as a full-bleed hero with a strong dark gradient overlay so the hero copy stays readable. The other photos appear smaller in services or about.',
+  'minimal/single-photo: ONE photo only on the entire page, used in a small framed crop (about 480-640px wide) inside the about section. The hero is text-only, no image.',
+];
 
 const HUASHU_FAMILIES = [
   'information-architecture',
@@ -75,6 +87,8 @@ async function buildBespokeDemoForLead(lead, opts = {}) {
   const slug = opts.slug || makeSlug(lead);
   const siteBase = opts.siteBase || SITE_BASE_DEFAULT;
   const qualityFloor = Number(opts.qualityFloor || process.env.LATCHLY_DEMO_QUALITY_FLOOR || 80);
+  const candidatesCount = Math.max(1, Number(opts.candidatesCount || DEFAULT_CANDIDATE_COUNT));
+  const startedAt = Date.now();
 
   if (!(await isClaudeCliAvailable())) {
     return { ok: false, reason: 'claude_cli_unavailable' };
@@ -116,39 +130,37 @@ async function buildBespokeDemoForLead(lead, opts = {}) {
     if (!scan.ok) {
       return { ok: false, reason: `scan_failed:${scan.reason}`, scanError: scan.error };
     }
-    const directions = scan.recommendedDirections.slice(0, 3);
+    const directions = scan.recommendedDirections.slice(0, candidatesCount);
 
-    // ── Pass 2: 3 sequential candidate builds ─────────────────────────
-    // Sequential (not parallel) keeps us under the org's 30k tok/min rate
-    // limit. Wall time is ~3x longer but the pipeline actually completes.
+    // ── Pass 2: parallel candidate builds ─────────────────────────────
+    // Promise.all gets us 3 concurrent `claude -p` subprocesses. Max-plan
+    // auth means no per-token cost, and claude-runner has exponential
+    // backoff for the 30k tok/min org rate limit. Wall time goes from
+    // ~25 min sequential to ~9 min parallel.
     const candidatePaths = directions.map((_, i) => path.join(tmp.dir, `candidate-${i + 1}.html`));
-    const candidateResults = [];
-    for (let i = 0; i < directions.length; i += 1) {
-      const r = await passBuild({
+    const candidateResults = await Promise.all(
+      directions.map((direction, i) => passBuild({
         briefPath,
         scanPath: scan.scanPath,
-        direction: directions[i],
+        direction,
+        photoTreatment: PHOTO_TREATMENTS[i % PHOTO_TREATMENTS.length],
         outFile: candidatePaths[i],
         tmpDir: tmp.dir,
-      });
-      candidateResults.push(r);
-    }
+      })),
+    );
 
-    // ── Pass 3: sequential polish passes ──────────────────────────────
+    // ── Pass 3: parallel polish passes ─────────────────────────────────
     const polishedPaths = directions.map((_, i) => path.join(tmp.dir, `polished-${i + 1}.html`));
-    const polishedResults = [];
-    for (let i = 0; i < candidateResults.length; i += 1) {
-      if (!candidateResults[i].ok) {
-        polishedResults.push({ ok: false, reason: candidateResults[i].reason });
-        continue;
-      }
-      const r = await passPolish({
-        inFile: candidatePaths[i],
-        outFile: polishedPaths[i],
-        tmpDir: tmp.dir,
-      });
-      polishedResults.push(r);
-    }
+    const polishedResults = await Promise.all(
+      candidateResults.map((cand, i) => {
+        if (!cand.ok) return Promise.resolve({ ok: false, reason: cand.reason });
+        return passPolish({
+          inFile: candidatePaths[i],
+          outFile: polishedPaths[i],
+          tmpDir: tmp.dir,
+        });
+      }),
+    );
 
     // ── Pass 4: score + pick winner ────────────────────────────────────
     const scoreds = await Promise.all(directions.map(async (direction, i) => {
@@ -176,40 +188,59 @@ async function buildBespokeDemoForLead(lead, opts = {}) {
     }));
 
     const eligible = scoreds.filter(s => s.ok).sort((a, b) => b.total - a.total);
+    const candidatesScored = scoreds.map(s => ({
+      direction: s.direction?.key || s.direction?.philosophy || null,
+      ok: s.ok,
+      reason: s.reason || null,
+      total: s.total,
+      impeccable: s.lint?.score,
+      aeo: s.aeoScore,
+      fit: s.fitScore,
+      hardFail: s.hardFail,
+    }));
+
     if (eligible.length) {
       const winner = eligible[0];
+      const wallTimeMs = Date.now() - startedAt;
+      await appendTrace(slug, {
+        businessKey: lead.businessKey || null,
+        businessName: lead.businessName || null,
+        path: 'bespoke',
+        candidatesScored,
+        scanProfile: scan.profile,
+        wallTimeMs,
+        lintScore: winner.lint?.score ?? null,
+        fallbackReason: null,
+      }, { storage: opts.storage });
       return {
         ok: true,
         html: winner.html,
         direction: winner.direction.key || winner.direction.philosophy || 'bespoke',
         qualityScore: Math.round(winner.total),
         lint: winner.lint,
-        candidatesScored: scoreds.map(s => ({
-          direction: s.direction?.key || s.direction?.philosophy || null,
-          ok: s.ok,
-          reason: s.reason || null,
-          total: s.total,
-          impeccable: s.lint?.score,
-          aeo: s.aeoScore,
-          fit: s.fitScore,
-        })),
+        candidatesScored,
         scanProfile: scan.profile,
+        wallTimeMs,
       };
     }
 
+    const wallTimeMs = Date.now() - startedAt;
+    await appendTrace(slug, {
+      businessKey: lead.businessKey || null,
+      businessName: lead.businessName || null,
+      path: 'bespoke',
+      candidatesScored,
+      scanProfile: scan.profile,
+      wallTimeMs,
+      lintScore: null,
+      fallbackReason: 'no_candidate_passed_gates',
+    }, { storage: opts.storage });
     return {
       ok: false,
       reason: 'no_candidate_passed_gates',
       scanProfile: scan.profile,
-      candidatesScored: scoreds.map(s => ({
-        direction: s.direction?.key || s.direction?.philosophy || null,
-        ok: s.ok,
-        reason: s.reason || null,
-        impeccable: s.lint?.score,
-        aeo: s.aeoScore,
-        fit: s.fitScore,
-        hardFail: s.hardFail,
-      })),
+      candidatesScored,
+      wallTimeMs,
     };
   } finally {
     if (!opts.keepTemp) tmp.cleanup();
@@ -221,7 +252,7 @@ async function buildBespokeDemoForLead(lead, opts = {}) {
 async function passScan({ briefPath, tmpDir }) {
   const scanPath = path.join(tmpDir, 'scan.json');
   const prompt = [
-    'Use the huashu-design skill.',
+    'Use the huashu-design skill AND the karpathy-guidelines skill — huashu drives the visual direction, karpathy keeps the reasoning honest and concrete.',
     '',
     'You are profiling a single home-services business so we can pick the right design direction for its homepage. Read the JSON brief at:',
     `  ${briefPath}`,
@@ -300,9 +331,9 @@ async function passScan({ briefPath, tmpDir }) {
 
 // ── Pass 2: build a single candidate ────────────────────────────────────
 
-async function passBuild({ briefPath, scanPath, direction, outFile, tmpDir }) {
+async function passBuild({ briefPath, scanPath, direction, photoTreatment, outFile, tmpDir }) {
   const prompt = [
-    'Use the huashu-design skill.',
+    'Use the huashu-design skill (visual direction) AND the site-content-latchly skill (copy rules) AND the karpathy-guidelines skill (concrete-over-abstract reasoning). All three.',
     '',
     'You are designing a single self-contained HTML homepage for the local home-services business described in the JSON brief at:',
     `  ${briefPath}`,
@@ -315,16 +346,28 @@ async function passBuild({ briefPath, scanPath, direction, outFile, tmpDir }) {
     `  philosophy: ${direction.philosophy || 'unspecified'}`,
     `  why:        ${direction.why || 'unspecified'}`,
     '',
+    `PHOTO TREATMENT (assigned to this candidate, NOT optional):`,
+    `  ${photoTreatment || 'collage-led: 2-3 photos arranged as an editorial grid in the hero.'}`,
+    '',
     'STRICT RULES (every bullet is a hard requirement):',
     '- The brief includes a `content` object (heroHeadline, heroSubhead, aboutParagraph, primaryCta, secondaryCta, trustItems, reviewSelections). USE THESE STRINGS VERBATIM. Do not reword.',
     '- The brief includes a `seo` object with three pre-rendered HTML strings: `seoHead`, `seoJsonLd`, `faqSection`. EMBED THESE VERBATIM:',
     '    * `seoHead` and `seoJsonLd` go inside `<head>` exactly as given.',
     '    * `faqSection` goes inside `<body>` immediately before the closing `</footer>` (or before `</body>` if no footer).',
     '- The brief includes `enrichment.servicesVerified[]` and `enrichment.reviews[]`. Use only those services and only those review texts. NEVER invent.',
-    '- The brief includes `enrichment.photos[].url` if available. Use those as `<img src>` URLs. If absent, use honest placeholder blocks (no SVG-drawn people, no stock photos).',
+    '- PHOTOS — pre-vetted, you do NOT fetch your own. Use these sources, in this order:',
+    '    1. `enrichment.existingCopy.heroImageUrl` and `enrichment.existingCopy.galleryImageUrls[]` — real images from the lead\'s actual website. Prefer these when present.',
+    '    2. `content.stockPhotos[]` — Pexels/Unsplash photos pre-selected for the niche. Use when (1) is empty or thin.',
+    '  Render at LEAST 4 photos as `<img>` tags across the page (hero, services, about, gallery — wherever your direction calls for them). Use the assigned PHOTO TREATMENT above so this candidate looks visibly different from the others. Add `loading="lazy"` and `decoding="async"` to non-hero `<img>` tags. Each `<img>` must have a meaningful `alt` attribute drawn from the photo\'s alt or a verified service.',
+    '- ANIMATIONS — required:',
+    '    * Hero text fades in and rises on load (CSS `@keyframes`, ~600ms ease-out).',
+    '    * Services grid items reveal on scroll using a single inline vanilla `IntersectionObserver` (total inline JS < 3kb, no external scripts).',
+    '    * Hover micro-interactions on cards, CTAs, and the phone link (transform/opacity only — no layout-shifting properties).',
+    '    * Wrap ALL motion in `@media (prefers-reduced-motion: no-preference) { ... }`. Static must remain readable.',
+    '    * No animation may delay first paint; the page renders fine with JS off.',
     '- DO NOT use the Fraunces+Inter font combo (it is the existing template — we are explicitly making something different).',
     '- DO NOT use any banned slop signals from huashu-design §6.2 (purple gradients, emoji icons, rounded-card+left-border, SVG-drawn imagery, GitHub-dark deep-blue).',
-    '- The visual register MUST match this candidate\'s philosophy. The point of having 3 candidates is that they must be visibly distinct from each other and from the existing craft-editorial template.',
+    '- The visual register MUST match this candidate\'s philosophy. The point of having 3 candidates is that they must be visibly distinct from each other.',
     '- Hero must include the business name, the city, and a verified service.',
     '- The page must have a visible reviews section AND a visible FAQ accordion (the latter from `seo.faqSection` verbatim).',
     '- Phone link with `tel:` href must be present.',
@@ -335,10 +378,13 @@ async function passBuild({ briefPath, scanPath, direction, outFile, tmpDir }) {
     'Use the Write tool. After writing, output a single sentence confirming the path.',
   ].join('\n');
 
-  // Opus 4.7 + xhigh on a full HTML build can take 8-15 min. Keep the
-  // ceiling generous since per-token cost is zero under Max-plan auth —
-  // we'd rather wait than fail on timeout and fall back to template.
-  const res = await runClaude({ prompt, expectFile: outFile, timeoutMs: 18 * 60 * 1000 });
+  // Opus 4.7 + high on a full HTML build is 5-10 min on its own, but
+  // 3 parallel candidates compete for the org's 30k input-tok/min rate
+  // limit — each call queues behind the others' backoff windows, pushing
+  // wall time to 20-25 min on the slow candidate. 35 min ceiling absorbs
+  // that without false-positive timeouts; per-token cost is zero under
+  // Max-plan auth so the only downside is wall-clock patience.
+  const res = await runClaude({ prompt, expectFile: outFile, timeoutMs: 35 * 60 * 1000 });
   if (!res.ok) return { ok: false, reason: res.reason };
   // Sanity: HTML must contain the seo blocks verbatim.
   return { ok: true };
@@ -348,7 +394,7 @@ async function passBuild({ briefPath, scanPath, direction, outFile, tmpDir }) {
 
 async function passPolish({ inFile, outFile, tmpDir }) {
   const prompt = [
-    'Use the ui-ux-pro-max skill.',
+    'Use the ui-ux-pro-max skill AND the karpathy-guidelines skill. Both.',
     '',
     `Read the candidate HTML at: ${inFile}`,
     '',
@@ -358,21 +404,24 @@ async function passPolish({ inFile, outFile, tmpDir }) {
     '- Tune the color palette so the accent is intentional, not arbitrary.',
     '- Improve the hero, services grid, reviews section, FAQ accordion, and contact area.',
     '- Ensure mobile responsiveness is excellent at 390x844 and desktop at 1440x900.',
+    '- Preserve all animations from the candidate (entrance fade, scroll reveal, hover) — refine timing/easing if appropriate, but do not remove. Keep the `prefers-reduced-motion` guard intact.',
     '',
     'STRICT PRESERVATION RULES:',
     '- DO NOT remove, edit, reformat, or move any `<script type="application/ld+json">` block.',
     '- DO NOT remove, edit, reformat, or move any `<meta>` tag, `<title>`, or `<link rel="canonical">`.',
     '- DO NOT remove the visible `<section id="faq">` accordion.',
     '- DO NOT change any business-fact text (services, reviews, owner, ratings, addresses).',
-    '- DO NOT add stock photos or SVG-drawn people.',
+    '- DO NOT remove or substitute photos. The `<img>` tags and their `src` URLs are pre-vetted — keep them. You may resize/reposition photo containers but the photos must stay rendered.',
+    '- DO NOT add new `<img>` URLs of your own (no fetching new stock photos).',
     '',
     `Write the polished HTML to: ${outFile}`,
     'Use the Write tool. Output is a single complete HTML file.',
   ].join('\n');
 
-  // Polish pass is shorter than build (input HTML already exists) but
-  // Opus + xhigh still chews on it. 12 min is generous but free.
-  const res = await runClaude({ prompt, expectFile: outFile, timeoutMs: 12 * 60 * 1000 });
+  // Polish pass is shorter than build (input HTML exists) but 3 parallel
+  // polishes contend for the same 30k tok/min cap as the build pass, so
+  // give it 25 min — same logic as passBuild's ceiling.
+  const res = await runClaude({ prompt, expectFile: outFile, timeoutMs: 25 * 60 * 1000 });
   if (!res.ok) return { ok: false, reason: res.reason };
   return { ok: true };
 }
@@ -435,7 +484,7 @@ async function scoreContentFit({ html, scanProfile, direction, tmpDir }) {
   ].join('\n');
 
   // Fit-score is a small judgment call — Haiku is plenty for it. Everything
-  // creative (scan / build / polish) defaults to Opus 4.7 + xhigh from
+  // creative (scan / build / polish) defaults to Opus 4.7 + high from
   // claude-runner.js.
   const res = await runClaudeJson({ prompt, model: 'claude-haiku-4-5-20251001', effort: 'medium', timeoutMs: 60_000 });
   if (!res.ok || !res.json || typeof res.json.score !== 'number') {
@@ -471,7 +520,8 @@ function pickEnrichmentFields(enrichment) {
     serviceArea: enrichment.serviceArea || [],
     servicesVerified: (enrichment.servicesVerified || []).slice(0, 8),
     reviews: (enrichment.reviews || []).slice(0, 5),
-    photos: (enrichment.photos || []).slice(0, 6),
+    // Google Places photos no longer passed through (the array is empty by
+    // design — see enrichment.js). Real photos live on existingCopy now.
     hours: enrichment.hours || null,
     formattedAddress: enrichment.formattedAddress || null,
     coordinates: enrichment.coordinates || null,

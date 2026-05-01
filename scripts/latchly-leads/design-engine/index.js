@@ -1,92 +1,78 @@
 /**
  * design-engine/index.js
  *
- * Public entry point for per-lead demo generation. Two paths:
+ * Public entry point for per-lead demo generation. Bespoke-only:
  *
- *   1. Bespoke (Phase B) — `claude -p` subprocess runs the huashu-design
- *      skill to scan the business and pick 3 directions, then builds 3
- *      candidates in parallel, polishes each via ui-ux-pro-max, and gates
- *      on impeccable + AEO presence + structural-sameness. Highest scoring
- *      candidate wins. Free under the operator's Claude Max plan but
- *      ~3-4 minutes per lead. Triggered when `LATCHLY_DEMO_ENGINE=bespoke`
- *      and the `claude` CLI is available.
+ *   `claude -p` subprocess runs huashu-design to scan the business and
+ *   pick 3 directions from different design philosophies, builds 3
+ *   candidates in parallel (each with a different photo treatment),
+ *   polishes each via ui-ux-pro-max, and gates on impeccable +
+ *   AEO presence + structural-sameness. Highest-scoring candidate wins.
  *
- *   2. Template (legacy) — fills `craft-editorial.html` with real per-
- *      business enrichment + content. Fast and free but every demo shares
- *      structure. The fallback path when bespoke is unavailable.
+ * No template fallback. The previous craft-editorial.html template made
+ * every demo look identical, which is the bug we're fixing. If the CLI
+ * is unavailable, we hard-fail loudly so the operator notices and the
+ * pipeline never silently degrades.
+ *
+ * Architecture note: bespoke runs LOCALLY via `npm run leads:funnel:daily`.
+ * Vercel cron cannot run bespoke (the `claude` binary isn't on PATH and
+ * Max-plan auth is bound to the operator's local login), so the cron
+ * stays drain-only.
  */
 
-const { pickDirection } = require('./directions');
-const { loadTemplate, renderTemplate } = require('./render');
-const { lintDemoHtml } = require('./lint');
 const { isClaudeCliAvailable } = require('./claude-runner');
+const { lintDemoHtml } = require('./lint');
+const { appendTrace } = require('../build-trace');
 
 async function buildDemoForLead(lead, opts = {}) {
   if (!lead) throw new Error('lead required');
 
   const enrichment = opts.enrichment || {};
-  const content = opts.content || {};
   const slug = opts.slug;
   const siteBase = opts.siteBase;
 
-  // Bespoke path — opt-in via env flag (so the legacy pipeline keeps working
-  // unchanged) AND the `claude` CLI must be present in the runtime.
-  const wantBespoke = String(process.env.LATCHLY_DEMO_ENGINE || '').toLowerCase() === 'bespoke';
-  if (wantBespoke) {
-    const cliOk = await isClaudeCliAvailable();
-    if (cliOk) {
-      // Lazy-require: build-bespoke.js pulls in claude-runner.js + Claude
-      // SDK transitively. Avoid the import cost on the legacy path.
-      const { buildBespokeDemoForLead } = require('./build-bespoke');
-      const bespoke = await buildBespokeDemoForLead(lead, {
-        enrichment,
-        content: opts.content, // null/undefined = engine generates copy itself
-        slug,
-        siteBase,
-        anthropic: opts.anthropic,
-        qualityFloor: opts.qualityFloor,
-        recentCopy: opts.recentCopy,
-        keepTemp: opts.keepTemp,
-      });
-      if (bespoke.ok) return bespoke;
-      // Fall through to template — log the reason (and any captured stderr
-      // from the subprocess) but never crash the run.
-      // eslint-disable-next-line no-console
-      console.warn(`[design-engine] bespoke failed (${bespoke.reason}); falling back to template`);
-      if (bespoke.scanError) {
-        // eslint-disable-next-line no-console
-        console.warn(`[design-engine] scan stderr/stdout (truncated):\n${String(bespoke.scanError).slice(0, 2000)}`);
-      }
-      if (bespoke.candidatesScored) {
-        // eslint-disable-next-line no-console
-        console.warn('[design-engine] candidate scores:', JSON.stringify(bespoke.candidatesScored, null, 2));
-      }
-    } else {
-      // eslint-disable-next-line no-console
-      console.warn('[design-engine] LATCHLY_DEMO_ENGINE=bespoke but `claude` CLI unavailable; using template');
-    }
+  if (!(await isClaudeCliAvailable())) {
+    // eslint-disable-next-line no-console
+    console.error('[design-engine] HARD FAIL: claude CLI unavailable. Bespoke demo generation requires the Claude Code CLI on PATH (Max-plan auth). Run `which claude` to verify.');
+    await appendTrace(slug || 'unknown', {
+      businessKey: lead.businessKey || null,
+      businessName: lead.businessName || null,
+      path: 'failed',
+      fallbackReason: 'claude_cli_unavailable_hard',
+    }, { storage: opts.storage });
+    return { ok: false, reason: 'claude_cli_unavailable_hard' };
   }
 
-  // Template fallback — original engine.
-  const direction = pickDirection(lead, enrichment);
-  const template = loadTemplate(direction);
-  const html = renderTemplate({
-    template, lead, enrichment, content, direction,
-    slug, siteBase,
+  const { buildBespokeDemoForLead } = require('./build-bespoke');
+  const bespoke = await buildBespokeDemoForLead(lead, {
+    enrichment,
+    content: opts.content,
+    slug,
+    siteBase,
+    anthropic: opts.anthropic,
+    qualityFloor: opts.qualityFloor,
+    recentCopy: opts.recentCopy,
+    keepTemp: opts.keepTemp,
+    storage: opts.storage,
+    candidatesCount: opts.candidatesCount,
   });
 
-  const lint = await lintDemoHtml(html, { lead, enrichment });
-  const floor = Number(opts.qualityFloor || process.env.LATCHLY_DEMO_QUALITY_FLOOR || 80);
-  if (lint.score < floor) {
-    return { ok: false, reason: 'demo_quality_fail', html, direction, lint };
+  if (!bespoke.ok) {
+    // eslint-disable-next-line no-console
+    console.error(`[design-engine] bespoke failed (${bespoke.reason})`);
+    if (bespoke.scanError) {
+      // eslint-disable-next-line no-console
+      console.error(`[design-engine] scan stderr/stdout (truncated):\n${String(bespoke.scanError).slice(0, 2000)}`);
+    }
+    if (bespoke.candidatesScored) {
+      // eslint-disable-next-line no-console
+      console.error('[design-engine] candidate scores:', JSON.stringify(bespoke.candidatesScored, null, 2));
+    }
   }
-  return { ok: true, html, direction, qualityScore: lint.score, lint };
+  return bespoke;
 }
 
 module.exports = {
   buildDemoForLead,
-  pickDirection,
-  loadTemplate,
-  renderTemplate,
   lintDemoHtml,
 };
