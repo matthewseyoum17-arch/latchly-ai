@@ -3,6 +3,8 @@ import path from 'path';
 import { neon } from '@neondatabase/serverless';
 
 export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+export const revalidate = 0;
 
 const DEMO_MAX_AGE_DAYS = parseInt(process.env.DEMO_MAX_AGE_DAYS || '30', 10);
 const BOOKING_LINK = process.env.BOOKING_LINK || 'https://calendly.com/latchlyai/demo';
