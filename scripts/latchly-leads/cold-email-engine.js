@@ -66,6 +66,18 @@ const COLD_EMAIL_RULES = {
     'mission-critical',
   ],
 
+  // Template-pattern rejection. Bodies matching any of these regex are
+  // rejected at validation time and retried. Catches the bland
+  // "I built a homepage redesign for X — focused on Y in Z" pattern
+  // Haiku 4.5 collapses to when data is thin. Differs from the 7-gram
+  // dedupe (which compares bodies pairwise); these match a single body
+  // in isolation, so two leads with different names + cities can BOTH
+  // hit the same template and BOTH get rejected.
+  bannedTemplates: [
+    /\bI built a homepage redesign for [^—\n]+\s*—\s*focused on /,
+    /\bI built a homepage redesign for [^.\n]+\.\s+The new (layout|version) /,
+  ],
+
   // ── Per-lead variation pools (Phase C) ─────────────────────────────────
   // Hashed by lead.id so repeat composes are stable per-lead but vary
   // sharply across leads. Claude is forced to follow the chosen archetype.
@@ -414,7 +426,8 @@ async function composeColdEmailForLead(lead, enrichment, demoUrl, opts = {}) {
 
 function buildComposerInput(lead, enrichment = {}, demoUrl, opts = {}) {
   const review = pickReview(enrichment.reviews);
-  const topService = (enrichment.servicesVerified || [])[0] || lead.niche || null;
+  const cleanedServices = cleanServices(enrichment.servicesVerified || []);
+  const topService = cleanedServices[0] || lead.niche || null;
   const variation = opts.variation || null;
   return {
     businessName: lead.businessName || null,
@@ -431,7 +444,7 @@ function buildComposerInput(lead, enrichment = {}, demoUrl, opts = {}) {
     topReview: review
       ? { author: review.author, rating: review.rating, text: review.text.slice(0, 280), source: review.source }
       : null,
-    servicesVerified: (enrichment.servicesVerified || []).slice(0, 6),
+    servicesVerified: cleanedServices.slice(0, 6),
     demoUrl,
     fromEmail: opts.fromEmail,
     senderFirstName: opts.senderFirstName,
@@ -462,7 +475,7 @@ function pickVariation(lead, senderFirstName, enrichment) {
   const digest = crypto.createHash('sha1').update(idStr).digest();
 
   const voice        = COLD_EMAIL_RULES.voicePool  [digest[0] % COLD_EMAIL_RULES.voicePool.length];
-  const opener       = COLD_EMAIL_RULES.openerPool [digest[1] % COLD_EMAIL_RULES.openerPool.length];
+  let   opener       = COLD_EMAIL_RULES.openerPool [digest[1] % COLD_EMAIL_RULES.openerPool.length];
   let lengthBucket   = COLD_EMAIL_RULES.lengthPool [digest[2] % COLD_EMAIL_RULES.lengthPool.length];
   const signoff      = COLD_EMAIL_RULES.signoffPool[digest[3] % COLD_EMAIL_RULES.signoffPool.length];
 
@@ -474,10 +487,29 @@ function pickVariation(lead, senderFirstName, enrichment) {
   // short honest email than waste retries chasing word count we can't fill.
   const reviewCount = Number(enrichment?.reviewCount || 0);
   const hasYears = Number(enrichment?.yearsInBusiness || 0) > 0;
-  const servicesCount = (enrichment?.servicesVerified || []).length;
+  const cleanedServices = cleanServices(enrichment?.servicesVerified || []);
+  const servicesCount = cleanedServices.length;
   const thinData = reviewCount === 0 && !hasYears && servicesCount === 0;
   if (thinData && lengthBucket.key !== 'tight') {
     lengthBucket = COLD_EMAIL_RULES.lengthPool.find(b => b.key === 'tight') || lengthBucket;
+  }
+
+  // Opener bias for low-signal leads. Direct-builder and Single-fact-hook
+  // need a real specific detail to land — without one, Haiku collapses
+  // both to the bland "I built a homepage redesign for X — focused on Y
+  // in Z" template. Reference-based needs a specific site detail. When
+  // the strongest signal is just yearsInBusiness OR niche+city alone,
+  // force the opener pool to Niche-question or Acquaintance, which carry
+  // an email on those signals without degenerating.
+  const lowSignal =
+    reviewCount === 0
+    && !enrichment?.bbbAccreditation
+    && servicesCount === 0;
+  if (lowSignal) {
+    const allowed = COLD_EMAIL_RULES.openerPool.filter(
+      o => o.key === 'niche-question' || o.key === 'acquaintance',
+    );
+    if (allowed.length) opener = allowed[digest[1] % allowed.length];
   }
 
   // Render the sign-off with the actual sender name interpolated, so the
@@ -526,6 +558,36 @@ function pickReview(reviews) {
     return bScore - aScore;
   });
   return sorted[0];
+}
+
+// Strip CTA-text and other junk that the audit scraper sometimes drags
+// into servicesVerified. Examples observed in production:
+//   "I want a free storm damage inspection"  (button text)
+//   "Get a free quote"                       (CTA)
+//   "Click here to schedule"                 (CTA)
+// These ruin the cold email hook ("focused on I-want-a-free-storm-damage-
+// inspection jobs in Memphis"), so we filter them BEFORE the prompt sees
+// them. Heuristics intentionally err toward filtering — better to omit a
+// borderline real service than to anchor an email to a button label.
+function cleanServices(services) {
+  if (!Array.isArray(services)) return [];
+  const JUNK_RE = /^(i\s+(want|need|would like)|get\s+(a|an)?\s*free|free\s+(quote|estimate|inspection)|click\s+(here|to)|submit|schedule\s+now|book\s+(now|online)|call\s+now|request\s+(a|an|service|quote)|tell us|let us|find out|learn more|see (our|your)|view (all|our)|sign up)/i;
+  const QUESTION_RE = /[?]/;
+  const seen = new Set();
+  const out = [];
+  for (const raw of services) {
+    if (typeof raw !== 'string') continue;
+    const s = raw.trim();
+    if (!s) continue;
+    if (s.length < 3 || s.length > 80) continue;
+    if (JUNK_RE.test(s)) continue;
+    if (QUESTION_RE.test(s)) continue;
+    const key = s.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(s);
+  }
+  return out;
 }
 
 function validateStructure({ subject, body, demoUrl, businessName, lengthBucket }) {
@@ -582,6 +644,13 @@ function validateStructure({ subject, body, demoUrl, businessName, lengthBucket 
     if (/^I\b/.test(paragraphs[i]) && /^I\b/.test(paragraphs[i - 1])) {
       return 'body_consecutive_I_paragraphs';
     }
+  }
+
+  // Template-pattern rejection. Catches the bland "I built a homepage
+  // redesign for X — focused on Y in Z" pattern Haiku 4.5 collapses to
+  // when data is thin. Forces the retry loop to pick a different opener.
+  for (const re of (COLD_EMAIL_RULES.bannedTemplates || [])) {
+    if (re.test(bodyTrim)) return 'body_matches_banned_template';
   }
 
   return null;
