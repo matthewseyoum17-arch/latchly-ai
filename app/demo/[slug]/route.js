@@ -26,65 +26,6 @@ h1{font-size:24px;color:#0f172a;margin-bottom:8px}p{font-size:15px;color:#64748b
 </div></body></html>`;
 }
 
-function freshnessBanner(daysAgo) {
-  const urgency = daysAgo <= 3
-    ? { label: 'Built just for you', bg: '#10b981', icon: '&#9889;' }
-    : daysAgo <= 14
-      ? { label: `Built for you ${daysAgo} days ago`, bg: '#f59e0b', icon: '&#128197;' }
-      : { label: `Built ${daysAgo} days ago — expiring soon`, bg: '#ef4444', icon: '&#9203;' };
-
-  return `<div id="latchly-freshness">
-  <span class="lf-copy">${urgency.icon} ${urgency.label}</span>
-  <a href="${BOOKING_LINK}" class="lf-cta">Book a call</a>
-</div>
-<style>
-#latchly-freshness{
-  position:fixed;
-  top:0;
-  left:0;
-  right:0;
-  z-index:99999;
-  background:${urgency.bg};
-  color:#fff;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:10px;
-  padding:8px 12px;
-  font-family:system-ui,-apple-system,sans-serif;
-  font-size:13px;
-  font-weight:600;
-  letter-spacing:.2px;
-  line-height:1.25;
-  box-shadow:0 2px 8px rgba(0,0,0,.15);
-  text-align:center;
-}
-#latchly-freshness .lf-copy{display:inline-block}
-#latchly-freshness .lf-cta{
-  color:#fff;
-  text-decoration:underline;
-  font-weight:700;
-  white-space:nowrap;
-}
-body{padding-top:44px!important}
-@media (max-width: 640px){
-  #latchly-freshness{
-    padding:7px 10px;
-    font-size:11px;
-    gap:8px;
-    flex-wrap:wrap;
-  }
-  #latchly-freshness .lf-copy{
-    max-width:100%;
-  }
-  #latchly-freshness .lf-cta{
-    display:inline-block;
-  }
-  body{padding-top:56px!important}
-}
-</style>`;
-}
-
 async function loadDemoFromDb(safeSlug) {
   if (!process.env.DATABASE_URL) return null;
 
@@ -169,8 +110,6 @@ export async function GET(request, { params }) {
   }
 
   let html = demoRecord.html;
-  const banner = freshnessBanner(daysAgo);
-  html = html.replace(/<body[^>]*>/i, (match) => match + '\n' + banner);
 
   const trackingSnippet = `
 <script>
